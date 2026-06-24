@@ -32,16 +32,27 @@ function DateCell({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  const open = () => {
+    try {
+      (ref.current as any)?.showPicker();
+    } catch {
+      ref.current?.focus();
+    }
+  };
+
   return (
-    <div className="relative w-full">
-      <span className="block text-xs px-1 py-1 pointer-events-none select-none">
+    <div className="relative w-full cursor-pointer" onClick={open}>
+      <span className="block text-xs px-1 py-1 pointer-events-none select-none hover:bg-white hover:border hover:border-slate-200 rounded transition-all">
         {formatDisplayDate(value) || <span className="text-slate-300">--/--/--</span>}
       </span>
       <input
+        ref={ref}
         type="date"
         value={value}
         onChange={(e) => { if (e.target.value) onChange(e.target.value); }}
-        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+        className="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
         tabIndex={-1}
       />
     </div>
