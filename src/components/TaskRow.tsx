@@ -102,8 +102,6 @@ export default function TaskRow({
   return (
     <>
       <tr
-        draggable={dragEnabled}
-        onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDrop={onDrop}
         onDragEnd={onDragEnd}
@@ -135,7 +133,13 @@ export default function TaskRow({
         <td className="w-14 px-2 text-center">
           {dragEnabled ? (
             <div className="flex items-center justify-center gap-1">
-              <GripVertical className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-400 cursor-grab active:cursor-grabbing transition-colors flex-shrink-0" />
+              <div
+                draggable
+                onDragStart={onDragStart}
+                className="cursor-grab active:cursor-grabbing"
+              >
+                <GripVertical className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-400 transition-colors flex-shrink-0" />
+              </div>
               <span className="text-xs font-mono text-slate-400">{task.task_sort}</span>
             </div>
           ) : (
