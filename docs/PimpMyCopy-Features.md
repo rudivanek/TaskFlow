@@ -22,6 +22,7 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Collapsible with toggle button
 - Workspaces section with expand/collapse chevrons
 - Projects listed alphabetically within each workspace
+- **Drag & Drop project between workspaces**: drag a project row and drop it onto any workspace header to move it; the dragged item becomes semi-transparent, the target workspace header highlights in blue, and the target workspace auto-expands after the move
 - Favorites section at top showing starred projects
 - Trash/Recycle bin section for soft-deleted projects with restore/permanent delete
 - Context menus on right-click:

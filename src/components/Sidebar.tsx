@@ -39,6 +39,8 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; type: 'workspace' | 'project'; id: string } | null>(null);
+  const [draggingProjectId, setDraggingProjectId] = useState<string | null>(null);
+  const [dropTargetWorkspaceId, setDropTargetWorkspaceId] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebar-width');
     return saved ? parseInt(saved) : 280;
@@ -189,6 +191,16 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
     }
   };
 
+  const handleMoveProject = async (projectId: string, targetWorkspaceId: string) => {
+    try {
+      await projectServices.moveProjectToWorkspace(projectId, targetWorkspaceId);
+      setExpandedWorkspaces(prev => new Set([...prev, targetWorkspaceId]));
+      await loadData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleContextMenu = (e: React.MouseEvent, type: 'workspace' | 'project', id: string) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, type, id });
@@ -285,8 +297,29 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
             return (
               <div key={ws.id}>
                 <div
-                  className="flex items-center gap-1 px-2 py-1.5 rounded-md hover:bg-slate-50 group cursor-pointer"
+                  className={`flex items-center gap-1 px-2 py-1.5 rounded-md hover:bg-slate-50 group cursor-pointer transition-colors ${
+                    dropTargetWorkspaceId === ws.id ? 'bg-primary-50 ring-1 ring-primary-300' : ''
+                  }`}
                   onContextMenu={(e) => handleContextMenu(e, 'workspace', ws.id)}
+                  onDragOver={(e) => {
+                    if (!draggingProjectId) return;
+                    e.preventDefault();
+                    const draggingProject = projects.find(p => p.id === draggingProjectId);
+                    if (draggingProject?.workspace_id !== ws.id) {
+                      setDropTargetWorkspaceId(ws.id);
+                    }
+                  }}
+                  onDragLeave={() => setDropTargetWorkspaceId(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (!draggingProjectId) return;
+                    const draggingProject = projects.find(p => p.id === draggingProjectId);
+                    if (draggingProject && draggingProject.workspace_id !== ws.id) {
+                      handleMoveProject(draggingProjectId, ws.id);
+                    }
+                    setDraggingProjectId(null);
+                    setDropTargetWorkspaceId(null);
+                  }}
                 >
                   <button onClick={() => toggleWorkspace(ws.id)} className="p-0.5">
                     {isExpanded ? (
@@ -351,13 +384,24 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
                     )}
 
                     {wsProjects.map(p => (
-                      <button
+                      <div
                         key={p.id}
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggingProjectId(p.id);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragEnd={() => {
+                          setDraggingProjectId(null);
+                          setDropTargetWorkspaceId(null);
+                        }}
                         onClick={() => onSelectProject(p.id)}
                         onContextMenu={(e) => handleContextMenu(e, 'project', p.id)}
                         onDoubleClick={() => { setEditingProjectId(p.id); setEditName(p.project); }}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${
-                          selectedProjectId === p.id
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm transition-colors cursor-pointer select-none ${
+                          draggingProjectId === p.id
+                            ? 'opacity-40'
+                            : selectedProjectId === p.id
                             ? 'bg-primary-50 text-primary-700 font-medium'
                             : 'text-slate-600 hover:bg-slate-50'
                         }`}
@@ -380,7 +424,7 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
                           <span className="truncate">{p.project}</span>
                         )}
                         {p.favorite && <Star className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />}
-                      </button>
+                      </div>
                     ))}
 
                     {wsProjects.length === 0 && !newProjectWorkspaceId && (

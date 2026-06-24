@@ -55,3 +55,11 @@ export async function toggleFavorite(id: string, currentValue: boolean): Promise
   const { error } = await supabase.from('projects').update({ favorite: !currentValue }).eq('id', id);
   if (error) throw error;
 }
+
+export async function moveProjectToWorkspace(projectId: string, targetWorkspaceId: string): Promise<void> {
+  const { error } = await supabase
+    .from('projects')
+    .update({ workspace_id: targetWorkspaceId })
+    .eq('id', projectId);
+  if (error) throw error;
+}
