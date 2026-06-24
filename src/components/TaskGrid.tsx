@@ -155,15 +155,11 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
     }
   };
 
-  const handleDelete = async (taskId: string, taskIdNum: number) => {
+  const handleDelete = (taskId: string, taskIdNum: number) => {
     const dependents = tasks.filter(t =>
       t.depends_on_task_ids && t.depends_on_task_ids.includes(taskIdNum)
     );
-    if (dependents.length > 0) {
-      setPendingDelete({ taskId, taskIdNum, dependents });
-      return;
-    }
-    await execDelete(taskId);
+    setPendingDelete({ taskId, taskIdNum, dependents });
   };
 
   const execDelete = async (taskId: string) => {
@@ -337,26 +333,34 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setPendingDelete(null)} />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-slate-800">Delete task with dependencies</h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  The following {pendingDelete.dependents.length === 1 ? 'task depends' : 'tasks depend'} on this task:
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {pendingDelete.dependents.map(t => (
-                    <span key={t.id} className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-xs font-mono text-slate-600">
-                      #{t.task_id} {t.task_name ? `— ${t.task_name}` : ''}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-sm text-slate-500 mt-3">
-                  Deleting will remove these dependency links. The dependent tasks will remain.
-                </p>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-slate-800">Delete task</h3>
+                {pendingDelete.dependents.length === 0 ? (
+                  <p className="text-sm text-slate-500 mt-1">
+                    This will permanently delete the task and all its subtasks. This cannot be undone.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm text-slate-500 mt-1">
+                      The following {pendingDelete.dependents.length === 1 ? 'task depends' : 'tasks depend'} on this task:
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {pendingDelete.dependents.map(t => (
+                        <span key={t.id} className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-xs font-mono text-slate-600">
+                          #{t.task_id}{t.task_name ? ` — ${t.task_name}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-sm text-slate-500 mt-3">
+                      Deleting will remove these dependency links. The dependent tasks will remain.
+                    </p>
+                  </>
+                )}
               </div>
-              <button onClick={() => setPendingDelete(null)} className="flex-shrink-0 p-1 hover:bg-slate-100 rounded-md transition-colors ml-auto">
+              <button onClick={() => setPendingDelete(null)} className="flex-shrink-0 p-1 hover:bg-slate-100 rounded-md transition-colors">
                 <X className="w-4 h-4 text-slate-400" />
               </button>
             </div>
@@ -371,7 +375,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
                 onClick={handleForceDelete}
                 className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
               >
-                Delete anyway
+                Delete
               </button>
             </div>
           </div>
