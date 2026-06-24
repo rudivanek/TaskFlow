@@ -225,7 +225,7 @@ export default function TaskRow({
             </button>
             <button
               onClick={() => onDelete(task.id, task.task_id)}
-              className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+              className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
               title="Delete task"
             >
               <Trash2 className="w-3.5 h-3.5" />
