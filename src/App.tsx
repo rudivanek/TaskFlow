@@ -7,7 +7,7 @@ import KanbanBoard from './components/KanbanBoard';
 import { Phase, Status, Responsible, Task, Subtask } from './types';
 import * as taskServices from './services/taskServices';
 import GanttChart from './components/GanttChart';
-import { exportTasksCsv, exportTasksWithSubtasksCsv } from './utils/csvExport';
+import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
 import { supabase } from './lib/supabase';
 import {
   CheckSquare,
@@ -97,6 +97,13 @@ export default function App() {
       })
     );
     exportTasksWithSubtasksCsv(tasks, subtasksMap, phases, statuses, responsibles, selectedProjectName || 'project');
+  }, [selectedProjectId, phases, statuses, responsibles, selectedProjectName]);
+
+  const handleExportGantt = useCallback(async () => {
+    if (!selectedProjectId) return;
+    setShowExportMenu(false);
+    const tasks = await taskServices.fetchTasks(selectedProjectId);
+    exportGanttToExcel(tasks, phases, statuses, responsibles, selectedProjectName || 'project');
   }, [selectedProjectId, phases, statuses, responsibles, selectedProjectName]);
 
   if (loading) {
@@ -190,6 +197,13 @@ export default function App() {
                     >
                       <Download className="w-4 h-4 text-slate-400" />
                       Tasks with Subtasks to CSV
+                    </button>
+                    <button
+                      onClick={handleExportGantt}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                    >
+                      <Download className="w-4 h-4 text-slate-400" />
+                      Export Gantt (Excel)
                     </button>
                   </div>
                 </>
