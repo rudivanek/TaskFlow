@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Project } from '../types';
+import { Project, ProjectComment } from '../types';
 
 export async function fetchProjects(workspaceIds: string[], showDeleted = false): Promise<Project[]> {
   if (workspaceIds.length === 0) return [];
@@ -61,5 +61,38 @@ export async function moveProjectToWorkspace(projectId: string, targetWorkspaceI
     .from('projects')
     .update({ workspace_id: targetWorkspaceId })
     .eq('id', projectId);
+  if (error) throw error;
+}
+
+export async function fetchProjectComments(projectId: string): Promise<ProjectComment[]> {
+  const { data, error } = await supabase
+    .from('project_comments')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function addProjectComment(projectId: string, userId: string, content: string): Promise<ProjectComment> {
+  const { data, error } = await supabase
+    .from('project_comments')
+    .insert({ project_id: projectId, user_id: userId, content })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateProjectComment(id: string, content: string): Promise<void> {
+  const { error } = await supabase
+    .from('project_comments')
+    .update({ content, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteProjectComment(id: string): Promise<void> {
+  const { error } = await supabase.from('project_comments').delete().eq('id', id);
   if (error) throw error;
 }

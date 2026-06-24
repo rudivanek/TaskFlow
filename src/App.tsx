@@ -7,6 +7,7 @@ import KanbanBoard from './components/KanbanBoard';
 import { Phase, Status, Responsible, Task, Subtask } from './types';
 import * as taskServices from './services/taskServices';
 import GanttChart from './components/GanttChart';
+import ProjectCommentsModal from './components/ProjectCommentsModal';
 import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
 import { supabase } from './lib/supabase';
 import {
@@ -19,6 +20,7 @@ import {
   Loader2,
   ChevronDown,
   Download,
+  MessageSquare,
 } from 'lucide-react';
 
 type ViewMode = 'grid' | 'kanban' | 'gantt';
@@ -39,6 +41,7 @@ export default function App() {
   const [responsibles, setResponsibles] = useState<Responsible[]>([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(true);
   const [selectedProjectName, setSelectedProjectName] = useState('');
 
@@ -214,6 +217,15 @@ export default function App() {
                 </>
               )}
             </div>
+
+            {/* Comments */}
+            <button
+              onClick={() => setShowComments(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Comments
+            </button>
           </div>
         )}
 
@@ -298,6 +310,14 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {showComments && selectedProjectId && (
+        <ProjectCommentsModal
+          projectId={selectedProjectId}
+          projectName={selectedProjectName}
+          onClose={() => setShowComments(false)}
+        />
+      )}
     </div>
   );
 }

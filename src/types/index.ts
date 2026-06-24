@@ -61,3 +61,12 @@ export interface Project {
   deleted: boolean;
   favorite: boolean;
 }
+
+export interface ProjectComment {
+  id: string;
+  project_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
