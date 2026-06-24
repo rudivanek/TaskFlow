@@ -1,0 +1,116 @@
+Project Name,ID,Sort ID,Type,Task,Phase,Status,Responsible,Start Date,Days,End Date,Depends On,Dependencies,Comments
+"Hayley",1,1,Task,"Kick-Off","Kick-Off","Not Started","Sharpen.Studio - Cliente",22/06/2026,1,22/06/2026,,2;17;25,"En la reunión de kick-off se discuten la estrategia de desarrollo, los plazos, el alcance y las tareas. Además, se presentan los líderes del proyecto."
+"Hayley",1.1,,Subtask,"Scope",,"Not Started",,,,,,,
+"Hayley",2,2,Task,"Entregables (Contenidos Generales)","Deliverables","Not Started","Cliente",23/06/2026,7,29/06/2026,1,3,"Entregables necesarios por parte del cliente para comenzar el desarrollo. Los elementos clave para iniciar incluyen: look & feel, textos, contenido multimedia y branding."
+"Hayley",2.1,,Subtask,"Look & Feel",,"Done",,,,,,,
+"Hayley",2.2,,Subtask,"Branding",,"Not Started",,,,,,,
+"Hayley",2.3,,Subtask,"Copy / Textos",,"Not Started",,,,,,,
+"Hayley",2.4,,Subtask,"Multimedia / Fotos y Videos en YouTube",,"Not Started",,,,,,,
+"Hayley",2.5,,Subtask,"Info de Contacto / Email, WhatsApp, etc.",,"Not Started",,,,,,,
+"Hayley",2.6,,Subtask,"Legales",,"Not Started",,,,,,,
+"Hayley",2.7,,Subtask,"Diversos",,"Not Started",,,,,,,
+"Hayley",25,3,Task,"Entregables (Productos) ","Deliverables","Not Started","Cliente",23/06/2026,15,07/07/2026,1,45,"Entrega de accesos, estructura y contenidos relacionados con la sección de Proyectos del sitio web."
+"Hayley",25.1,,Subtask,"Campos para crear template de Productos",,"Not Started",,,,,,,
+"Hayley",25.2,,Subtask,"Contenidos (texto e imágenes) para dar de alta Productos",,"Not Started",,,,,,,
+"Hayley",17,4,Task,"Entregables (Dominio/Servidor)","Deliverables","Not Started","Cliente",23/06/2026,45,06/08/2026,1,20,"El cliente debe entregar acceso al registro del dominio y servidor."
+"Hayley",17.1,,Subtask,"Acceso al Dominio (GoDaddy, etc.)",,"Not Started",,,,,,,
+"Hayley",17.2,,Subtask,"Acceso al panel de control del Servidor",,"Not Started",,,,,,,
+"Hayley",17.3,,Subtask,"Acceso a Gmail (para Google Anaytics y Google Search Console)",,"Not Started",,,,,,,
+"Hayley",17.4,,Subtask,"Acceso a Traductor (Weglot)",,"Not Started",,,,,,,
+"Hayley",17.5,,Subtask,"Acceso a Pasarelas de Pago (PaPal, Stripe, Mercado Pago, etc.)",,"Not Started",,,,,,,
+"Hayley",17.6,,Subtask,"Acceso a Pasarela de Fletes para Envíos",,"Not Started",,,,,,,
+"Hayley",3,5,Task,"Sitemap","Development basic","Not Started","Sharpen.Studio",30/06/2026,3,02/07/2026,2,4,"Se desarrolla el sitemap: una guía para definir objetivos, la estructura del sitio y la importancia de cada página, optimizando su indexación en buscadores."
+"Hayley",4,6,Task,"Sitemap - Aprobación","Development basic","Not Started","Cliente",03/07/2026,1,03/07/2026,3,5,"El sitemap requiere aprobación por parte del cliente."
+"Hayley",5,7,Task,"Dummy PDF","Development basic","Not Started","Sharpen.Studio",04/07/2026,14,17/07/2026,4,6,"**Maqueta visual - Wireframe - Dummy PDF**  Con el sitemap definido, se crea un dummy PDF o maqueta visual estática que ofrece una visión más clara del diseño de tu sitio web. Se presentan dos páginas, mostrando textos, identidad gráfica, colores, imágenes y más."
+"Hayley",6,8,Task,"Dummy PDF - Aprobación","Development basic","Not Started","Cliente",18/07/2026,1,18/07/2026,5,7,"El cliente debe de aprobar el Dummy PDF."
+"Hayley",7,9,Task,"Dummy Web 1 - (Home)","Development basic","Not Started","Sharpen.Studio",19/07/2026,19,06/08/2026,6,8,"Se inicia el desarrollo web, presentando uno o dos apartados para la aprobación del cliente."
+"Hayley",7.1,,Subtask,"Instalación de WordPress de acuerdo al idioma predeterminado (inglés o español)",,"Not Started",,,,,,,
+"Hayley",7.2,,Subtask,"Configuración inicial de WordPress",,"Not Started",,,,,,,
+"Hayley",7.3,,Subtask,"Instalar Plugins predeterminados",,"Not Started",,,,,,,
+"Hayley",7.4,,Subtask,"Desarrollo de página inicial (Home)",,"Not Started",,,,,,,
+"Hayley",7.5,,Subtask,"Revisión de Accesibilidad (WCAG)",,"Not Started",,,,,,,
+"Hayley",8,10,Task,"Dummy Web 1 - (Home) - Aprobación","Development basic","Not Started","Cliente",07/08/2026,1,07/08/2026,7,9,"El cliente debe de aprobar el dummy web inicial presentado, antes de proseguir con el resto del sitio."
+"Hayley",9,11,Task,"Dummy Web 2","Development basic","Not Started","Sharpen.Studio",08/08/2026,14,21/08/2026,8,10,"Se desarrollan las demás páginas y secciones del dummy web."
+"Hayley",9.1,,Subtask,"Páginas según Scope",,"Not Started",,,,,,,
+"Hayley",9.2,,Subtask,"Configuración de Formularios de Contacto",,"Not Started",,,,,,,
+"Hayley",9.3,,Subtask,"Contacto - Gracias",,"Not Started",,,,,,,
+"Hayley",9.4,,Subtask,"404",,"Not Started",,,,,,,
+"Hayley",9.5,,Subtask,"Plantilla Elemailer",,"Not Started",,,,,,,
+"Hayley",9.6,,Subtask,"Aviso de Cookies",,"Not Started",,,,,,,
+"Hayley",9.7,,Subtask,"Formulario de Acceso y Registro a WP Admin",,"Not Started",,,,,,,
+"Hayley",9.8,,Subtask,"Legales",,"Not Started",,,,,,,
+"Hayley",9.9,,Subtask,"Configuración de Ajustes de WooCommerce",,"Not Started",,,,,,,
+"Hayley",10,12,Task,"Dummy Web 2 - Aprobación","Development basic","Not Started","Cliente",22/08/2026,2,23/08/2026,9,11;45,"El cliente debe de aprobar el dummy web restante."
+"Hayley",11,13,Task,"Dummy Web 3","Development basic","Not Started","Sharpen.Studio",24/08/2026,7,30/08/2026,10,12,"Ajustes finales sobre el dummy web, tras haber creado módulo de Blog, integrando cambios menores antes de pasar a la etapa de aprobación."
+"Hayley",12,14,Task,"Dummy Web 3 - Aprobación","Development basic","Not Started","Cliente",31/08/2026,2,01/09/2026,11,42;56,"Revisión y validación del dummy web, con el módulo de Blog, por parte del cliente para continuar con el desarrollo."
+"Hayley",45,15,Task,"Productos - Desarrollo","Development E-Com","Not Started","Sharpen.Studio",24/08/2026,7,30/08/2026,10;25,26,"Configuración y desarrollo de la sección de Proyectos, dejando la estructura lista para publicar contenidos de forma ordenada, clara y optimizada."
+"Hayley",45.1,,Subtask,"Creación y configuración inicial de Productos",,"Not Started",,,,,,,
+"Hayley",45.2,,Subtask,"Creación de Taxonomías: Categorías, Variables, Etiquetas, Marcas",,"Not Started",,,,,,,
+"Hayley",45.3,,Subtask,"Diseño y desarrollo de Loop Item, Single, Archive, Página de Tienda y Resultados de Búsqueda de Productos",,"Not Started",,,,,,,
+"Hayley",45.4,,Subtask,"Diseño y desarrollo de páginas de Mi Cuenta, Carrito y Finalizar Compra",,"Not Started",,,,,,,
+"Hayley",45.5,,Subtask,"Configuación de Pasarelas de Pago",,"Not Started",,,,,,,
+"Hayley",45.6,,Subtask,"Configuración de Pasarela de Fletes para Envío",,"Not Started",,,,,,,
+"Hayley",56,16,Task,"Personal Training - with booking","","Not Started","Sharpen.Studio",02/09/2026,7,08/09/2026,12,,""
+"Hayley",26,17,Task,"Productos - Dar de Alta 3x Productos","Development E-Com","Not Started","Sharpen.Studio",31/08/2026,3,02/09/2026,45,27;42,"Se cargan X proyectos de ejemplo para mostrar el funcionamiento de los mismos y servir como referencia de estilo y estructura, estipulados en el convenio."
+"Hayley",42,18,Task,"Dummy Web 4","Development basic","Not Started","Sharpen.Studio",03/09/2026,5,07/09/2026,12;26,43,"Ajustes finales sobre el dummy web, tras haber creado módulo de Proyectos, integrando cambios menores antes de pasar a la etapa de aprobación."
+"Hayley",43,19,Task,"Dummy Web 4 - Aprobación","Development basic","Not Started","Cliente",08/09/2026,1,08/09/2026,42,41,"Revisión y validación del dummy web, con el módulo de Proyectos, por parte del cliente para continuar con el desarrollo."
+"Hayley",27,20,Task,"Productos - Capacitación al Cliente","Training","Not Started","Sharpen.Studio - Cliente",03/09/2026,1,03/09/2026,26,28,"Sesión breve para explicar al cliente cómo crear, editar y publicar proyectos de forma autónoma."
+"Hayley",28,21,Task,"Productos - Cliente da de Alta Productos","Development E-Com","Not Started","Cliente",04/09/2026,3,06/09/2026,27,,"El cliente comienza a cargar sus propios proyectos siguiendo la estructura y lineamientos definidos."
+"Hayley",41,22,Task,"Dummy Web - Terminado","Development basic","Not Started","Sharpen.Studio",09/09/2026,1,09/09/2026,43,13,"Versión preliminar del sitio dummy completamente funcional y lista para una revisión general por parte del cliente."
+"Hayley",13,23,Task,"Revisión Final","Review","Not Started","Sharpen.Studio - Cliente",10/09/2026,1,10/09/2026,41,55,"Se hace una revisión por parte del cliente y de Sharpen.Studio."
+"Hayley",13.1,,Subtask,"Verificación de configuración y envío de Formularios",,"Not Started",,,,,,,
+"Hayley",13.2,,Subtask,"Verificación de enlaces rotos",,"Not Started",,,,,,,
+"Hayley",13.3,,Subtask,"Revisión de diversas resoluciones (incluido móvil real) y diversos navegadores",,"Not Started",,,,,,,
+"Hayley",13.4,,Subtask,"Revisión Cliente - VoBo",,"Not Started",,,,,,,
+"Hayley",55,24,Task,"Dummy Web - Aprobación final","Development","Not Started","Sharpen.Studio - Cliente",11/09/2026,1,11/09/2026,13,18;19;20,"Aprobación final del dummy web por parte del cliente para proceder con el lanzamiento del sitio."
+"Hayley",55.1,,Subtask,"Aprobación de Sharpen.Studio",,"Not Started",,,,,,,
+"Hayley",55.2,,Subtask,"Aprobación del Cliente",,"Not Started",,,,,,,
+"Hayley",18,25,Task,"Clean Up / Respaldo Sitio en Desarrollo","Clean up
+","Not Started","Sharpen.Studio",11/09/2026,,11/09/2026,55,19,"Eliminar elementos temporales, multimedia, páginas, plugins, etc."
+"Hayley",18.1,,Subtask,"Eliminar Imágenes",,"Not Started",,,,,,,
+"Hayley",18.2,,Subtask,"Añadir ALT a imágenes",,"Not Started",,,,,,,
+"Hayley",18.3,,Subtask,"Eliminar Artículos de Blog y Páginas",,"Not Started",,,,,,,
+"Hayley",18.4,,Subtask,"Eliminar Widgets",,"Not Started",,,,,,,
+"Hayley",18.5,,Subtask,"Eliminar Plugins",,"Not Started",,,,,,,
+"Hayley",18.6,,Subtask,"Actualizar Plugins",,"Not Started",,,,,,,
+"Hayley",19,26,Task,"SEO / WPO 1","SEO","Not Started","Sharpen.Studio",12/09/2026,3,14/09/2026,18;55,47,"SEO - meta tags, copy, etc."
+"Hayley",19.1,,Subtask,"Rank Math Setup",,"Not Started",,,,,,,
+"Hayley",19.2,,Subtask,"Metatags",,"Not Started",,,,,,,
+"Hayley",19.3,,Subtask,"Convertir imágenes a WEBP",,"Not Started",,,,,,,
+"Hayley",19.4,,Subtask,"Optimización de DB",,"Not Started",,,,,,,
+"Hayley",19.5,,Subtask,"Revisión de Web Core Vitals",,"Not Started",,,,,,,
+"Hayley",19.6,,Subtask,"Configurar Plugin de Caché",,"Not Started",,,,,,,
+"Hayley",19.7,,Subtask,"Establecer que no haya caché en páginas de Carrito, Finalizar Compra y Mi Cuenta",,"Not Started",,,,,,,
+"Hayley",47,27,Task,"Respaldos y Autorizaciones","Domain - Server","Not Started","Cliente",15/09/2026,1,15/09/2026,19,20,"Confirmación por correo electrónico de que el respaldo del sitio anterior fue generado correctamente por parte del cliente."
+"Hayley",47.1,,Subtask,"Respaldo Sitio Anterior - Confirmado vía Email por parte del Cliente",,"Not Started",,,,,,,
+"Hayley",47.2,,Subtask,"Respaldo Sitio Anterior - con Plugin",,"Not Started",,,,,,,
+"Hayley",47.3,,Subtask,"Respaldo Sitio Anterior - HTML",,"Not Started",,,,,,,
+"Hayley",47.4,,Subtask,"Autorización de Migración - Vía Email parte del Cliente",,"Not Started",,,,,,,
+"Hayley",47.5,,Subtask,"Autorización de Migración - Por RFV",,"Not Started",,,,,,,
+"Hayley",20,28,Task,"Configuración de Servidor / Migración","Domain - Server","Not Started","Sharpen.Studio",16/09/2026,1,16/09/2026,17;47;55,24,"Se prepara el servidor para la migración del desarrollo."
+"Hayley",20.1,,Subtask,"Configurar Dominio y Servidor del Cliente",,"Not Started",,,,,,,
+"Hayley",20.2,,Subtask,"Configurar Cuentas de E-mail",,"Not Started",,,,,,,
+"Hayley",20.3,,Subtask,"SSL + Forzar SSL",,"Not Started",,,,,,,
+"Hayley",20.4,,Subtask,"Migración del Sitio Web",,"Not Started",,,,,,,
+"Hayley",20.5,,Subtask,"Usuario del Cliente - Acceso y Configuración de Perfil en WP",,"Not Started",,,,,,,
+"Hayley",20.6,,Subtask,"Usuario del Cliente - Elementor",,"Not Started",,,,,,,
+"Hayley",20.7,,Subtask,"Revisar Traductor",,"Not Started",,,,,,,
+"Hayley",20.8,,Subtask,"Revisión de Pasarelas de Pago y de Envío",,"Not Started",,,,,,,
+"Hayley",20.9,,Subtask,"Configurar SMTP",,"Not Started",,,,,,,
+"Hayley",20.10,,Subtask,"Test de Funcionalidad Post-Migración",,"Not Started",,,,,,,
+"Hayley",24,29,Task,"SEO / WPO 2","SEO","Not Started","Sharpen.Studio",17/09/2026,1,17/09/2026,20,50,"Configuración restante de SEO, ligada al dominio final: sitemap y plataformas de métricas."
+"Hayley",24.1,,Subtask,"Local SEO",,"Not Started",,,,,,,
+"Hayley",24.2,,Subtask,"Sitemap XML",,"Not Started",,,,,,,
+"Hayley",24.3,,Subtask,"301",,"Not Started",,,,,,,
+"Hayley",24.4,,Subtask,"404",,"Not Started",,,,,,,
+"Hayley",24.5,,Subtask,"Google Search Console",,"Not Started",,,,,,,
+"Hayley",24.6,,Subtask,"Google Analytics",,"Not Started",,,,,,,
+"Hayley",24.7,,Subtask,"ReCaptcha",,"Not Started",,,,,,,
+"Hayley",24.8,,Subtask,"Desactivar opción ""Disuadir motores de búsqueda""",,"Not Started",,,,,,,
+"Hayley",24.9,,Subtask,"Revisión de Core Web Vitals",,"Not Started",,,,,,,
+"Hayley",24.10,,Subtask,"Revisión y reajustes en plugin de Caché",,"Not Started",,,,,,,
+"Hayley",50,30,Task,"Check Up Final / Desarrollo Terminado","Development basic","Not Started","Sharpen.Studio - Cliente",18/09/2026,1,18/09/2026,24,23,"Revisión final del sitio para validar funcionamiento, enlaces y detalles antes de su publicación."
+"Hayley",50.1,,Subtask,"Revisión de botones y enlaces",,"Not Started",,,,,,,
+"Hayley",50.2,,Subtask,"Revisión de Destinatarios y Remitentes de Formularios en Sitio Web / Por parte del Sharpen.Studio",,"Not Started",,,,,,,
+"Hayley",50.3,,Subtask,"Confirmación vía Email de Envío y Recepción de Mensajes de Formularios en Sitio Web / Por parte del Cliente",,"Not Started",,,,,,,
+"Hayley",23,31,Task,"Capacitación Final","Training","Not Started","Sharpen.Studio - Cliente",19/09/2026,1,19/09/2026,50,,"Se capacita al cliente para la auto-administración del sitio web."
