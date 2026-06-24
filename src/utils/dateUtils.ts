@@ -2,7 +2,7 @@ import { addDays, differenceInCalendarDays, parseISO, format } from 'date-fns';
 
 export function calculateEndDate(startDate: string, days: number): string {
   const start = parseISO(startDate);
-  const end = addDays(start, days - 1);
+  const end = addDays(start, Math.max(0, days - 1));
   return format(end, 'yyyy-MM-dd');
 }
 
