@@ -1,0 +1,115 @@
+﻿Project Name,ID,Sort ID,Type,Task,Phase,Status,Responsible,Start Date,Days,End Date,Depends On,Dependencies,Comments
+"2. Viaker",1,1,Task,"Kick-Off","Kick-Off","Done","Sharpen.Studio - Cliente",09/03/2026,1,09/03/2026,,2;17;25,"En la reunión de kick-off se discuten la estrategia de desarrollo, los plazos, el alcance y las tareas. Además, se presentan los líderes del proyecto."
+"2. Viaker",1.1,,Subtask,"Scope",,"Done",,,,,,,
+"2. Viaker",2,2,Task,"Entregables (Contenidos Generales)","Deliverables","Done","Cliente",10/03/2026,7,16/03/2026,1,3,"Entregables necesarios por parte del cliente para comenzar el desarrollo. Los elementos clave para iniciar incluyen: look & feel, textos, contenido multimedia y branding."
+"2. Viaker",2.1,,Subtask,"Look & Feel",,"Done",,,,,,,
+"2. Viaker",2.2,,Subtask,"Branding",,"Done",,,,,,,
+"2. Viaker",2.3,,Subtask,"Copy / Textos",,"Done",,,,,,,
+"2. Viaker",2.4,,Subtask,"Multimedia / Fotos y Videos en YouTube",,"Done",,,,,,,
+"2. Viaker",2.5,,Subtask,"Info de Contacto / Email, WhatsApp, etc.",,"Done",,,,,,,
+"2. Viaker",2.6,,Subtask,"Legales",,"Done",,,,,,,
+"2. Viaker",2.7,,Subtask,"Diversos",,"Done",,,,,,,
+"2. Viaker",25,4,Task,"Entregables (Productos) ","Deliverables","Done","Cliente",10/03/2026,15,24/03/2026,1,45,"Entrega de accesos, estructura y contenidos relacionados con la sección de Proyectos del sitio web."
+"2. Viaker",25.1,,Subtask,"Campos para crear template de Productos",,"Done",,,,,,,
+"2. Viaker",25.2,,Subtask,"Contenidos (texto e imágenes) para dar de alta Productos",,"Done",,,,,,,
+"2. Viaker",17,5,Task,"Entregables (Dominio/Servidor)","Deliverables","On Hold","Cliente",10/03/2026,45,23/04/2026,1,20,"El cliente debe entregar acceso al registro del dominio y servidor."
+"2. Viaker",17.1,,Subtask,"Acceso al Dominio (GoDaddy, etc.)",,"Not Started",,,,,,,
+"2. Viaker",17.2,,Subtask,"Acceso al panel de control del Servidor",,"Not Started",,,,,,,
+"2. Viaker",17.3,,Subtask,"Acceso a Gmail (para Google Anaytics y Google Search Console)",,"Not Started",,,,,,,
+"2. Viaker",17.4,,Subtask,"Acceso a Traductor (Weglot)",,"Not Started",,,,,,,
+"2. Viaker",17.5,,Subtask,"Acceso a Pasarelas de Pago (PaPal, Stripe, Mercado Pago, etc.)",,"Not Started",,,,,,,
+"2. Viaker",17.6,,Subtask,"Acceso a Pasarela de Fletes para Envíos",,"Not Started",,,,,,,
+"2. Viaker",3,6,Task,"Sitemap","Development basic","Done","Sharpen.Studio",17/03/2026,1,17/03/2026,2,4,"Se desarrolla el sitemap: una guía para definir objetivos, la estructura del sitio y la importancia de cada página, optimizando su indexación en buscadores."
+"2. Viaker",4,7,Task,"Sitemap - Aprobación","Development basic","Done","Cliente",18/03/2026,1,18/03/2026,3,5,"El sitemap requiere aprobación por parte del cliente."
+"2. Viaker",5,8,Task,"Dummy PDF","Development basic","Done","Sharpen.Studio",19/03/2026,10,28/03/2026,4,6,"**Maqueta visual - Wireframe - Dummy PDF**  Con el sitemap definido, se crea un dummy PDF o maqueta visual estática que ofrece una visión más clara del diseño de tu sitio web. Se presentan dos páginas, mostrando textos, identidad gráfica, colores, imágenes y más."
+"2. Viaker",6,9,Task,"Dummy PDF - Aprobación","Development basic","Done","Cliente",29/03/2026,2,30/03/2026,5,7,"El cliente debe de aprobar el Dummy PDF."
+"2. Viaker",7,10,Task,"Dummy Web 1 - (Home)","Development basic","Done","Sharpen.Studio",31/03/2026,15,14/04/2026,6,8,"Se inicia el desarrollo web, presentando uno o dos apartados para la aprobación del cliente."
+"2. Viaker",7.1,,Subtask,"Instalación de WordPress de acuerdo al idioma predeterminado (inglés o español)",,"Done",,,,,,,
+"2. Viaker",7.2,,Subtask,"Configuración inicial de WordPress",,"Done",,,,,,,
+"2. Viaker",7.3,,Subtask,"Instalar Plugins predeterminados",,"Done",,,,,,,
+"2. Viaker",7.4,,Subtask,"Desarrollo de página inicial (Home)",,"Done",,,,,,,
+"2. Viaker",7.5,,Subtask,"Revisión de Accesibilidad (WCAG)",,"Done",,,,,,,
+"2. Viaker",8,11,Task,"Dummy Web 1 - (Home) - Aprobación","Development basic","Done","Cliente",15/04/2026,1,15/04/2026,7,9,"El cliente debe de aprobar el dummy web inicial presentado, antes de proseguir con el resto del sitio."
+"2. Viaker",9,12,Task,"Dummy Web 2","Development basic","On Hold","Sharpen.Studio",16/04/2026,10,25/04/2026,8,10,"Se desarrollan las demás páginas y secciones del dummy web."
+"2. Viaker",9.1,,Subtask,"Páginas según Scope",,"Not Started",,,,,,,
+"2. Viaker",9.2,,Subtask,"Configuración de Formularios de Contacto",,"Not Started",,,,,,,
+"2. Viaker",9.3,,Subtask,"Contacto - Gracias",,"Not Started",,,,,,,
+"2. Viaker",9.4,,Subtask,"404",,"Not Started",,,,,,,
+"2. Viaker",9.5,,Subtask,"Plantilla Elemailer",,"Not Started",,,,,,,
+"2. Viaker",9.6,,Subtask,"Aviso de Cookies",,"Not Started",,,,,,,
+"2. Viaker",9.7,,Subtask,"Formulario de Acceso y Registro a WP Admin",,"Not Started",,,,,,,
+"2. Viaker",9.8,,Subtask,"Legales",,"Not Started",,,,,,,
+"2. Viaker",9.9,,Subtask,"Configuración de Ajustes de WooCommerce",,"Not Started",,,,,,,
+"2. Viaker",10,13,Task,"Dummy Web 2 - Aprobación","Development basic","Not Started","Cliente",26/04/2026,1,26/04/2026,9,11;45,"El cliente debe de aprobar el dummy web restante."
+"2. Viaker",11,16,Task,"Dummy Web 3","Development basic","Not Started","Sharpen.Studio",27/04/2026,3,29/04/2026,10,12,"Ajustes finales sobre el dummy web, tras haber creado módulo de Blog, integrando cambios menores antes de pasar a la etapa de aprobación."
+"2. Viaker",12,17,Task,"Dummy Web 3 - Aprobación","Development basic","Not Started","Cliente",30/04/2026,1,30/04/2026,11,42,"Revisión y validación del dummy web, con el módulo de Blog, por parte del cliente para continuar con el desarrollo."
+"2. Viaker",45,20,Task,"Productos - Desarrollo","Development E-Com","Not Started","Sharpen.Studio",27/04/2026,3,29/04/2026,10;25,26,"Configuración y desarrollo de la sección de Proyectos, dejando la estructura lista para publicar contenidos de forma ordenada, clara y optimizada."
+"2. Viaker",45.1,,Subtask,"Creación y configuración inicial de Productos",,"Not Started",,,,,,,
+"2. Viaker",45.2,,Subtask,"Creación de Taxonomías: Categorías, Variables, Etiquetas, Marcas",,"Not Started",,,,,,,
+"2. Viaker",45.3,,Subtask,"Diseño y desarrollo de Loop Item, Single, Archive, Página de Tienda y Resultados de Búsqueda de Productos",,"Not Started",,,,,,,
+"2. Viaker",45.4,,Subtask,"Diseño y desarrollo de páginas de Mi Cuenta, Carrito y Finalizar Compra",,"Not Started",,,,,,,
+"2. Viaker",45.5,,Subtask,"Configuación de Pasarelas de Pago",,"Not Started",,,,,,,
+"2. Viaker",45.6,,Subtask,"Configuración de Pasarela de Fletes para Envío",,"Not Started",,,,,,,
+"2. Viaker",26,21,Task,"Productos - Dar de Alta 3x Productos","Development E-Com","Not Started","Sharpen.Studio",30/04/2026,1,30/04/2026,45,27;42,"Se cargan X proyectos de ejemplo para mostrar el funcionamiento de los mismos y servir como referencia de estilo y estructura, estipulados en el convenio."
+"2. Viaker",42,22,Task,"Dummy Web 4","Development basic","Not Started","Sharpen.Studio",01/05/2026,2,02/05/2026,12;26,43,"Ajustes finales sobre el dummy web, tras haber creado módulo de Proyectos, integrando cambios menores antes de pasar a la etapa de aprobación."
+"2. Viaker",43,23,Task,"Dummy Web 4 - Aprobación","Development basic","Not Started","Cliente",03/05/2026,1,03/05/2026,42,41,"Revisión y validación del dummy web, con el módulo de Proyectos, por parte del cliente para continuar con el desarrollo."
+"2. Viaker",27,24,Task,"Productos - Capacitación al Cliente","Training","Not Started","Sharpen.Studio - Cliente",01/05/2026,1,01/05/2026,26,28,"Sesión breve para explicar al cliente cómo crear, editar y publicar proyectos de forma autónoma."
+"2. Viaker",28,25,Task,"Productos - Cliente da de Alta Productos","Development E-Com","Not Started","Cliente",02/05/2026,3,04/05/2026,27,,"El cliente comienza a cargar sus propios proyectos siguiendo la estructura y lineamientos definidos."
+"2. Viaker",41,26,Task,"Dummy Web - Terminado","Development basic","Not Started","Sharpen.Studio",04/05/2026,1,04/05/2026,43,13,"Versión preliminar del sitio dummy completamente funcional y lista para una revisión general por parte del cliente."
+"2. Viaker",13,27,Task,"Revisión Final","Review","Not Started","Sharpen.Studio - Cliente",05/05/2026,1,05/05/2026,41,55,"Se hace una revisión por parte del cliente y de Sharpen.Studio."
+"2. Viaker",13.1,,Subtask,"Verificación de configuración y envío de Formularios",,"Not Started",,,,,,,
+"2. Viaker",13.2,,Subtask,"Verificación de enlaces rotos",,"Not Started",,,,,,,
+"2. Viaker",13.3,,Subtask,"Revisión de diversas resoluciones (incluido móvil real) y diversos navegadores",,"Not Started",,,,,,,
+"2. Viaker",13.4,,Subtask,"Revisión Cliente - VoBo",,"Not Started",,,,,,,
+"2. Viaker",55,28,Task,"Dummy Web - Aprobación final","Development","Not Started","Sharpen.Studio - Cliente",06/05/2026,1,06/05/2026,13,18;19;20,"Aprobación final del dummy web por parte del cliente para proceder con el lanzamiento del sitio."
+"2. Viaker",55.1,,Subtask,"Aprobación de Sharpen.Studio",,"Not Started",,,,,,,
+"2. Viaker",55.2,,Subtask,"Aprobación del Cliente",,"Not Started",,,,,,,
+"2. Viaker",18,29,Task,"Clean Up / Respaldo Sitio en Desarrollo","Clean up
+","Not Started","Sharpen.Studio",06/05/2026,,06/05/2026,55,19,"Eliminar elementos temporales, multimedia, páginas, plugins, etc."
+"2. Viaker",18.1,,Subtask,"Eliminar Imágenes",,"Not Started",,,,,,,
+"2. Viaker",18.2,,Subtask,"Añadir ALT a imágenes",,"Not Started",,,,,,,
+"2. Viaker",18.3,,Subtask,"Eliminar Artículos de Blog y Páginas",,"Not Started",,,,,,,
+"2. Viaker",18.4,,Subtask,"Eliminar Widgets",,"Not Started",,,,,,,
+"2. Viaker",18.5,,Subtask,"Eliminar Plugins",,"Not Started",,,,,,,
+"2. Viaker",18.6,,Subtask,"Actualizar Plugins",,"Not Started",,,,,,,
+"2. Viaker",19,31,Task,"SEO / WPO 1","SEO","Not Started","Sharpen.Studio",06/05/2026,,06/05/2026,18;55,47,"SEO - meta tags, copy, etc."
+"2. Viaker",19.1,,Subtask,"Rank Math Setup",,"Not Started",,,,,,,
+"2. Viaker",19.2,,Subtask,"Metatags",,"Not Started",,,,,,,
+"2. Viaker",19.3,,Subtask,"Convertir imágenes a WEBP",,"Not Started",,,,,,,
+"2. Viaker",19.4,,Subtask,"Optimización de DB",,"Not Started",,,,,,,
+"2. Viaker",19.5,,Subtask,"Revisión de Web Core Vitals",,"Not Started",,,,,,,
+"2. Viaker",19.6,,Subtask,"Configurar Plugin de Caché",,"Not Started",,,,,,,
+"2. Viaker",19.7,,Subtask,"Establecer que no haya caché en páginas de Carrito, Finalizar Compra y Mi Cuenta",,"Not Started",,,,,,,
+"2. Viaker",47,33,Task,"Respaldos y Autorizaciones","Domain - Server","Not Started","Cliente",06/05/2026,,06/05/2026,19,20,"Confirmación por correo electrónico de que el respaldo del sitio anterior fue generado correctamente por parte del cliente."
+"2. Viaker",47.1,,Subtask,"Respaldo Sitio Anterior - Confirmado vía Email por parte del Cliente",,"Not Started",,,,,,,
+"2. Viaker",47.2,,Subtask,"Respaldo Sitio Anterior - con Plugin",,"Not Started",,,,,,,
+"2. Viaker",47.3,,Subtask,"Respaldo Sitio Anterior - HTML",,"Not Started",,,,,,,
+"2. Viaker",47.4,,Subtask,"Autorización de Migración - Vía Email parte del Cliente",,"Not Started",,,,,,,
+"2. Viaker",47.5,,Subtask,"Autorización de Migración - Por RFV",,"Not Started",,,,,,,
+"2. Viaker",20,38,Task,"Configuración de Servidor / Migración","Domain - Server","Not Started","Sharpen.Studio",06/05/2026,,06/05/2026,17;47;55,24,"Se prepara el servidor para la migración del desarrollo."
+"2. Viaker",20.1,,Subtask,"Configurar Dominio y Servidor del Cliente",,"Not Started",,,,,,,
+"2. Viaker",20.2,,Subtask,"Configurar Cuentas de E-mail",,"Not Started",,,,,,,
+"2. Viaker",20.3,,Subtask,"SSL + Forzar SSL",,"Not Started",,,,,,,
+"2. Viaker",20.4,,Subtask,"Migración del Sitio Web",,"Not Started",,,,,,,
+"2. Viaker",20.5,,Subtask,"Usuario del Cliente - Acceso y Configuración de Perfil en WP",,"Not Started",,,,,,,
+"2. Viaker",20.6,,Subtask,"Usuario del Cliente - Elementor",,"Not Started",,,,,,,
+"2. Viaker",20.7,,Subtask,"Revisar Traductor",,"Not Started",,,,,,,
+"2. Viaker",20.8,,Subtask,"Revisión de Pasarelas de Pago y de Envío",,"Not Started",,,,,,,
+"2. Viaker",20.9,,Subtask,"Configurar SMTP",,"Not Started",,,,,,,
+"2. Viaker",20.10,,Subtask,"Test de Funcionalidad Post-Migración",,"Not Started",,,,,,,
+"2. Viaker",24,40,Task,"SEO / WPO 2","SEO","Not Started","Sharpen.Studio",06/05/2026,,06/05/2026,20,50,"Configuración restante de SEO, ligada al dominio final: sitemap y plataformas de métricas."
+"2. Viaker",24.1,,Subtask,"Local SEO",,"Not Started",,,,,,,
+"2. Viaker",24.2,,Subtask,"Sitemap XML",,"Not Started",,,,,,,
+"2. Viaker",24.3,,Subtask,"301",,"Not Started",,,,,,,
+"2. Viaker",24.4,,Subtask,"404",,"Not Started",,,,,,,
+"2. Viaker",24.5,,Subtask,"Google Search Console",,"Not Started",,,,,,,
+"2. Viaker",24.6,,Subtask,"Google Analytics",,"Not Started",,,,,,,
+"2. Viaker",24.7,,Subtask,"ReCaptcha",,"Not Started",,,,,,,
+"2. Viaker",24.8,,Subtask,"Desactivar opción ""Disuadir motores de búsqueda""",,"Not Started",,,,,,,
+"2. Viaker",24.9,,Subtask,"Revisión de Core Web Vitals",,"Not Started",,,,,,,
+"2. Viaker",24.10,,Subtask,"Revisión y reajustes en plugin de Caché",,"Not Started",,,,,,,
+"2. Viaker",50,42,Task,"Check Up Final / Desarrollo Terminado","Development basic","Not Started","Sharpen.Studio - Cliente",06/05/2026,,06/05/2026,24,23,"Revisión final del sitio para validar funcionamiento, enlaces y detalles antes de su publicación."
+"2. Viaker",50.1,,Subtask,"Revisión de botones y enlaces",,"Not Started",,,,,,,
+"2. Viaker",50.2,,Subtask,"Revisión de Destinatarios y Remitentes de Formularios en Sitio Web / Por parte del Sharpen.Studio",,"Not Started",,,,,,,
+"2. Viaker",50.3,,Subtask,"Confirmación vía Email de Envío y Recepción de Mensajes de Formularios en Sitio Web / Por parte del Cliente",,"Not Started",,,,,,,
+"2. Viaker",23,44,Task,"Capacitación Final","Training","Not Started","Sharpen.Studio - Cliente",06/05/2026,1,06/05/2026,50,,"Se capacita al cliente para la auto-administración del sitio web."

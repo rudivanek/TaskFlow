@@ -1,0 +1,115 @@
+﻿Project Name,ID,Sort ID,Type,Task,Phase,Status,Responsible,Start Date,Days,End Date,Depends On,Dependencies,Comments
+"1. Medrano",1,1,Task,"Kick-Off","Kick-Off","Done","Sharpen.Studio - Cliente",21/04/2026,1,21/04/2026,,2;3;17;25;44,"En la reunión de kick-off se discuten la estrategia de desarrollo, los plazos, el alcance y las tareas. Además, se presentan los líderes del proyecto."
+"1. Medrano",1.1,,Subtask,"Scope",,"Done",,,,,,,
+"1. Medrano",2,2,Task,"Entregables (Contenidos Generales)","Deliverables","Done","Cliente",22/04/2026,7,28/04/2026,1,,"Entregables necesarios por parte del cliente para comenzar el desarrollo. Los elementos clave para iniciar incluyen: look & feel, textos, contenido multimedia y branding."
+"1. Medrano",2.1,,Subtask,"Look & Feel",,"Done",,,,,,,
+"1. Medrano",2.2,,Subtask,"Branding",,"Done",,,,,,,
+"1. Medrano",2.3,,Subtask,"Copy / Textos",,"Done",,,,,,,
+"1. Medrano",2.4,,Subtask,"Multimedia / Fotos y Videos en YouTube",,"Done",,,,,,,
+"1. Medrano",2.5,,Subtask,"Info de Contacto / Email, WhatsApp, etc.",,"Done",,,,,,,
+"1. Medrano",2.6,,Subtask,"Legales",,"Done",,,,,,,
+"1. Medrano",2.7,,Subtask,"Diversos",,"Done",,,,,,,
+"1. Medrano",44,3,Task,"Entregables (Blog)","Deliverables","Done","Cliente",22/04/2026,15,06/05/2026,1,36;38,"Entrega de accesos, estructura y contenidos relacionados con la sección de Blog del sitio web."
+"1. Medrano",44.1,,Subtask,"Campos para crear template de Blog",,"Done",,,,,,,
+"1. Medrano",44.2,,Subtask,"Contenidos (texto e imágenes) para dar de alta artículos de Blog",,"Done",,,,,,,
+"1. Medrano",25,4,Task,"Entregables (Proyectos) ","Deliverables","Done","Cliente",22/04/2026,15,06/05/2026,1,45,"Entrega de accesos, estructura y contenidos relacionados con la sección de Proyectos del sitio web."
+"1. Medrano",25.1,,Subtask,"Campos para crear template de Proyectos",,"Done",,,,,,,
+"1. Medrano",25.2,,Subtask,"Contenidos (texto e imágenes) para dar de alta Proyectos",,"Done",,,,,,,
+"1. Medrano",17,5,Task,"Entregables (Dominio/Servidor)","Deliverables","On Hold","Cliente",22/04/2026,45,05/06/2026,1,20,"El cliente debe entregar acceso al registro del dominio y servidor."
+"1. Medrano",17.1,,Subtask,"Acceso al Dominio (GoDaddy, etc.)",,"Not Started",,,,,,,
+"1. Medrano",17.2,,Subtask,"Acceso al panel de control del Servidor",,"Not Started",,,,,,,
+"1. Medrano",17.3,,Subtask,"Acceso a Gmail (para Google Anaytics y Google Search Console)",,"Not Started",,,,,,,
+"1. Medrano",17.4,,Subtask,"Acceso a Traductor (Weglot)",,"Not Started",,,,,,,
+"1. Medrano",3,6,Task,"Sitemap","Development basic","Done","Sharpen.Studio",22/04/2026,3,24/04/2026,1,4,"Se desarrolla el sitemap: una guía para definir objetivos, la estructura del sitio y la importancia de cada página, optimizando su indexación en buscadores."
+"1. Medrano",4,7,Task,"Sitemap - Aprobación","Development basic","Done","Cliente",25/04/2026,1,25/04/2026,3,5,"El sitemap requiere aprobación por parte del cliente."
+"1. Medrano",5,8,Task,"Dummy PDF","Development basic","Done","Sharpen.Studio",26/04/2026,15,10/05/2026,4,6,"**Maqueta visual - Wireframe - Dummy PDF**  Con el sitemap definido, se crea un dummy PDF o maqueta visual estática que ofrece una visión más clara del diseño de tu sitio web. Se presentan dos páginas, mostrando textos, identidad gráfica, colores, imágenes y más."
+"1. Medrano",6,9,Task,"Dummy PDF - Aprobación","Development basic","Done","Cliente",11/05/2026,2,12/05/2026,5,7,"El cliente debe de aprobar el Dummy PDF."
+"1. Medrano",7,10,Task,"Dummy Web 1 - (Home)","Development basic","Done","Sharpen.Studio",13/05/2026,15,27/05/2026,6,8,"Se inicia el desarrollo web, presentando uno o dos apartados para la aprobación del cliente."
+"1. Medrano",7.1,,Subtask,"Instalación de WordPress de acuerdo al idioma predeterminado (inglés o español)",,"Done",,,,,,,
+"1. Medrano",7.2,,Subtask,"Configuración inicial de WordPress",,"Done",,,,,,,
+"1. Medrano",7.3,,Subtask,"Instalar Plugins predeterminados",,"Done",,,,,,,
+"1. Medrano",7.4,,Subtask,"Desarrollo de página inicial (Home)",,"Done",,,,,,,
+"1. Medrano",7.5,,Subtask,"Revisión de Accesibilidad (WCAG)",,"Done",,,,,,,
+"1. Medrano",8,11,Task,"Dummy Web 1 - (Home) - Aprobación","Development basic","Done","Cliente",28/05/2026,2,29/05/2026,7,9,"El cliente debe de aprobar el dummy web inicial presentado, antes de proseguir con el resto del sitio."
+"1. Medrano",9,12,Task,"Dummy Web 2","Development basic","Doing","Sharpen.Studio",30/05/2026,10,08/06/2026,8,10,"Se desarrollan las demás páginas y secciones del dummy web."
+"1. Medrano",9.1,,Subtask,"Páginas según Scope",,"Not Started",,,,,,,
+"1. Medrano",9.2,,Subtask,"Configuración de Formularios de Contacto",,"Not Started",,,,,,,
+"1. Medrano",9.3,,Subtask,"Contacto - Gracias",,"Not Started",,,,,,,
+"1. Medrano",9.4,,Subtask,"404",,"Not Started",,,,,,,
+"1. Medrano",9.5,,Subtask,"Plantilla Elemailer",,"Not Started",,,,,,,
+"1. Medrano",9.6,,Subtask,"Aviso de Cookies",,"Not Started",,,,,,,
+"1. Medrano",9.7,,Subtask,"Formulario de Acceso y Registro a WP Admin",,"Doing",,,,,,,
+"1. Medrano",9.8,,Subtask,"Legales",,"Not Started",,,,,,,
+"1. Medrano",10,13,Task,"Dummy Web 2 - Aprobación","Development basic","Not Started","Cliente",09/06/2026,1,09/06/2026,9,11;36;45,"El cliente debe de aprobar el dummy web restante."
+"1. Medrano",36,14,Task,"Blog - Desarrollo","Development basic","Not Started","Sharpen.Studio",10/06/2026,3,12/06/2026,10;44,37,"Configuración y desarrollo de la sección de Blog, dejando la estructura lista para publicar contenidos de forma ordenada, clara y optimizada."
+"1. Medrano",36.1,,Subtask,"Creación y configuración inicial de Blog",,"Not Started",,,,,,,
+"1. Medrano",36.2,,Subtask,"Diseño y desarrollo de Loop Item, Single, Archive y Resultados de Búsqueda de Blog",,"Not Started",,,,,,,
+"1. Medrano",37,15,Task,"Blog - Dar de Alta 3x Artículos","Development basic","Not Started","Sharpen.Studio",13/06/2026,1,13/06/2026,36,11,"Se cargan X artículos de ejemplo para mostrar el funcionamiento del blog y servir como referencia de estilo y estructura, estipulados en el convenio."
+"1. Medrano",11,16,Task,"Dummy Web 3","Development basic","Not Started","Sharpen.Studio",14/06/2026,3,16/06/2026,10;37,12,"Ajustes finales sobre el dummy web, tras haber creado módulo de Blog, integrando cambios menores antes de pasar a la etapa de aprobación."
+"1. Medrano",12,17,Task,"Dummy Web 3 - Aprobación","Development basic","Not Started","Cliente",17/06/2026,1,17/06/2026,11,38;42,"Revisión y validación del dummy web, con el módulo de Blog, por parte del cliente para continuar con el desarrollo."
+"1. Medrano",38,18,Task,"Blog - Capacitación al Cliente","Training","Not Started","Sharpen.Studio - Cliente",18/06/2026,1,18/06/2026,12;44,39,"Sesión breve para explicar al cliente cómo crear, editar y publicar artículos dentro del blog de forma autónoma."
+"1. Medrano",39,19,Task,"Blog - Cliente da de Alta Artículos","Development basic","Not Started","Cliente",19/06/2026,3,21/06/2026,38,,"El cliente comienza a cargar sus propios artículos en el blog siguiendo la estructura y lineamientos definidos."
+"1. Medrano",45,20,Task,"Proyectos - Desarrollo","Development Projects","Not Started","Sharpen.Studio",10/06/2026,5,14/06/2026,10;25,26,"Configuración y desarrollo de la sección de Proyectos, dejando la estructura lista para publicar contenidos de forma ordenada, clara y optimizada."
+"1. Medrano",45.1,,Subtask,"Creación y configuración inicial de Proyectos",,"Not Started",,,,,,,
+"1. Medrano",45.2,,Subtask,"Diseño y desarrollo de Loop Item, Single, Archive y Resultados de Búsqueda de Proyectos",,"Not Started",,,,,,,
+"1. Medrano",26,21,Task,"Proyectos - Dar de Alta 3x Proyectos","Development Projects","Not Started","Sharpen.Studio",15/06/2026,1,15/06/2026,45,27;42,"Se cargan X proyectos de ejemplo para mostrar el funcionamiento de los mismos y servir como referencia de estilo y estructura, estipulados en el convenio."
+"1. Medrano",42,22,Task,"Dummy Web 4","Development basic","Not Started","Sharpen.Studio",18/06/2026,3,20/06/2026,12;26,43,"Ajustes finales sobre el dummy web, tras haber creado módulo de Proyectos, integrando cambios menores antes de pasar a la etapa de aprobación."
+"1. Medrano",43,23,Task,"Dummy Web 4 - Aprobación","Development basic","Not Started","Cliente",21/06/2026,1,21/06/2026,42,27;41,"Revisión y validación del dummy web, con el módulo de Proyectos, por parte del cliente para continuar con el desarrollo."
+"1. Medrano",27,24,Task,"Proyectos - Capacitación al Cliente","Training","Not Started","Sharpen.Studio - Cliente",22/06/2026,1,22/06/2026,26;43,28,"Sesión breve para explicar al cliente cómo crear, editar y publicar proyectos de forma autónoma."
+"1. Medrano",28,25,Task,"Proyectos - Cliente da de Alta Proyectos","Development Projects","Not Started","Cliente",23/06/2026,3,25/06/2026,27,,"El cliente comienza a cargar sus propios proyectos siguiendo la estructura y lineamientos definidos."
+"1. Medrano",41,26,Task,"Dummy Web - Terminado","Development basic","Not Started","Sharpen.Studio",22/06/2026,1,22/06/2026,43,13,"Versión preliminar del sitio dummy completamente funcional y lista para una revisión general por parte del cliente."
+"1. Medrano",13,27,Task,"Revisión Final","Review","Not Started","Sharpen.Studio - Cliente",23/06/2026,1,23/06/2026,41,55,"Se hace una revisión por parte del cliente y de Sharpen.Studio."
+"1. Medrano",13.1,,Subtask,"Verificación de configuración y envío de Formularios",,"Not Started",,,,,,,
+"1. Medrano",13.2,,Subtask,"Verificación de enlaces rotos",,"Not Started",,,,,,,
+"1. Medrano",13.3,,Subtask,"Revisión de diversas resoluciones (incluido móvil real) y diversos navegadores",,"Not Started",,,,,,,
+"1. Medrano",13.4,,Subtask,"Revisión Cliente - VoBo",,"Not Started",,,,,,,
+"1. Medrano",55,28,Task,"Dummy Web - Aprobación final","Development","Not Started","Sharpen.Studio - Cliente",24/06/2026,1,24/06/2026,13,18;19;20,"Aprobación final del dummy web por parte del cliente para proceder con el lanzamiento del sitio."
+"1. Medrano",55.1,,Subtask,"Aprobación de Sharpen.Studio",,"Not Started",,,,,,,
+"1. Medrano",55.2,,Subtask,"Aprobación del Cliente",,"Not Started",,,,,,,
+"1. Medrano",18,29,Task,"Clean Up / Respaldo Sitio en Desarrollo","Clean up
+","Not Started","Sharpen.Studio",25/06/2026,1,25/06/2026,55,19,"Eliminar elementos temporales, multimedia, páginas, plugins, etc."
+"1. Medrano",18.1,,Subtask,"Eliminar Imágenes",,"Not Started",,,,,,,
+"1. Medrano",18.2,,Subtask,"Añadir ALT a imágenes",,"Not Started",,,,,,,
+"1. Medrano",18.3,,Subtask,"Eliminar Artículos de Blog y Páginas",,"Not Started",,,,,,,
+"1. Medrano",18.4,,Subtask,"Eliminar Widgets",,"Not Started",,,,,,,
+"1. Medrano",18.5,,Subtask,"Eliminar Plugins",,"Not Started",,,,,,,
+"1. Medrano",18.6,,Subtask,"Actualizar Plugins",,"Not Started",,,,,,,
+"1. Medrano",19,31,Task,"SEO / WPO 1","SEO","Not Started","Sharpen.Studio",26/06/2026,3,28/06/2026,18;55,47,"SEO - meta tags, copy, etc."
+"1. Medrano",19.1,,Subtask,"Rank Math Setup",,"Not Started",,,,,,,
+"1. Medrano",19.2,,Subtask,"Metatags",,"Not Started",,,,,,,
+"1. Medrano",19.3,,Subtask,"Convertir imágenes a WEBP",,"Not Started",,,,,,,
+"1. Medrano",19.4,,Subtask,"Optimización de DB",,"Not Started",,,,,,,
+"1. Medrano",19.5,,Subtask,"Revisión de Web Core Vitals",,"Not Started",,,,,,,
+"1. Medrano",19.6,,Subtask,"Configurar Plugin de Caché",,"Not Started",,,,,,,
+"1. Medrano",47,33,Task,"Respaldos y Autorizaciones","Domain - Server","Not Started","Cliente",29/06/2026,1,29/06/2026,19,20,"Confirmación por correo electrónico de que el respaldo del sitio anterior fue generado correctamente por parte del cliente."
+"1. Medrano",47.1,,Subtask,"Respaldo Sitio Anterior - Confirmado vía Email por parte del Cliente",,"Not Started",,,,,,,
+"1. Medrano",47.2,,Subtask,"Respaldo Sitio Anterior - con Plugin",,"Not Started",,,,,,,
+"1. Medrano",47.3,,Subtask,"Respaldo Sitio Anterior - HTML",,"Not Started",,,,,,,
+"1. Medrano",47.4,,Subtask,"Autorización de Migración - Vía Email parte del Cliente",,"Not Started",,,,,,,
+"1. Medrano",47.5,,Subtask,"Autorización de Migración - Por RFV",,"Not Started",,,,,,,
+"1. Medrano",20,38,Task,"Configuración de Servidor / Migración","Domain - Server","Not Started","Sharpen.Studio",30/06/2026,1,30/06/2026,17;47;55,24,"Se prepara el servidor para la migración del desarrollo."
+"1. Medrano",20.1,,Subtask,"Configurar Dominio y Servidor del Cliente",,"Not Started",,,,,,,
+"1. Medrano",20.2,,Subtask,"Configurar Cuentas de E-mail",,"Not Started",,,,,,,
+"1. Medrano",20.3,,Subtask,"SSL + Forzar SSL",,"Not Started",,,,,,,
+"1. Medrano",20.4,,Subtask,"Migración del Sitio Web",,"Not Started",,,,,,,
+"1. Medrano",20.5,,Subtask,"Usuario del Cliente - Acceso y Configuración de Perfil en WP",,"Not Started",,,,,,,
+"1. Medrano",20.6,,Subtask,"Usuario del Cliente - Elementor",,"Not Started",,,,,,,
+"1. Medrano",20.7,,Subtask,"Revisar Traductor",,"Not Started",,,,,,,
+"1. Medrano",20.8,,Subtask,"Configurar SMTP",,"Not Started",,,,,,,
+"1. Medrano",20.9,,Subtask,"Test de Funcionalidad Post-Migración",,"Not Started",,,,,,,
+"1. Medrano",24,40,Task,"SEO / WPO 2","SEO","Not Started","Sharpen.Studio",01/07/2026,1,01/07/2026,20,50,"Configuración restante de SEO, ligada al dominio final: sitemap y plataformas de métricas."
+"1. Medrano",24.1,,Subtask,"Local SEO",,"Not Started",,,,,,,
+"1. Medrano",24.2,,Subtask,"Sitemap XML",,"Not Started",,,,,,,
+"1. Medrano",24.3,,Subtask,"301",,"Not Started",,,,,,,
+"1. Medrano",24.4,,Subtask,"404",,"Not Started",,,,,,,
+"1. Medrano",24.5,,Subtask,"Google Search Console",,"Not Started",,,,,,,
+"1. Medrano",24.6,,Subtask,"Google Analytics",,"Not Started",,,,,,,
+"1. Medrano",24.7,,Subtask,"ReCaptcha",,"Not Started",,,,,,,
+"1. Medrano",24.8,,Subtask,"Desactivar opción ""Disuadir motores de búsqueda""",,"Not Started",,,,,,,
+"1. Medrano",24.9,,Subtask,"Revisión de Core Web Vitals",,"Not Started",,,,,,,
+"1. Medrano",24.10,,Subtask,"Revisión y reajustes en plugin de Caché",,"Not Started",,,,,,,
+"1. Medrano",50,42,Task,"Check Up Final / Desarrollo Terminado","Development basic","Not Started","Sharpen.Studio - Cliente",02/07/2026,1,02/07/2026,24,23,"Revisión final del sitio para validar funcionamiento, enlaces y detalles antes de su publicación."
+"1. Medrano",50.1,,Subtask,"Revisión de botones y enlaces",,"Not Started",,,,,,,
+"1. Medrano",50.2,,Subtask,"Revisión de Destinatarios y Remitentes de Formularios en Sitio Web / Por parte del Sharpen.Studio",,"Not Started",,,,,,,
+"1. Medrano",50.3,,Subtask,"Confirmación vía Email de Envío y Recepción de Mensajes de Formularios en Sitio Web / Por parte del Cliente",,"Not Started",,,,,,,
+"1. Medrano",23,44,Task,"Capacitación Final","Training","Not Started","Sharpen.Studio - Cliente",03/07/2026,1,03/07/2026,50,,"Se capacita al cliente para la auto-administración del sitio web."
