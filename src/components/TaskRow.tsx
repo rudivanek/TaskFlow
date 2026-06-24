@@ -258,7 +258,11 @@ export default function TaskRow({
               }`}
               title="Comment"
             >
-              <MessageSquare className="w-3.5 h-3.5" />
+              {task.task_comment ? (
+                <MessageSquare className="w-3.5 h-3.5 fill-primary-500 text-primary-500" />
+              ) : (
+                <MessageSquare className="w-3.5 h-3.5" />
+              )}
             </button>
             <button
               onClick={() => onDelete(task.id, task.task_id)}
