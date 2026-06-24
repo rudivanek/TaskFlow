@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Task, Phase, Status, Responsible } from '../types';
 import { ChevronRight, ChevronDown, MessageSquare, Trash2, GripVertical } from 'lucide-react';
 import SubtaskList from './SubtaskList';
-import { formatDisplayDate } from '../utils/dateUtils';
 
 interface TaskRowProps {
   task: Task;
@@ -32,30 +31,13 @@ function DateCell({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const ref = useRef<HTMLInputElement>(null);
-
-  const open = () => {
-    try {
-      (ref.current as any)?.showPicker();
-    } catch {
-      ref.current?.focus();
-    }
-  };
-
   return (
-    <div className="relative w-full cursor-pointer" onClick={open}>
-      <span className="block text-xs px-1 py-1 pointer-events-none select-none hover:bg-white hover:border hover:border-slate-200 rounded transition-all">
-        {formatDisplayDate(value) || <span className="text-slate-300">--/--/--</span>}
-      </span>
-      <input
-        ref={ref}
-        type="date"
-        value={value}
-        onChange={(e) => { if (e.target.value) onChange(e.target.value); }}
-        className="absolute inset-0 opacity-0 w-full h-full pointer-events-none"
-        tabIndex={-1}
-      />
-    </div>
+    <input
+      type="date"
+      value={value || ''}
+      onChange={(e) => { if (e.target.value) onChange(e.target.value); }}
+      className="w-full text-xs bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all cursor-pointer"
+    />
   );
 }
 
