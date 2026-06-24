@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Task, Phase, Status, Responsible } from '../types';
-import { ChevronRight, ChevronDown, MessageSquare, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, MessageSquare, Trash2, GripVertical } from 'lucide-react';
 import SubtaskList from './SubtaskList';
 import { formatDisplayDate } from '../utils/dateUtils';
 
@@ -15,6 +15,14 @@ interface TaskRowProps {
   onUpdateDays: (taskId: string, days: number) => void;
   onUpdateDependencies: (taskId: string, depsString: string) => void;
   onDelete: (taskId: string, taskIdNum: number) => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLTableCellElement>;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  isDragOver?: boolean;
+  isDragging?: boolean;
+  dragEnabled?: boolean;
 }
 
 function DateCell({
@@ -51,6 +59,13 @@ export default function TaskRow({
   onUpdateDays,
   onUpdateDependencies,
   onDelete,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  isDragOver = false,
+  isDragging = false,
+  dragEnabled = false,
 }: TaskRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -86,7 +101,17 @@ export default function TaskRow({
 
   return (
     <>
-      <tr className="group border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+      <tr
+        draggable={dragEnabled}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDragEnd={onDragEnd}
+        className={`group border-b border-slate-100 transition-colors
+          ${isDragging ? 'opacity-40' : ''}
+          ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : 'hover:bg-slate-50/50'}
+        `}
+      >
         {/* Expand */}
         <td className="w-8 px-1 text-center">
           <button
@@ -106,9 +131,16 @@ export default function TaskRow({
           <span className="text-xs font-mono text-slate-400">#{task.task_id}</span>
         </td>
 
-        {/* Sort ID */}
+        {/* Sort / Drag handle */}
         <td className="w-14 px-2 text-center">
-          <span className="text-xs font-mono text-slate-400">{task.task_sort}</span>
+          {dragEnabled ? (
+            <div className="flex items-center justify-center gap-1">
+              <GripVertical className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-400 cursor-grab active:cursor-grabbing transition-colors flex-shrink-0" />
+              <span className="text-xs font-mono text-slate-400">{task.task_sort}</span>
+            </div>
+          ) : (
+            <span className="text-xs font-mono text-slate-400">{task.task_sort}</span>
+          )}
         </td>
 
         {/* Task Name */}

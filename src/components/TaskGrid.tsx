@@ -29,8 +29,10 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [error, setError] = useState('');
-  const [sortField, setSortField] = useState<SortField>('task_id');
+  const [sortField, setSortField] = useState<SortField>('task_sort');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -189,6 +191,55 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
     }
   };
 
+  const dragEnabled = sortField === 'task_sort' && sortDir === 'asc';
+
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    setDraggedId(taskId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, taskId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (taskId !== draggedId) setDragOverId(taskId);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+    const fromIdx = sortedTasks.findIndex(t => t.id === draggedId);
+    const toIdx = sortedTasks.findIndex(t => t.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const reordered = [...sortedTasks];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    const updates = reordered.map((t, i) => ({ id: t.id, task_sort: i }));
+    setTasks(prev =>
+      prev.map(t => {
+        const u = updates.find(u => u.id === t.id);
+        return u ? { ...t, task_sort: u.task_sort } : t;
+      })
+    );
+    setDraggedId(null);
+    setDragOverId(null);
+    try {
+      await taskServices.updateTasksOrder(updates);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save order');
+      setTimeout(() => setError(''), 3000);
+      await loadTasks();
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
   const filteredTasks = tasks.filter(t => {
     const matchesSearch = !searchQuery || t.task_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = !statusFilter || t.status_id === statusFilter;
@@ -280,8 +331,8 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
                 </button>
               </th>
               <th className="w-14 px-2 py-2">
-                <button onClick={() => handleSort('task_sort')} className="flex items-center hover:text-slate-700">
-                  Sort ID <SortIcon field="task_sort" />
+                <button onClick={() => handleSort('task_sort')} className="flex items-center hover:text-slate-700" title="Sort by order. When active, drag rows to reorder.">
+                  Sort <SortIcon field="task_sort" />
                 </button>
               </th>
               <th className="px-2 py-2">Task Name</th>
@@ -309,6 +360,13 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
                 onUpdateDays={handleUpdateDays}
                 onUpdateDependencies={handleUpdateDependencies}
                 onDelete={handleDelete}
+                dragEnabled={dragEnabled}
+                isDragging={draggedId === task.id}
+                isDragOver={dragOverId === task.id}
+                onDragStart={(e) => handleDragStart(e, task.id)}
+                onDragOver={(e) => handleDragOver(e, task.id)}
+                onDrop={(e) => handleDrop(e, task.id)}
+                onDragEnd={handleDragEnd}
               />
             ))}
           </tbody>
