@@ -82,7 +82,7 @@ export async function updateTaskDate(
 }
 
 export async function updateTaskDays(taskId: string, days: number, startDate: string): Promise<Task> {
-  const safeDays = Math.max(1, days);
+  const safeDays = Math.max(0, days);
   const newEnd = calculateEndDate(startDate, safeDays);
   return updateTask(taskId, { days: safeDays, end_date: newEnd });
 }
