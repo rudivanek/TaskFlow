@@ -27,7 +27,7 @@ export default function App() {
   const { user, loading, signOut } = useAuth();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('project');
+    return params.get('project') || localStorage.getItem('last-project-id');
   });
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -56,7 +56,12 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams();
-    if (selectedProjectId) params.set('project', selectedProjectId);
+    if (selectedProjectId) {
+      params.set('project', selectedProjectId);
+      localStorage.setItem('last-project-id', selectedProjectId);
+    } else {
+      localStorage.removeItem('last-project-id');
+    }
     params.set('view', viewMode);
     window.history.replaceState({}, '', `?${params.toString()}`);
   }, [selectedProjectId, viewMode]);
