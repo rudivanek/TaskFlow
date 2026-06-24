@@ -10,7 +10,7 @@ export function calculateDays(startDate: string, endDate: string): number {
   const start = parseISO(startDate);
   const end = parseISO(endDate);
   const diff = differenceInCalendarDays(end, start) + 1;
-  return Math.max(1, diff);
+  return Math.max(0, diff);
 }
 
 export function formatDisplayDate(dateStr: string | null | undefined): string {

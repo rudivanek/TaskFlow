@@ -171,9 +171,12 @@ export default function TaskRow({
         <td className="w-[50px] px-1">
           <input
             type="number"
-            min={1}
+            min={0}
             value={task.days}
-            onChange={(e) => onUpdateDays(task.id, parseInt(e.target.value) || 1)}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (!isNaN(val) && val >= 0) onUpdateDays(task.id, val);
+            }}
             className="w-full text-xs text-center bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all font-mono"
           />
         </td>
