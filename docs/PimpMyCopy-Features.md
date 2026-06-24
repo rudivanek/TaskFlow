@@ -112,10 +112,12 @@ A streamlined project management application built with React + Vite + Tailwind 
 
 ### 1.12 Gantt Excel Export
 - **Export Gantt (Excel)** option in the same Export dropdown
-- Produces an .xlsx file structured as a real Gantt chart in Excel using SheetJS (xlsx library)
+- Produces an .xlsx file structured as a real Gantt chart in Excel using xlsx-js-style (SheetJS with styling support)
 - Columns: Project Name, ID, Sort ID, Task, Phase, Status, Responsible, Start Date, End Date, Dependencies, then one column per unique date across all tasks
 - Date columns are dynamically generated from the union of all task date ranges, sorted chronologically, headers formatted DD/MM/YYYY
 - Each task row has its task ID number in each date column that falls within its start-end range (inclusive), blank otherwise
+- Cell styling for date cells with task IDs: background fill #DEDEDE (light gray), font color #DEDEDE (invisible number but still present in cell data)
+- Empty date cells (outside task range) remain completely unstyled
 - Frozen panes: first row (header) and first 10 columns (task info) are locked; date columns scroll horizontally
 - Column widths: Task=40ch, dates=12ch, appropriate widths for other fields
 - File downloaded as `<ProjectName>_gantt_<YYYY-MM-DD_HH-mm-ss>.xlsx`

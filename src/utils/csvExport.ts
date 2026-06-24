@@ -1,5 +1,5 @@
 import { Task, Subtask, Phase, Status, Responsible } from '../types';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 function escapeCsvField(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
@@ -192,6 +192,22 @@ export function exportGanttToExcel(
   }
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  const dateColStart = 10;
+  const ganttCellStyle = {
+    fill: { fgColor: { rgb: 'DEDEDE' } },
+    font: { color: { rgb: 'DEDEDE' } },
+  };
+
+  for (let rowIdx = 1; rowIdx <= tasks.length; rowIdx++) {
+    for (let colIdx = dateColStart; colIdx < dateColStart + sortedDates.length; colIdx++) {
+      const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+      const cell = ws[cellRef];
+      if (cell && cell.v !== '' && cell.v !== undefined && cell.v !== null) {
+        cell.s = ganttCellStyle;
+      }
+    }
+  }
 
   const colWidths: XLSX.ColInfo[] = [
     { wch: 16 },
