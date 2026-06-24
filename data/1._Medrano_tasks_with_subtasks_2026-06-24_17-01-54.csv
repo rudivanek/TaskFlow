@@ -1,4 +1,4 @@
-﻿Project Name,ID,Sort ID,Type,Task,Phase,Status,Responsible,Start Date,Days,End Date,Depends On,Dependencies,Comments
+Project Name,ID,Sort ID,Type,Task,Phase,Status,Responsible,Start Date,Days,End Date,Depends On,Dependencies,Comments
 "1. Medrano",1,1,Task,"Kick-Off","Kick-Off","Done","Sharpen.Studio - Cliente",21/04/2026,1,21/04/2026,,2;3;17;25;44,"En la reunión de kick-off se discuten la estrategia de desarrollo, los plazos, el alcance y las tareas. Además, se presentan los líderes del proyecto."
 "1. Medrano",1.1,,Subtask,"Scope",,"Done",,,,,,,
 "1. Medrano",2,2,Task,"Entregables (Contenidos Generales)","Deliverables","Done","Cliente",22/04/2026,7,28/04/2026,1,,"Entregables necesarios por parte del cliente para comenzar el desarrollo. Los elementos clave para iniciar incluyen: look & feel, textos, contenido multimedia y branding."
