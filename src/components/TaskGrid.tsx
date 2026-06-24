@@ -33,6 +33,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [highlightedTaskIds, setHighlightedTaskIds] = useState<number[]>([]);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -360,7 +361,8 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
                 onUpdateDays={handleUpdateDays}
                 onUpdateDependencies={handleUpdateDependencies}
                 onDelete={handleDelete}
-                dragEnabled={dragEnabled}
+                onDepsHover={setHighlightedTaskIds}
+                isHighlighted={highlightedTaskIds.includes(task.task_id)}
                 isDragging={draggedId === task.id}
                 isDragOver={dragOverId === task.id}
                 onDragStart={(e) => handleDragStart(e, task.id)}

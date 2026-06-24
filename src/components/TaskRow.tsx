@@ -14,6 +14,8 @@ interface TaskRowProps {
   onUpdateDays: (taskId: string, days: number) => void;
   onUpdateDependencies: (taskId: string, depsString: string) => void;
   onDelete: (taskId: string, taskIdNum: number) => void;
+  onDepsHover: (ids: number[]) => void;
+  isHighlighted?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLTableCellElement>;
   onDragStart?: (e: React.DragEvent) => void;
   onDragOver?: (e: React.DragEvent) => void;
@@ -52,6 +54,8 @@ export default function TaskRow({
   onUpdateDays,
   onUpdateDependencies,
   onDelete,
+  onDepsHover,
+  isHighlighted = false,
   onDragStart,
   onDragOver,
   onDrop,
@@ -100,7 +104,7 @@ export default function TaskRow({
         onDragEnd={onDragEnd}
         className={`group border-b border-slate-100 transition-colors
           ${isDragging ? 'opacity-40' : ''}
-          ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : 'hover:bg-slate-50/50'}
+          ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : isHighlighted ? 'bg-slate-100' : 'hover:bg-slate-50/50'}
         `}
       >
         {/* Expand */}
@@ -219,7 +223,11 @@ export default function TaskRow({
         </td>
 
         {/* Depends On */}
-        <td className="w-[100px] px-1">
+        <td
+          className="w-[100px] px-1"
+          onMouseEnter={() => onDepsHover(task.depends_on_task_ids || [])}
+          onMouseLeave={() => onDepsHover([])}
+        >
           {editingField === 'deps' ? (
             <input
               autoFocus
