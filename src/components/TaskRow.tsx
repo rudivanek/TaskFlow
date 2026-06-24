@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Task, Phase, Status, Responsible } from '../types';
-import { ChevronRight, ChevronDown, MessageSquare, Trash2, GripVertical } from 'lucide-react';
+import { ChevronRight, ChevronDown, MessageSquare, Trash2 } from 'lucide-react';
 import SubtaskList from './SubtaskList';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 interface TaskRowProps {
   task: Task;
@@ -14,6 +15,29 @@ interface TaskRowProps {
   onUpdateDays: (taskId: string, days: number) => void;
   onUpdateDependencies: (taskId: string, depsString: string) => void;
   onDelete: (taskId: string, taskIdNum: number) => void;
+}
+
+function DateCell({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="relative w-full">
+      <span className="block text-xs px-1 py-1 pointer-events-none select-none">
+        {formatDisplayDate(value) || <span className="text-slate-300">--/--/--</span>}
+      </span>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => { if (e.target.value) onChange(e.target.value); }}
+        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+        tabIndex={-1}
+      />
+    </div>
+  );
 }
 
 export default function TaskRow({
@@ -137,11 +161,9 @@ export default function TaskRow({
 
         {/* Start Date */}
         <td className="w-[110px] px-1">
-          <input
-            type="date"
+          <DateCell
             value={task.start_date}
-            onChange={(e) => onUpdateDate(task.id, 'start_date', e.target.value)}
-            className="w-full text-xs bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
+            onChange={(v) => onUpdateDate(task.id, 'start_date', v)}
           />
         </td>
 
@@ -158,11 +180,9 @@ export default function TaskRow({
 
         {/* End Date */}
         <td className="w-[110px] px-1">
-          <input
-            type="date"
+          <DateCell
             value={task.end_date}
-            onChange={(e) => onUpdateDate(task.id, 'end_date', e.target.value)}
-            className="w-full text-xs bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
+            onChange={(v) => onUpdateDate(task.id, 'end_date', v)}
           />
         </td>
 
