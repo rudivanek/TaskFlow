@@ -150,9 +150,11 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
       {/* Board */}
       <div className="flex-1 overflow-x-auto p-4">
         <div className="flex gap-4 h-full min-h-0">
-          {statuses.map(status => {
+          {(['Not Started', 'Doing', 'Done'] as const)
+            .map(name => statuses.find(s => s.status === name))
+            .filter((s): s is Status => !!s)
+            .map(status => {
             const statusTasks = filteredTasks.filter(t => t.status_id === status.id);
-            const unassigned = filteredTasks.filter(t => !t.status_id);
 
             return (
               <div
