@@ -73,6 +73,11 @@ function buildSubtaskRow(subtask: Subtask, parentTaskId: number): string[] {
 
 const CSV_HEADERS = ['ID', 'Sort ID', 'Type', 'Task', 'Phase', 'Status', 'Responsible', 'Start Date', 'Days', 'End Date', 'Depends On', 'Dependencies', 'Comments'];
 
+function buildTimestamp(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
+}
+
 export function exportTasksCsv(
   tasks: Task[],
   phases: Phase[],
@@ -84,7 +89,7 @@ export function exportTasksCsv(
   for (const task of tasks) {
     rows.push(buildTaskRow(task, phases, statuses, responsibles));
   }
-  downloadCsv(rows, `${projectName}_tasks.csv`);
+  downloadCsv(rows, `${projectName}_tasks_${buildTimestamp()}.csv`);
 }
 
 export function exportTasksWithSubtasksCsv(
@@ -105,7 +110,7 @@ export function exportTasksWithSubtasksCsv(
       }
     }
   }
-  downloadCsv(rows, `${projectName}_tasks_with_subtasks.csv`);
+  downloadCsv(rows, `${projectName}_tasks_with_subtasks_${buildTimestamp()}.csv`);
 }
 
 function downloadCsv(rows: string[][], filename: string): void {
@@ -229,7 +234,6 @@ export function exportGanttToExcel(
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Gantt');
 
-  const now = new Date();
-  const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
+  const timestamp = buildTimestamp();
   XLSX.writeFile(wb, `${projectName}_gantt_${timestamp}.xlsx`);
 }

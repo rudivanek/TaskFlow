@@ -107,7 +107,7 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Dates formatted as DD/MM/YYYY in export
 - Dependencies exported as semicolon-separated task IDs
 - CSV includes BOM for proper Excel/Sheets encoding
-- File names use project name: `<ProjectName>_tasks.csv` or `<ProjectName>_tasks_with_subtasks.csv`
+- File names include project name and timestamp: `<ProjectName>_tasks_<YYYY-MM-DD_HH-mm-ss>.csv` or `<ProjectName>_tasks_with_subtasks_<YYYY-MM-DD_HH-mm-ss>.csv`
 - CSV fields with commas, quotes, or newlines are properly escaped
 
 ### 1.12 Gantt Excel Export
