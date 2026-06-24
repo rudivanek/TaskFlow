@@ -38,7 +38,7 @@ function DateCell({
       type="date"
       value={value || ''}
       onChange={(e) => { if (e.target.value) onChange(e.target.value); }}
-      className="w-full text-sm bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all cursor-pointer"
+      className="w-full text-[13px] bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all cursor-pointer"
     />
   );
 }
@@ -123,7 +123,7 @@ export default function TaskRow({
 
         {/* ID */}
         <td className="w-10 px-2 text-center">
-          <span className="text-sm font-mono text-slate-400">#{task.task_id}</span>
+          <span className="text-[13px] font-mono text-slate-400">#{task.task_id}</span>
         </td>
 
         {/* Sort / Drag handle */}
@@ -137,10 +137,10 @@ export default function TaskRow({
               >
                 <GripVertical className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-400 transition-colors flex-shrink-0" />
               </div>
-              <span className="text-sm font-mono text-slate-400">{task.task_sort}</span>
+              <span className="text-[13px] font-mono text-slate-400">{task.task_sort}</span>
             </div>
           ) : (
-            <span className="text-sm font-mono text-slate-400">{task.task_sort}</span>
+            <span className="text-[13px] font-mono text-slate-400">{task.task_sort}</span>
           )}
         </td>
 
@@ -151,7 +151,7 @@ export default function TaskRow({
             defaultValue={task.task_name}
             onBlur={(e) => handleNameBlur(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-            className="w-full text-sm bg-transparent border-0 px-1 py-0.5 rounded hover:bg-white focus:bg-white border border-transparent hover:border-slate-200 focus:border-primary-300 transition-all"
+            className="w-full text-[13px] bg-transparent border-0 px-1 py-0.5 rounded hover:bg-white focus:bg-white border border-transparent hover:border-slate-200 focus:border-primary-300 transition-all"
             placeholder="Task name..."
           />
         </td>
@@ -161,7 +161,7 @@ export default function TaskRow({
           <select
             value={task.phase_id || ''}
             onChange={(e) => onUpdate(task.id, { phase_id: e.target.value || null })}
-            className="w-full text-sm bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
+            className="w-full text-[13px] bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
           >
             <option value="">-</option>
             {phases.map(p => <option key={p.id} value={p.id}>{p.phase}</option>)}
@@ -173,7 +173,7 @@ export default function TaskRow({
           <select
             value={task.status_id || ''}
             onChange={(e) => onUpdate(task.id, { status_id: e.target.value || null })}
-            className="w-full text-sm bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
+            className="w-full text-[13px] bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
           >
             <option value="">-</option>
             {statuses.map(s => <option key={s.id} value={s.id}>{s.status}</option>)}
@@ -185,7 +185,7 @@ export default function TaskRow({
           <select
             value={task.responsible_id || ''}
             onChange={(e) => onUpdate(task.id, { responsible_id: e.target.value || null })}
-            className="w-full text-sm bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
+            className="w-full text-[13px] bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
           >
             <option value="">-</option>
             {responsibles.map(r => <option key={r.id} value={r.id}>{r.responsible}</option>)}
@@ -210,7 +210,7 @@ export default function TaskRow({
               const val = parseInt(e.target.value);
               if (!isNaN(val) && val >= 0) onUpdateDays(task.id, val);
             }}
-            className="w-full text-sm text-center bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all font-mono"
+            className="w-full text-[13px] text-center bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all font-mono"
           />
         </td>
 
@@ -235,13 +235,13 @@ export default function TaskRow({
               onChange={(e) => setDepsValue(e.target.value)}
               onBlur={handleDepsBlur}
               onKeyDown={(e) => { if (e.key === 'Enter') handleDepsBlur(); if (e.key === 'Escape') setEditingField(null); }}
-              className="w-full text-sm font-mono px-1 py-1 border border-primary-300 rounded"
+              className="w-full text-[13px] font-mono px-1 py-1 border border-primary-300 rounded"
               placeholder="1,2,3"
             />
           ) : (
             <button
               onClick={() => { setEditingField('deps'); setDepsValue(task.depends_on_task_ids?.join(',') || ''); }}
-              className="w-full text-left text-sm font-mono text-slate-500 px-1 py-1 border border-transparent hover:border-slate-200 rounded truncate"
+              className="w-full text-left text-[13px] font-mono text-slate-500 px-1 py-1 border border-transparent hover:border-slate-200 rounded truncate"
             >
               {depsDisplay || '-'}
             </button>
@@ -281,7 +281,7 @@ export default function TaskRow({
               onBlur={handleCommentSave}
               placeholder="Add a comment..."
               rows={2}
-              className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg resize-none bg-white"
+              className="w-full text-[13px] px-3 py-2 border border-slate-200 rounded-lg resize-none bg-white"
             />
           </td>
         </tr>

@@ -287,7 +287,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tasks..."
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg"
+            className="w-full pl-8 pr-3 py-1.5 text-[13px] border border-slate-200 rounded-lg"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -295,17 +295,17 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-sm border border-slate-200 rounded-lg px-2 py-1.5"
+            className="text-[13px] border border-slate-200 rounded-lg px-2 py-1.5"
           >
             <option value="">All Statuses</option>
             {statuses.map(s => <option key={s.id} value={s.id}>{s.status}</option>)}
           </select>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-sm text-slate-400">{sortedTasks.length} tasks</span>
+          <span className="text-[13px] text-slate-400">{sortedTasks.length} tasks</span>
           <button
             onClick={handleCreateTask}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-[13px] font-medium rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Task
@@ -315,7 +315,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
 
       {/* Error toast */}
       {error && (
-        <div className="mx-4 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div className="mx-4 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-[13px] text-red-700">
           {error}
         </div>
       )}
@@ -324,7 +324,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
       <div className="flex-1 overflow-auto">
         <table className="w-full text-left">
           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
-            <tr className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+            <tr className="text-[13px] font-medium text-slate-500 uppercase tracking-wider">
               <th className="w-8 px-1 py-2"></th>
               <th className="w-10 px-2 py-2">
                 <button onClick={() => handleSort('task_id')} className="flex items-center hover:text-slate-700">
@@ -376,10 +376,10 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
 
         {sortedTasks.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-            <p className="text-sm">No tasks yet</p>
+            <p className="text-[13px]">No tasks yet</p>
             <button
               onClick={handleCreateTask}
-              className="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+              className="mt-2 text-[13px] text-primary-600 hover:text-primary-700 font-medium"
             >
               Create your first task
             </button>
@@ -397,14 +397,14 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
                 <AlertTriangle className="w-5 h-5 text-red-500" />
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-semibold text-slate-800">Delete task</h3>
+                <h3 className="text-[13px] font-semibold text-slate-800">Delete task</h3>
                 {pendingDelete.dependents.length === 0 ? (
-                  <p className="text-sm text-slate-500 mt-1">
+                  <p className="text-[13px] text-slate-500 mt-1">
                     This will permanently delete the task and all its subtasks. This cannot be undone.
                   </p>
                 ) : (
                   <>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-[13px] text-slate-500 mt-1">
                       The following {pendingDelete.dependents.length === 1 ? 'task depends' : 'tasks depend'} on this task:
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -414,7 +414,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
                         </span>
                       ))}
                     </div>
-                    <p className="text-sm text-slate-500 mt-3">
+                    <p className="text-[13px] text-slate-500 mt-3">
                       Deleting will remove these dependency links. The dependent tasks will remain.
                     </p>
                   </>
@@ -427,13 +427,13 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setPendingDelete(null)}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleForceDelete}
-                className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                className="px-4 py-2 text-[13px] font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
               >
                 Delete
               </button>
