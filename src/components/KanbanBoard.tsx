@@ -3,7 +3,7 @@ import { Task, Phase, Status, Responsible } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import KanbanTaskDetailModal from './KanbanTaskDetailModal';
-import { isOverdue, isDueToday, isDueSoon } from '../utils/dateUtils';
+import { isOverdue, isDueToday, isDueSoon, formatDisplayDate } from '../utils/dateUtils';
 import { Search, Loader2, MessageSquare, Calendar } from 'lucide-react';
 
 interface KanbanBoardProps {
@@ -205,7 +205,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
                       {task.start_date && (
                         <div className="flex items-center gap-1 mt-2 text-xs text-slate-400">
                           <Calendar className="w-3 h-3" />
-                          <span>{task.start_date} - {task.end_date}</span>
+                          <span>{formatDisplayDate(task.start_date)} - {formatDisplayDate(task.end_date)}</span>
                         </div>
                       )}
                     </div>

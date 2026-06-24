@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-24T10:00:00Z
+**Last Updated:** 2026-06-24T14:00:00Z
 
 ---
 
@@ -9,6 +9,8 @@
 
 ### 1.1 Overview
 A streamlined project management application built with React + Vite + Tailwind CSS + Supabase. It focuses on core task management with workspace/project/task/subtask hierarchy.
+
+**Locale:** Mexico (es-MX). All dates displayed throughout the app use `dd/mm/yy` format. HTML date inputs use the `es-MX` browser locale (set via `lang="es-MX"` on the `<html>` tag) so pickers render in day/month/year order.
 
 ### 1.2 Authentication
 - Email/password sign-in and sign-up via Supabase Auth

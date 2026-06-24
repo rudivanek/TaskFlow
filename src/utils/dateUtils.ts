@@ -13,9 +13,11 @@ export function calculateDays(startDate: string, endDate: string): number {
   return Math.max(1, diff);
 }
 
-export function formatDateDisplay(dateStr: string | null): string {
+export function formatDisplayDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
-  return dateStr;
+  const [y, m, d] = dateStr.split('-');
+  if (!y || !m || !d) return dateStr;
+  return `${d}/${m}/${y.slice(2)}`;
 }
 
 export function isOverdue(endDate: string): boolean {

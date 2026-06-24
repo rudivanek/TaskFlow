@@ -3,6 +3,7 @@ import { Task, Phase, Status, Responsible } from '../types';
 import * as taskServices from '../services/taskServices';
 import { parseISO, differenceInCalendarDays, addDays, format } from 'date-fns';
 import { Loader2, ZoomIn, ZoomOut } from 'lucide-react';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 interface GanttChartProps {
   projectId: string;
@@ -310,7 +311,7 @@ export default function GanttChart({ projectId, phases, statuses, responsibles }
         <div className="absolute top-16 right-4 z-50 bg-slate-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg">
           <div className="font-medium">{dragState.mode === 'move' ? 'Moving' : 'Resizing'}</div>
           <div className="text-slate-300 mt-0.5">
-            {dragPreview.startDate} to {dragPreview.endDate} ({dragPreview.days}d)
+            {formatDisplayDate(dragPreview.startDate)} to {formatDisplayDate(dragPreview.endDate)} ({dragPreview.days}d)
           </div>
         </div>
       )}
