@@ -3,7 +3,7 @@ import { Task, Phase, Status, Responsible } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
-import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X } from 'lucide-react';
 
 type SortField = 'task_id' | 'task_sort';
 type SortDir = 'asc' | 'desc';
@@ -15,9 +15,16 @@ interface TaskGridProps {
   responsibles: Responsible[];
 }
 
+interface PendingDelete {
+  taskId: string;
+  taskIdNum: number;
+  dependents: Task[];
+}
+
 export default function TaskGrid({ projectId, phases, statuses, responsibles }: TaskGridProps) {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -153,13 +160,33 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
       t.depends_on_task_ids && t.depends_on_task_ids.includes(taskIdNum)
     );
     if (dependents.length > 0) {
-      setError(`Cannot delete: tasks ${dependents.map(t => '#' + t.task_id).join(', ')} depend on this task`);
-      setTimeout(() => setError(''), 4000);
+      setPendingDelete({ taskId, taskIdNum, dependents });
       return;
     }
+    await execDelete(taskId);
+  };
+
+  const execDelete = async (taskId: string) => {
     try {
       await taskServices.deleteTask(taskId);
-      setTasks(tasks.filter(t => t.id !== taskId));
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete task');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleForceDelete = async () => {
+    if (!pendingDelete) return;
+    const { taskId, taskIdNum, dependents } = pendingDelete;
+    setPendingDelete(null);
+    try {
+      for (const dep of dependents) {
+        const filtered = (dep.depends_on_task_ids || []).filter(id => id !== taskIdNum);
+        await taskServices.setMultipleDependencies(dep.id, filtered, projectId);
+      }
+      await execDelete(taskId);
+      await loadTasks();
     } catch (err: any) {
       setError(err.message || 'Failed to delete task');
       setTimeout(() => setError(''), 3000);
@@ -303,6 +330,53 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
           </div>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setPendingDelete(null)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Delete task with dependencies</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  The following {pendingDelete.dependents.length === 1 ? 'task depends' : 'tasks depend'} on this task:
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {pendingDelete.dependents.map(t => (
+                    <span key={t.id} className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-xs font-mono text-slate-600">
+                      #{t.task_id} {t.task_name ? `— ${t.task_name}` : ''}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-sm text-slate-500 mt-3">
+                  Deleting will remove these dependency links. The dependent tasks will remain.
+                </p>
+              </div>
+              <button onClick={() => setPendingDelete(null)} className="flex-shrink-0 p-1 hover:bg-slate-100 rounded-md transition-colors ml-auto">
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setPendingDelete(null)}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleForceDelete}
+                className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+              >
+                Delete anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
