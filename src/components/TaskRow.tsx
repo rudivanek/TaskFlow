@@ -82,6 +82,11 @@ export default function TaskRow({
           <span className="text-xs font-mono text-slate-400">#{task.task_id}</span>
         </td>
 
+        {/* Sort ID */}
+        <td className="w-14 px-2 text-center">
+          <span className="text-xs font-mono text-slate-400">{task.task_sort}</span>
+        </td>
+
         {/* Task Name */}
         <td className="px-2 py-1.5">
           <input

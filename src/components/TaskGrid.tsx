@@ -3,7 +3,10 @@ import { Task, Phase, Status, Responsible } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
-import { Plus, Search, Filter, Loader2 } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+
+type SortField = 'task_id' | 'task_sort';
+type SortDir = 'asc' | 'desc';
 
 interface TaskGridProps {
   projectId: string;
@@ -19,6 +22,8 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [error, setError] = useState('');
+  const [sortField, setSortField] = useState<SortField>('task_id');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const loadTasks = useCallback(async () => {
     try {
@@ -167,6 +172,28 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
     return matchesSearch && matchesStatus;
   });
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    const av = a[sortField] ?? 0;
+    const bv = b[sortField] ?? 0;
+    return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
+  });
+
+  function SortIcon({ field }: { field: SortField }) {
+    if (sortField !== field) return <ChevronsUpDown className="w-3 h-3 ml-1 text-slate-400" />;
+    return sortDir === 'asc'
+      ? <ChevronUp className="w-3 h-3 ml-1 text-slate-600" />
+      : <ChevronDown className="w-3 h-3 ml-1 text-slate-600" />;
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -200,7 +227,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
           </select>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-slate-400">{filteredTasks.length} tasks</span>
+          <span className="text-xs text-slate-400">{sortedTasks.length} tasks</span>
           <button
             onClick={handleCreateTask}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -224,7 +251,16 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
             <tr className="text-xs font-medium text-slate-500 uppercase tracking-wider">
               <th className="w-8 px-1 py-2"></th>
-              <th className="w-10 px-2 py-2">ID</th>
+              <th className="w-10 px-2 py-2">
+                <button onClick={() => handleSort('task_id')} className="flex items-center hover:text-slate-700">
+                  ID <SortIcon field="task_id" />
+                </button>
+              </th>
+              <th className="w-14 px-2 py-2">
+                <button onClick={() => handleSort('task_sort')} className="flex items-center hover:text-slate-700">
+                  Sort ID <SortIcon field="task_sort" />
+                </button>
+              </th>
               <th className="px-2 py-2">Task Name</th>
               <th className="w-[120px] px-1 py-2">Phase</th>
               <th className="w-[120px] px-1 py-2">Status</th>
@@ -237,7 +273,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
             </tr>
           </thead>
           <tbody>
-            {filteredTasks.map(task => (
+            {sortedTasks.map(task => (
               <TaskRow
                 key={task.id}
                 task={task}
@@ -255,7 +291,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
           </tbody>
         </table>
 
-        {filteredTasks.length === 0 && !loading && (
+        {sortedTasks.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400">
             <p className="text-sm">No tasks yet</p>
             <button

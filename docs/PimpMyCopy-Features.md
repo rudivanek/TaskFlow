@@ -31,7 +31,8 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Create workspace/project via inline input fields
 
 ### 1.4 Task Grid View
-- Spreadsheet-like table with 11 columns: Expand, ID, Task Name, Phase, Status, Responsible, Start Date, Days, End Date, Depends On, Actions
+- Spreadsheet-like table with 12 columns: Expand, ID, Sort ID, Task Name, Phase, Status, Responsible, Start Date, Days, End Date, Depends On, Actions
+- Sortable columns: click **ID** or **Sort ID** headers to sort ascending/descending; active sort direction shown with chevron icon
 - Inline editing for all fields
 - Date auto-calculation: end_date = start_date + (days - 1)
 - Dependency field accepts comma-separated task IDs
