@@ -148,17 +148,15 @@ export default function App() {
             <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center">
               <CheckSquare className="w-4 h-4 text-white" />
             </div>
-<span className="text-base font-semibold text-slate-800">
-  Task Flow
+<span className="inline-flex items-end gap-2 text-base font-semibold text-slate-800">
+  <span>Task Flow</span>
 
-      <span className="text-[12px] tracking-wide align-super">
-         V 1.1
-    </span>
-  
-    <span className="text-[17px] tracking-wide align-super">
-      Sharpen.Studio
+  <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">
+    V 1.1
+  </span>
 
-
+  <span className="pb-[1px] text-[10px] font-normal tracking-wide text-slate-400">
+    Sharpen.Studio
   </span>
 </span>
           </div>
