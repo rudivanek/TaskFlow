@@ -24,7 +24,7 @@ interface TaskRowProps {
   isDragOver?: boolean;
   isDragging?: boolean;
   dragEnabled?: boolean;
-  forceCollapsed?: boolean;
+  expandTrigger?: { action: 'expand' | 'collapse'; seq: number };
 }
 
 function DateCell({
@@ -64,13 +64,15 @@ export default function TaskRow({
   isDragOver = false,
   isDragging = false,
   dragEnabled = false,
-  forceCollapsed = false,
+  expandTrigger,
 }: TaskRowProps) {
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (forceCollapsed) setExpanded(false);
-  }, [forceCollapsed]);
+    if (expandTrigger && expandTrigger.seq > 0) {
+      setExpanded(expandTrigger.action === 'expand');
+    }
+  }, [expandTrigger?.seq]);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [depsValue, setDepsValue] = useState('');
   const [showComment, setShowComment] = useState(false);

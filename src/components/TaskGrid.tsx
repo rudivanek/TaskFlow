@@ -3,7 +3,7 @@ import { Task, Phase, Status, Responsible } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
-import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X, CalendarRange, RefreshCw, ChevronsDownUp } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X, CalendarRange, RefreshCw, ChevronsDownUp, Rows3 } from 'lucide-react';
 import { parseISO, differenceInCalendarDays, format } from 'date-fns';
 
 type SortField = 'task_id' | 'task_sort';
@@ -36,7 +36,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [highlightedTaskIds, setHighlightedTaskIds] = useState<number[]>([]);
   const [dateStats, setDateStats] = useState<{ minStart: string; maxEnd: string; totalDays: number } | null>(null);
-  const [collapseAll, setCollapseAll] = useState(false);
+  const [expandTrigger, setExpandTrigger] = useState<{ action: 'expand' | 'collapse'; seq: number }>({ action: 'collapse', seq: 0 });
 
   const recalcDateStats = () => {
     const startDates = tasks.map(t => t.start_date).filter(Boolean);
@@ -324,11 +324,14 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
         </div>
         <div className="ml-auto flex items-center gap-3">
           <button
-            onClick={() => setCollapseAll(v => !v)}
-            title="Collapse all subtasks"
+            onClick={() => setExpandTrigger(t => ({ action: t.action === 'collapse' ? 'expand' : 'collapse', seq: t.seq + 1 }))}
+            title={expandTrigger.action === 'collapse' ? 'Expand all subtasks' : 'Collapse all subtasks'}
             className="p-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors"
           >
-            <ChevronsDownUp className="w-4 h-4 text-slate-500" />
+            {expandTrigger.action === 'collapse'
+              ? <ChevronsDownUp className="w-4 h-4 text-slate-500" />
+              : <Rows3 className="w-4 h-4 text-slate-500" />
+            }
           </button>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
             <CalendarRange className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
@@ -416,7 +419,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
                 dragEnabled={dragEnabled}
                 isDragging={draggedId === task.id}
                 isDragOver={dragOverId === task.id}
-                forceCollapsed={collapseAll}
+                expandTrigger={expandTrigger}
                 onDragStart={(e) => handleDragStart(e, task.id)}
                 onDragOver={(e) => handleDragOver(e, task.id)}
                 onDrop={(e) => handleDrop(e, task.id)}
