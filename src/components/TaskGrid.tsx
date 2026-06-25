@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
 import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X, CalendarRange } from 'lucide-react';
+import { parseISO, differenceInCalendarDays, format } from 'date-fns';
 
 type SortField = 'task_id' | 'task_sort';
 type SortDir = 'asc' | 'desc';
@@ -267,10 +268,10 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
   const minStart = startDates.length ? startDates.reduce((a, b) => a < b ? a : b) : null;
   const maxEnd = endDates.length ? endDates.reduce((a, b) => a > b ? a : b) : null;
   const totalDays = (minStart && maxEnd)
-    ? Math.round((new Date(maxEnd).getTime() - new Date(minStart).getTime()) / 86400000) + 1
+    ? differenceInCalendarDays(parseISO(maxEnd), parseISO(minStart)) + 1
     : null;
 
-  const fmtDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+  const fmtDate = (d: string) => format(parseISO(d), 'dd MMM yy');
 
   function SortIcon({ field }: { field: SortField }) {
     if (sortField !== field) return <ChevronsUpDown className="w-3 h-3 ml-1 text-slate-400" />;
