@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './components/AuthContext';
 import Auth from './components/Auth';
 import Sidebar from './components/Sidebar';
@@ -10,6 +10,7 @@ import GanttChart from './components/GanttChart';
 import ProjectDiscussionPanel from './components/ProjectDiscussionPanel';
 import ProjectCommentsModal from './components/ProjectCommentsModal';
 import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
+import { getUnreadCommentCount } from './utils/unreadComments';
 import { supabase } from './lib/supabase';
 import {
   CheckSquare,
@@ -47,12 +48,17 @@ export default function App() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDiscussion, setShowDiscussion] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [commentCount, setCommentCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [noteCount, setNoteCount] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(true);
   const [selectedProjectName, setSelectedProjectName] = useState('');
   const [sortField, setSortField] = useState<SortField>('task_sort');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const showDiscussionRef = useRef(showDiscussion);
+
+  useEffect(() => {
+    showDiscussionRef.current = showDiscussion;
+  }, [showDiscussion]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -72,14 +78,40 @@ export default function App() {
       supabase.from('projects').select('project').eq('id', selectedProjectId).single().then(({ data }) => {
         if (data) setSelectedProjectName(data.project);
       });
-      fetchCommentCount(selectedProjectId);
+      getUnreadCommentCount(supabase, selectedProjectId).then(setUnreadCount);
       fetchNoteCount(selectedProjectId);
       setShowDiscussion(false);
-        setShowComments(false);
+      setShowComments(false);
     } else {
-      setCommentCount(0);
+      setUnreadCount(0);
       setNoteCount(0);
     }
+  }, [selectedProjectId, user]);
+
+  // Realtime subscription — increment unread badge when a new comment arrives from another user
+  useEffect(() => {
+    if (!selectedProjectId || !user) return;
+
+    const channel = supabase
+      .channel(`discussion-${selectedProjectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'project_comments',
+          filter: `project_id=eq.${selectedProjectId}`,
+        },
+        (payload) => {
+          const newUserId = (payload.new as { user_id?: string }).user_id;
+          if (newUserId !== user.id && !showDiscussionRef.current) {
+            setUnreadCount(prev => prev + 1);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [selectedProjectId, user]);
 
   useEffect(() => {
@@ -93,14 +125,6 @@ export default function App() {
     params.set('view', viewMode);
     window.history.replaceState({}, '', `?${params.toString()}`);
   }, [selectedProjectId, viewMode]);
-
-  async function fetchCommentCount(projectId: string) {
-    const { count } = await supabase
-      .from('project_comments')
-      .select('id', { count: 'exact', head: true })
-      .eq('project_id', projectId);
-    setCommentCount(count ?? 0);
-  }
 
   async function fetchNoteCount(projectId: string) {
     const { count } = await supabase
@@ -288,16 +312,16 @@ export default function App() {
               )}
             </button>
 
-            {/* Discussion button with count badge */}
+            {/* Discussion button — red unread badge */}
             <button
               onClick={() => setShowDiscussion(true)}
               className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
             >
               <MessageSquare className="w-4 h-4" />
               Discussion
-              {commentCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-primary-600 text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none">
-                  {commentCount > 99 ? '99+' : commentCount}
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </button>
@@ -398,7 +422,7 @@ export default function App() {
           projectName={selectedProjectName}
           isOpen={showDiscussion}
           onClose={() => setShowDiscussion(false)}
-          onCommentCountChange={setCommentCount}
+          onRead={() => setUnreadCount(0)}
         />
       )}
 

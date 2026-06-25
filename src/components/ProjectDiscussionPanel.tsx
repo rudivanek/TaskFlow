@@ -4,6 +4,8 @@ import { useAuth } from './AuthContext';
 import { ProjectComment, Task } from '../types';
 import * as projectServices from '../services/projectServices';
 import * as taskServices from '../services/taskServices';
+import { supabase } from '../lib/supabase';
+import { markDiscussionAsRead } from '../utils/unreadComments';
 
 interface Props {
   projectId: string;
@@ -11,6 +13,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onCommentCountChange?: (count: number) => void;
+  onRead?: () => void;
 }
 
 function formatRelativeTime(iso: string): string {
@@ -31,6 +34,7 @@ export default function ProjectDiscussionPanel({
   isOpen,
   onClose,
   onCommentCountChange,
+  onRead,
 }: Props) {
   const { user } = useAuth();
   const [comments, setComments] = useState<ProjectComment[]>([]);
@@ -44,6 +48,11 @@ export default function ProjectDiscussionPanel({
   useEffect(() => {
     if (isOpen && projectId) {
       loadData();
+      if (user) {
+        markDiscussionAsRead(supabase, projectId, user.id).then(() => {
+          onRead?.();
+        });
+      }
     }
   }, [isOpen, projectId]);
 
