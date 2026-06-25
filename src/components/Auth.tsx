@@ -3,8 +3,8 @@ import { useAuth } from './AuthContext';
 import { CheckSquare, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function Auth() {
-  const { signIn, signUp, resetPassword } = useAuth();
-  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
+  const { signIn, resetPassword } = useAuth();
+  const [mode, setMode] = useState<'signin' | 'reset'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,13 +22,9 @@ export default function Auth() {
         const { error } = await resetPassword(email);
         if (error) setError(error.message);
         else setMessage('Password reset email sent. Check your inbox.');
-      } else if (mode === 'signin') {
+      } else {
         const { error } = await signIn(email, password);
         if (error) setError(error.message);
-      } else {
-        const { error } = await signUp(email, password);
-        if (error) setError(error.message);
-        else setMessage('Account created successfully! You can now sign in.');
       }
     } finally {
       setLoading(false);
@@ -47,14 +43,10 @@ export default function Auth() {
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
           <h2 className="text-xl font-semibold text-slate-900 mb-1">
-            {mode === 'signin' && 'Welcome back'}
-            {mode === 'signup' && 'Create your account'}
-            {mode === 'reset' && 'Reset password'}
+            {mode === 'signin' ? 'Welcome back' : 'Reset password'}
           </h2>
           <p className="text-sm text-slate-500 mb-6">
-            {mode === 'signin' && 'Sign in to manage your projects'}
-            {mode === 'signup' && 'Get started with TaskFlow'}
-            {mode === 'reset' && 'We\'ll send you a reset link'}
+            {mode === 'signin' ? 'Sign in to manage your projects' : "We'll send you a reset link"}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -73,7 +65,7 @@ export default function Auth() {
               </div>
             </div>
 
-            {mode !== 'reset' && (
+            {mode === 'signin' && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
                 <div className="relative">
@@ -112,9 +104,7 @@ export default function Auth() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  {mode === 'signin' && 'Sign In'}
-                  {mode === 'signup' && 'Create Account'}
-                  {mode === 'reset' && 'Send Reset Link'}
+                  {mode === 'signin' ? 'Sign In' : 'Send Reset Link'}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -122,32 +112,14 @@ export default function Auth() {
           </form>
 
           <div className="mt-6 pt-4 border-t border-slate-100 text-center text-sm">
-            {mode === 'signin' && (
-              <div className="space-y-2">
-                <button
-                  onClick={() => { setMode('signup'); setError(''); setMessage(''); }}
-                  className="text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  Don't have an account? Sign up
-                </button>
-                <br />
-                <button
-                  onClick={() => { setMode('reset'); setError(''); setMessage(''); }}
-                  className="text-slate-500 hover:text-slate-700"
-                >
-                  Forgot password?
-                </button>
-              </div>
-            )}
-            {mode === 'signup' && (
+            {mode === 'signin' ? (
               <button
-                onClick={() => { setMode('signin'); setError(''); setMessage(''); }}
-                className="text-primary-600 hover:text-primary-700 font-medium"
+                onClick={() => { setMode('reset'); setError(''); setMessage(''); }}
+                className="text-slate-500 hover:text-slate-700"
               >
-                Already have an account? Sign in
+                Forgot password?
               </button>
-            )}
-            {mode === 'reset' && (
+            ) : (
               <button
                 onClick={() => { setMode('signin'); setError(''); setMessage(''); }}
                 className="text-primary-600 hover:text-primary-700 font-medium"
