@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Send, Trash2, MessageCircle } from 'lucide-react';
 import { useAuth } from './AuthContext';
-import { ProjectComment } from '../types';
+import { ProjectNote } from '../types';
 import * as projectServices from '../services/projectServices';
 
 interface Props {
   projectId: string;
   projectName: string;
   onClose: () => void;
-  onCommentCountChange?: (count: number) => void;
+  onNoteCountChange?: (count: number) => void;
 }
 
 function formatDate(iso: string): string {
@@ -25,10 +25,10 @@ export default function ProjectCommentsModal({
   projectId,
   projectName,
   onClose,
-  onCommentCountChange,
+  onNoteCountChange,
 }: Props) {
   const { user } = useAuth();
-  const [comments, setComments] = useState<ProjectComment[]>([]);
+  const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -40,16 +40,16 @@ export default function ProjectCommentsModal({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [comments.length]);
+  }, [notes.length]);
 
   async function load() {
     setLoading(true);
     try {
-      const data = await projectServices.fetchProjectComments(projectId);
-      setComments(data);
-      onCommentCountChange?.(data.length);
+      const data = await projectServices.fetchProjectNotes(projectId);
+      setNotes(data);
+      onNoteCountChange?.(data.length);
     } catch (err) {
-      console.error('Failed to load comments:', err);
+      console.error('Failed to load notes:', err);
     } finally {
       setLoading(false);
     }
@@ -61,19 +61,18 @@ export default function ProjectCommentsModal({
     try {
       const authorName =
         (user.user_metadata?.full_name as string | undefined) || user.email || '';
-      const comment = await projectServices.addProjectDiscussionComment(
+      const note = await projectServices.addProjectNote(
         projectId,
         user.id,
         authorName,
         text.trim(),
-        null,
       );
-      const updated = [...comments, comment];
-      setComments(updated);
-      onCommentCountChange?.(updated.length);
+      const updated = [...notes, note];
+      setNotes(updated);
+      onNoteCountChange?.(updated.length);
       setText('');
     } catch (err) {
-      console.error('Failed to post comment:', err);
+      console.error('Failed to post note:', err);
     } finally {
       setSubmitting(false);
     }
@@ -81,12 +80,12 @@ export default function ProjectCommentsModal({
 
   async function handleDelete(id: string) {
     try {
-      await projectServices.deleteProjectComment(id);
-      const updated = comments.filter(c => c.id !== id);
-      setComments(updated);
-      onCommentCountChange?.(updated.length);
+      await projectServices.deleteProjectNote(id);
+      const updated = notes.filter(n => n.id !== id);
+      setNotes(updated);
+      onNoteCountChange?.(updated.length);
     } catch (err) {
-      console.error('Failed to delete comment:', err);
+      console.error('Failed to delete note:', err);
     }
   }
 
@@ -118,19 +117,19 @@ export default function ProjectCommentsModal({
             <div className="flex justify-center py-12">
               <div className="w-5 h-5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : comments.length === 0 ? (
+          ) : notes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-slate-400">
               <MessageCircle className="w-10 h-10 mb-3 text-slate-200" />
               <p className="text-sm font-medium text-slate-400">No comments yet</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {comments.map(c => {
-                const isOwn = c.user_id === user?.id;
-                const displayName = c.author_name || c.user_id.slice(0, 8);
+              {notes.map(n => {
+                const isOwn = n.user_id === user?.id;
+                const displayName = n.author_name || n.user_id.slice(0, 8);
                 return (
                   <div
-                    key={c.id}
+                    key={n.id}
                     className="group bg-slate-50 rounded-xl border border-slate-100 px-4 py-3 hover:border-slate-200 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -141,11 +140,11 @@ export default function ProjectCommentsModal({
                           </span>
                         </div>
                         <span className="text-xs font-semibold text-slate-700 truncate">{displayName}</span>
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">{formatDate(c.created_at)}</span>
+                        <span className="text-[11px] text-slate-400 flex-shrink-0">{formatDate(n.created_at)}</span>
                       </div>
                       {isOwn && (
                         <button
-                          onClick={() => handleDelete(c.id)}
+                          onClick={() => handleDelete(n.id)}
                           className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-500 text-slate-300 transition-all flex-shrink-0"
                           title="Delete"
                         >
@@ -154,7 +153,7 @@ export default function ProjectCommentsModal({
                       )}
                     </div>
                     <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
-                      {c.content}
+                      {n.content}
                     </p>
                   </div>
                 );

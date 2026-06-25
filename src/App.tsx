@@ -48,6 +48,7 @@ export default function App() {
   const [showDiscussion, setShowDiscussion] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
+  const [noteCount, setNoteCount] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(true);
   const [selectedProjectName, setSelectedProjectName] = useState('');
   const [sortField, setSortField] = useState<SortField>('task_sort');
@@ -72,10 +73,12 @@ export default function App() {
         if (data) setSelectedProjectName(data.project);
       });
       fetchCommentCount(selectedProjectId);
+      fetchNoteCount(selectedProjectId);
       setShowDiscussion(false);
         setShowComments(false);
     } else {
       setCommentCount(0);
+      setNoteCount(0);
     }
   }, [selectedProjectId, user]);
 
@@ -97,6 +100,14 @@ export default function App() {
       .select('id', { count: 'exact', head: true })
       .eq('project_id', projectId);
     setCommentCount(count ?? 0);
+  }
+
+  async function fetchNoteCount(projectId: string) {
+    const { count } = await supabase
+      .from('project_notes')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId);
+    setNoteCount(count ?? 0);
   }
 
   const loadLookups = async () => {
@@ -270,9 +281,9 @@ export default function App() {
             >
               <MessageCircle className="w-4 h-4" />
               Comments
-              {commentCount > 0 && (
+              {noteCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-primary-600 text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none">
-                  {commentCount > 99 ? '99+' : commentCount}
+                  {noteCount > 99 ? '99+' : noteCount}
                 </span>
               )}
             </button>
@@ -396,7 +407,7 @@ export default function App() {
           projectId={selectedProjectId}
           projectName={selectedProjectName}
           onClose={() => setShowComments(false)}
-          onCommentCountChange={setCommentCount}
+          onNoteCountChange={setNoteCount}
         />
       )}
     </div>

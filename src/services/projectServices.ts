@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Project, ProjectComment } from '../types';
+import { Project, ProjectComment, ProjectNote } from '../types';
 
 export async function fetchProjects(workspaceIds: string[], showDeleted = false): Promise<Project[]> {
   if (workspaceIds.length === 0) return [];
@@ -112,3 +112,36 @@ export async function deleteProjectComment(id: string): Promise<void> {
   const { error } = await supabase.from('project_comments').delete().eq('id', id);
   if (error) throw error;
 }
+
+// --- Project Notes (independent from Discussion) ---
+
+export async function fetchProjectNotes(projectId: string): Promise<ProjectNote[]> {
+  const { data, error } = await supabase
+    .from('project_notes')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function addProjectNote(
+  projectId: string,
+  userId: string,
+  authorName: string,
+  content: string,
+): Promise<ProjectNote> {
+  const { data, error } = await supabase
+    .from('project_notes')
+    .insert({ project_id: projectId, user_id: userId, author_name: authorName, content })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteProjectNote(id: string): Promise<void> {
+  const { error } = await supabase.from('project_notes').delete().eq('id', id);
+  if (error) throw error;
+}
+
