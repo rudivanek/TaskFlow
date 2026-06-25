@@ -150,7 +150,7 @@ export default function App() {
             </div>
            <span className="text-base font-semibold text-slate-800">
   TaskFlow
-  <span className="ml-2 text-[9px] font-normal tracking-wider text-slate-400 align-middle">
+  <span className="ml-1.5 text-[8px] font-medium uppercase tracking-[0.15em] text-slate-300">
     Powered by Sharpen.Studio
   </span>
 </span>
