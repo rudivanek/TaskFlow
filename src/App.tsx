@@ -11,6 +11,7 @@ import ProjectCommentsModal from './components/ProjectCommentsModal';
 import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
 import { supabase } from './lib/supabase';
 import {
+  CheckSquare,
   LayoutGrid,
   Kanban,
   GanttChartSquare,
@@ -131,7 +132,9 @@ export default function App() {
       <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <img src="/6f93e05d-9843-4c38-b4f7-4a13166cd715.png" alt="TaskFlow" className="w-7 h-7 rounded-md" />
+            <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center">
+              <CheckSquare className="w-4 h-4 text-white" />
+            </div>
             <span className="text-base font-semibold text-slate-800">TaskFlow</span>
           </div>
         </div>
