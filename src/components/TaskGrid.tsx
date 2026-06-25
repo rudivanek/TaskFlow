@@ -26,6 +26,34 @@ interface PendingDelete {
   dependents: Task[];
 }
 
+// ─── column resize constants ──────────────────────────────────────────────────
+
+const LS_KEY = 'taskflow-col-widths';
+const MIN_COL_W = 50;
+
+const DEFAULT_COL_WIDTHS: Record<string, number> = {
+  task_name: 280,
+  phase: 120,
+  status: 120,
+  responsible: 140,
+  start: 110,
+  days: 60,
+  end: 110,
+  deps: 100,
+};
+
+const FIXED_COL_WIDTHS = { expand: 32, id: 44, sort: 56, actions: 60 };
+
+function loadSavedWidths(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return { ...DEFAULT_COL_WIDTHS, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_COL_WIDTHS };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function TaskGrid({ projectId, phases, statuses, responsibles, sortField, sortDir, onSort }: TaskGridProps) {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -41,17 +69,58 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
   const [expandTrigger, setExpandTrigger] = useState<{ action: 'expand' | 'collapse'; seq: number }>({ action: 'collapse', seq: 0 });
   const [pendingStatusSuggestion, setPendingStatusSuggestion] = useState<{ taskId: string; suggestedStatusName: string } | null>(null);
 
+  // ── column widths ───────────────────────────────────────────────────────────
+  const [colWidths, setColWidths] = useState<Record<string, number>>(loadSavedWidths);
+  const resizingKey = useRef<string | null>(null);
+  const resizeStartX = useRef(0);
+  const resizeStartW = useRef(0);
+
+  function startResize(e: React.MouseEvent, key: string) {
+    e.preventDefault();
+    resizingKey.current = key;
+    resizeStartX.current = e.clientX;
+    resizeStartW.current = colWidths[key];
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMove = (ev: MouseEvent) => {
+      const w = Math.max(MIN_COL_W, resizeStartW.current + ev.clientX - resizeStartX.current);
+      setColWidths(prev => ({ ...prev, [resizingKey.current!]: w }));
+    };
+
+    const onUp = (ev: MouseEvent) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      const finalW = Math.max(MIN_COL_W, resizeStartW.current + ev.clientX - resizeStartX.current);
+      setColWidths(prev => {
+        const next = { ...prev, [resizingKey.current!]: finalW };
+        localStorage.setItem(LS_KEY, JSON.stringify(next));
+        return next;
+      });
+      resizingKey.current = null;
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
+  const totalTableWidth =
+    FIXED_COL_WIDTHS.expand + FIXED_COL_WIDTHS.id + FIXED_COL_WIDTHS.sort +
+    colWidths.task_name + colWidths.phase + colWidths.status + colWidths.responsible +
+    colWidths.start + colWidths.days + colWidths.end + colWidths.deps +
+    FIXED_COL_WIDTHS.actions;
+
+  // ── data ────────────────────────────────────────────────────────────────────
+
   const recalcDateStats = () => {
     const startDates = tasks.map(t => t.start_date).filter(Boolean);
     const endDates = tasks.map(t => t.end_date).filter(Boolean);
     const minStart = startDates.length ? startDates.reduce((a, b) => a < b ? a : b) : null;
     const maxEnd = endDates.length ? endDates.reduce((a, b) => a > b ? a : b) : null;
     if (minStart && maxEnd) {
-      setDateStats({
-        minStart,
-        maxEnd,
-        totalDays: differenceInCalendarDays(parseISO(maxEnd), parseISO(minStart)) + 1,
-      });
+      setDateStats({ minStart, maxEnd, totalDays: differenceInCalendarDays(parseISO(maxEnd), parseISO(minStart)) + 1 });
     } else {
       setDateStats(null);
     }
@@ -69,16 +138,11 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
     }
   }, [projectId]);
 
-  useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+  useEffect(() => { loadTasks(); }, [loadTasks]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && e.key === 'n') {
-        e.preventDefault();
-        handleCreateTask();
-      }
+      if (e.altKey && e.key === 'n') { e.preventDefault(); handleCreateTask(); }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -105,10 +169,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
         if (task?.dependencies_task_ids && task.dependencies_task_ids.length > 0) {
           const cascaded = await taskServices.cascadeDependencyDates(taskId);
           if (cascaded.length > 0) {
-            setTasks(prev => prev.map(t => {
-              const c = cascaded.find(ct => ct.id === t.id);
-              return c || t;
-            }));
+            setTasks(prev => prev.map(t => { const c = cascaded.find(ct => ct.id === t.id); return c || t; }));
           }
         }
       }
@@ -129,10 +190,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
       if (updated.dependencies_task_ids && updated.dependencies_task_ids.length > 0) {
         const cascaded = await taskServices.cascadeDependencyDates(taskId);
         if (cascaded.length > 0) {
-          setTasks(prev => prev.map(t => {
-            const c = cascaded.find(ct => ct.id === t.id);
-            return c || t;
-          }));
+          setTasks(prev => prev.map(t => { const c = cascaded.find(ct => ct.id === t.id); return c || t; }));
         }
       }
     } catch (err: any) {
@@ -150,10 +208,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
       if (updated.dependencies_task_ids && updated.dependencies_task_ids.length > 0) {
         const cascaded = await taskServices.cascadeDependencyDates(taskId);
         if (cascaded.length > 0) {
-          setTasks(prev => prev.map(t => {
-            const c = cascaded.find(ct => ct.id === t.id);
-            return c || t;
-          }));
+          setTasks(prev => prev.map(t => { const c = cascaded.find(ct => ct.id === t.id); return c || t; }));
         }
       }
     } catch (err: any) {
@@ -164,15 +219,10 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
 
   const handleUpdateDependencies = async (taskId: string, depsString: string) => {
     const cleaned = depsString.replace(/#/g, '').trim();
-    const ids = cleaned
-      ? cleaned.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
-      : [];
-
+    const ids = cleaned ? cleaned.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : [];
     try {
       const updated = await taskServices.setMultipleDependencies(taskId, ids, projectId);
-      if (updated) {
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updated } : t));
-      }
+      if (updated) setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updated } : t));
       await loadTasks();
     } catch (err: any) {
       setError(err.message || 'Failed to set dependencies');
@@ -181,9 +231,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
   };
 
   const handleDelete = (taskId: string, taskIdNum: number) => {
-    const dependents = tasks.filter(t =>
-      t.depends_on_task_ids && t.depends_on_task_ids.includes(taskIdNum)
-    );
+    const dependents = tasks.filter(t => t.depends_on_task_ids && t.depends_on_task_ids.includes(taskIdNum));
     setPendingDelete({ taskId, taskIdNum, dependents });
   };
 
@@ -232,6 +280,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
   };
 
   const dragEnabled = sortField === 'task_sort' && sortDir === 'asc';
+
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     setDraggedId(taskId);
     e.dataTransfer.effectAllowed = 'move';
@@ -245,11 +294,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
 
   const handleDrop = async (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
-    if (!draggedId || draggedId === targetId) {
-      setDraggedId(null);
-      setDragOverId(null);
-      return;
-    }
+    if (!draggedId || draggedId === targetId) { setDraggedId(null); setDragOverId(null); return; }
     const fromIdx = sortedTasks.findIndex(t => t.id === draggedId);
     const toIdx = sortedTasks.findIndex(t => t.id === targetId);
     if (fromIdx === -1 || toIdx === -1) return;
@@ -257,12 +302,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
     const [moved] = reordered.splice(fromIdx, 1);
     reordered.splice(toIdx, 0, moved);
     const updates = reordered.map((t, i) => ({ id: t.id, task_sort: i }));
-    setTasks(prev =>
-      prev.map(t => {
-        const u = updates.find(u => u.id === t.id);
-        return u ? { ...t, task_sort: u.task_sort } : t;
-      })
-    );
+    setTasks(prev => prev.map(t => { const u = updates.find(u => u.id === t.id); return u ? { ...t, task_sort: u.task_sort } : t; }));
     setDraggedId(null);
     setDragOverId(null);
     try {
@@ -274,18 +314,13 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
     }
   };
 
-  const handleDragEnd = () => {
-    setDraggedId(null);
-    setDragOverId(null);
-  };
+  const handleDragEnd = () => { setDraggedId(null); setDragOverId(null); };
 
   const filteredTasks = tasks.filter(t => {
     const matchesSearch = !searchQuery || t.task_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = !statusFilter || t.status_id === statusFilter;
     return matchesSearch && matchesStatus;
   });
-
-  const handleSort = (field: SortField) => onSort(field);
 
   const sortedTasks = [...filteredTasks].sort((a, b) => {
     const av = a[sortField] ?? 0;
@@ -301,17 +336,12 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
     const col = target.getAttribute('data-col');
     const rowAttr = target.getAttribute('data-row');
     if (!col || rowAttr === null) return;
-
     const currentRow = parseInt(rowAttr, 10);
     const nextRow = e.key === 'ArrowDown' ? currentRow + 1 : currentRow - 1;
     if (nextRow < 0 || nextRow >= sortedTasks.length) return;
-
     e.preventDefault();
     const next = tableRef.current?.querySelector<HTMLElement>(`[data-row="${nextRow}"][data-col="${col}"]`);
-    if (next) {
-      next.focus();
-      if (next instanceof HTMLInputElement) next.select();
-    }
+    if (next) { next.focus(); if (next instanceof HTMLInputElement) next.select(); }
   };
 
   const fmtDate = (d: string) => format(parseISO(d), 'dd MMM yy');
@@ -321,6 +351,25 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
     return sortDir === 'asc'
       ? <ChevronUp className="w-3 h-3 ml-1 text-slate-600" />
       : <ChevronDown className="w-3 h-3 ml-1 text-slate-600" />;
+  }
+
+  // Resizable header cell — render a <th> with a drag handle on the right edge
+  function RTh({ colKey, className, children }: { colKey: string; className?: string; children: React.ReactNode }) {
+    return (
+      <th
+        className={`px-2 py-2 relative ${className ?? ''}`}
+        style={{ width: colWidths[colKey], minWidth: colWidths[colKey] }}
+      >
+        <div className="pr-1 overflow-hidden">{children}</div>
+        <div
+          onMouseDown={(e) => startResize(e, colKey)}
+          title="Drag to resize"
+          className="absolute right-0 top-0 h-full w-1 cursor-col-resize z-20 hover:bg-primary-400 transition-colors opacity-0 hover:opacity-100 group-hover/hdr:opacity-30"
+          style={{ background: 'transparent' }}
+          onMouseEnter={e => (e.currentTarget.style.background = '')}
+        />
+      </th>
+    );
   }
 
   if (loading) {
@@ -334,7 +383,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -380,11 +429,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
             ) : (
               <span className="text-[13px] text-slate-400">Date range</span>
             )}
-            <button
-              onClick={recalcDateStats}
-              className="p-0.5 rounded hover:bg-slate-200 transition-colors"
-              title="Recalculate date range"
-            >
+            <button onClick={recalcDateStats} className="p-0.5 rounded hover:bg-slate-200 transition-colors" title="Recalculate date range">
               <RefreshCw className="w-3 h-3 text-slate-400" />
             </button>
           </div>
@@ -399,40 +444,58 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
         </div>
       </div>
 
-      {/* Error toast */}
       {error && (
-        <div className="mx-4 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-[13px] text-red-700">
+        <div className="mx-4 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-[13px] text-red-700 flex-shrink-0">
           {error}
         </div>
       )}
 
       {/* Table */}
       <div ref={tableRef} className="flex-1 overflow-auto" onKeyDown={handleTableKeyDown}>
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+        <table
+          className="text-left"
+          style={{ width: totalTableWidth, tableLayout: 'fixed', borderCollapse: 'collapse' }}
+        >
+          <colgroup>
+            <col style={{ width: FIXED_COL_WIDTHS.expand }} />
+            <col style={{ width: FIXED_COL_WIDTHS.id }} />
+            <col style={{ width: FIXED_COL_WIDTHS.sort }} />
+            <col style={{ width: colWidths.task_name }} />
+            <col style={{ width: colWidths.phase }} />
+            <col style={{ width: colWidths.status }} />
+            <col style={{ width: colWidths.responsible }} />
+            <col style={{ width: colWidths.start }} />
+            <col style={{ width: colWidths.days }} />
+            <col style={{ width: colWidths.end }} />
+            <col style={{ width: colWidths.deps }} />
+            <col style={{ width: FIXED_COL_WIDTHS.actions }} />
+          </colgroup>
+
+          <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 group/hdr">
             <tr className="text-[13px] font-medium text-slate-500 uppercase tracking-wider">
-              <th className="w-8 px-1 py-2"></th>
-              <th className="w-10 px-2 py-2">
-                <button onClick={() => handleSort('task_id')} className="flex items-center hover:text-slate-700">
+              <th className="px-1 py-2" style={{ width: FIXED_COL_WIDTHS.expand }} />
+              <th className="px-2 py-2" style={{ width: FIXED_COL_WIDTHS.id }}>
+                <button onClick={() => onSort('task_id')} className="flex items-center hover:text-slate-700">
                   ID <SortIcon field="task_id" />
                 </button>
               </th>
-              <th className="w-14 px-2 py-2">
-                <button onClick={() => handleSort('task_sort')} className="flex items-center hover:text-slate-700" title="Sort by order. When active, drag rows to reorder.">
+              <th className="px-2 py-2" style={{ width: FIXED_COL_WIDTHS.sort }}>
+                <button onClick={() => onSort('task_sort')} className="flex items-center hover:text-slate-700" title="Sort by order. When active, drag rows to reorder.">
                   Sort <SortIcon field="task_sort" />
                 </button>
               </th>
-              <th className="px-2 py-2">Task Name</th>
-              <th className="w-[120px] px-1 py-2">Phase</th>
-              <th className="w-[120px] px-1 py-2">Status</th>
-              <th className="w-[120px] px-1 py-2">Responsible</th>
-              <th className="w-[110px] px-1 py-2">Start</th>
-              <th className="w-[50px] px-1 py-2">Days</th>
-              <th className="w-[110px] px-1 py-2">End</th>
-              <th className="w-[100px] px-1 py-2">Depends On</th>
-              <th className="w-[60px] px-1 py-2"></th>
+              <RTh colKey="task_name">Task Name</RTh>
+              <RTh colKey="phase">Phase</RTh>
+              <RTh colKey="status">Status</RTh>
+              <RTh colKey="responsible">Responsible</RTh>
+              <RTh colKey="start">Start</RTh>
+              <RTh colKey="days">Days</RTh>
+              <RTh colKey="end">End</RTh>
+              <RTh colKey="deps">Depends On</RTh>
+              <th className="px-1 py-2" style={{ width: FIXED_COL_WIDTHS.actions }} />
             </tr>
           </thead>
+
           <tbody>
             {sortedTasks.map((task, idx) => (
               <TaskRow
@@ -467,10 +530,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
         {sortedTasks.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400">
             <p className="text-[13px]">No tasks yet</p>
-            <button
-              onClick={handleCreateTask}
-              className="mt-2 text-[13px] text-primary-600 hover:text-primary-700 font-medium"
-            >
+            <button onClick={handleCreateTask} className="mt-2 text-[13px] text-primary-600 hover:text-primary-700 font-medium">
               Create your first task
             </button>
           </div>
@@ -489,9 +549,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
               <div className="flex-1">
                 <h3 className="text-[13px] font-semibold text-slate-800">Delete task</h3>
                 {pendingDelete.dependents.length === 0 ? (
-                  <p className="text-[13px] text-slate-500 mt-1">
-                    This will permanently delete the task and all its subtasks. This cannot be undone.
-                  </p>
+                  <p className="text-[13px] text-slate-500 mt-1">This will permanently delete the task and all its subtasks. This cannot be undone.</p>
                 ) : (
                   <>
                     <p className="text-[13px] text-slate-500 mt-1">
@@ -504,9 +562,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
                         </span>
                       ))}
                     </div>
-                    <p className="text-[13px] text-slate-500 mt-3">
-                      Deleting will remove these dependency links. The dependent tasks will remain.
-                    </p>
+                    <p className="text-[13px] text-slate-500 mt-3">Deleting will remove these dependency links. The dependent tasks will remain.</p>
                   </>
                 )}
               </div>
@@ -515,22 +571,17 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
               </button>
             </div>
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setPendingDelete(null)}
-                className="px-4 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-              >
+              <button onClick={() => setPendingDelete(null)} className="px-4 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
                 Cancel
               </button>
-              <button
-                onClick={handleForceDelete}
-                className="px-4 py-2 text-[13px] font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-              >
+              <button onClick={handleForceDelete} className="px-4 py-2 text-[13px] font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
                 Delete
               </button>
             </div>
           </div>
         </div>
       )}
+
       {pendingStatusSuggestion && (
         <SubtaskStatusModal
           suggestedStatusName={pendingStatusSuggestion.suggestedStatusName}

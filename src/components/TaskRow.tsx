@@ -327,7 +327,7 @@ export default function TaskRow({
       {/* Comment row */}
       {showComment && (
         <tr className="border-b border-slate-100">
-          <td colSpan={11} className="px-12 py-2 bg-slate-50">
+          <td colSpan={12} className="px-12 py-2 bg-slate-50">
             <textarea
               value={commentValue}
               onChange={(e) => setCommentValue(e.target.value)}
@@ -343,7 +343,7 @@ export default function TaskRow({
       {/* Subtasks */}
       {expanded && (
         <tr className="border-b border-slate-100">
-          <td colSpan={11}>
+          <td colSpan={12}>
             <SubtaskList
               taskMainId={task.id}
               onStatusChange={onSubtaskChange ? (suggested) => onSubtaskChange(task.id, suggested) : undefined}
