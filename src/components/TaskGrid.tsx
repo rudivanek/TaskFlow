@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Task, Phase, Status, Responsible } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
@@ -293,6 +293,27 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
     return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
   });
 
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const handleTableKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    const target = e.target as HTMLElement;
+    const col = target.getAttribute('data-col');
+    const rowAttr = target.getAttribute('data-row');
+    if (!col || rowAttr === null) return;
+
+    const currentRow = parseInt(rowAttr, 10);
+    const nextRow = e.key === 'ArrowDown' ? currentRow + 1 : currentRow - 1;
+    if (nextRow < 0 || nextRow >= sortedTasks.length) return;
+
+    e.preventDefault();
+    const next = tableRef.current?.querySelector<HTMLElement>(`[data-row="${nextRow}"][data-col="${col}"]`);
+    if (next) {
+      next.focus();
+      if (next instanceof HTMLInputElement) next.select();
+    }
+  };
+
   const fmtDate = (d: string) => format(parseISO(d), 'dd MMM yy');
 
   function SortIcon({ field }: { field: SortField }) {
@@ -386,7 +407,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
       )}
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div ref={tableRef} className="flex-1 overflow-auto" onKeyDown={handleTableKeyDown}>
         <table className="w-full text-left">
           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
             <tr className="text-[13px] font-medium text-slate-500 uppercase tracking-wider">
@@ -413,7 +434,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
             </tr>
           </thead>
           <tbody>
-            {sortedTasks.map(task => (
+            {sortedTasks.map((task, idx) => (
               <TaskRow
                 key={task.id}
                 task={task}
@@ -421,6 +442,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
                 statuses={statuses}
                 responsibles={responsibles}
                 allTasks={tasks}
+                rowIndex={idx}
                 onUpdate={handleUpdate}
                 onUpdateDate={handleUpdateDate}
                 onUpdateDays={handleUpdateDays}

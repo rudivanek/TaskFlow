@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-25T15:00:00Z
+**Last Updated:** 2026-06-25T16:00:00Z
 
 ---
 
@@ -45,6 +45,7 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Delete validation (blocks if other tasks depend on this one)
 - Task comment toggle per row
 - Status row tinting: each row receives a subtle background tint matching its task status (green=Done, blue=In Progress, amber=In Review, red=Blocked; no tint for unset/other statuses)
+- **Row keyboard navigation**: while focused on any editable cell (task name, phase, status, responsible, start date, days, end date, or dependencies), pressing ArrowDown moves focus to the same column in the next row; ArrowUp moves to the same column in the previous row. Works across all input types (text, select, date, number). Focus is constrained to the visible rows — navigation stops at the first and last row.
 
 ### 1.5 Subtasks
 - Expandable list below parent task

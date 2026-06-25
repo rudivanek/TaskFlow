@@ -9,6 +9,7 @@ interface TaskRowProps {
   statuses: Status[];
   responsibles: Responsible[];
   allTasks: Task[];
+  rowIndex: number;
   onUpdate: (taskId: string, updates: Partial<Task>) => void;
   onUpdateDate: (taskId: string, field: 'start_date' | 'end_date', value: string) => void;
   onUpdateDays: (taskId: string, days: number) => void;
@@ -31,15 +32,21 @@ interface TaskRowProps {
 function DateCell({
   value,
   onChange,
+  rowIndex,
+  col,
 }: {
   value: string;
   onChange: (v: string) => void;
+  rowIndex: number;
+  col: string;
 }) {
   return (
     <input
       type="date"
       value={value || ''}
       onChange={(e) => { if (e.target.value) onChange(e.target.value); }}
+      data-row={rowIndex}
+      data-col={col}
       className="w-full text-[13px] bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all cursor-pointer"
     />
   );
@@ -51,6 +58,7 @@ export default function TaskRow({
   statuses,
   responsibles,
   allTasks,
+  rowIndex,
   onUpdate,
   onUpdateDate,
   onUpdateDays,
@@ -176,6 +184,8 @@ export default function TaskRow({
             defaultValue={task.task_name}
             onBlur={(e) => handleNameBlur(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+            data-row={rowIndex}
+            data-col="task_name"
             className="w-full text-[13px] bg-transparent border-0 px-1 py-0.5 rounded hover:bg-white focus:bg-white border border-transparent hover:border-slate-200 focus:border-primary-300 transition-all"
             placeholder="Task name..."
           />
@@ -186,6 +196,8 @@ export default function TaskRow({
           <select
             value={task.phase_id || ''}
             onChange={(e) => onUpdate(task.id, { phase_id: e.target.value || null })}
+            data-row={rowIndex}
+            data-col="phase"
             className="w-full text-[13px] bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
           >
             <option value="">-</option>
@@ -198,6 +210,8 @@ export default function TaskRow({
           <select
             value={task.status_id || ''}
             onChange={(e) => onUpdate(task.id, { status_id: e.target.value || null })}
+            data-row={rowIndex}
+            data-col="status"
             className="w-full text-[13px] bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
           >
             <option value="">-</option>
@@ -210,6 +224,8 @@ export default function TaskRow({
           <select
             value={task.responsible_id || ''}
             onChange={(e) => onUpdate(task.id, { responsible_id: e.target.value || null })}
+            data-row={rowIndex}
+            data-col="responsible"
             className="w-full text-[13px] bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
           >
             <option value="">-</option>
@@ -222,6 +238,8 @@ export default function TaskRow({
           <DateCell
             value={task.start_date}
             onChange={(v) => onUpdateDate(task.id, 'start_date', v)}
+            rowIndex={rowIndex}
+            col="start_date"
           />
         </td>
 
@@ -235,6 +253,8 @@ export default function TaskRow({
               const val = parseInt(e.target.value);
               if (!isNaN(val) && val >= 0) onUpdateDays(task.id, val);
             }}
+            data-row={rowIndex}
+            data-col="days"
             className="w-full text-[13px] text-center bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all font-mono"
           />
         </td>
@@ -244,6 +264,8 @@ export default function TaskRow({
           <DateCell
             value={task.end_date}
             onChange={(v) => onUpdateDate(task.id, 'end_date', v)}
+            rowIndex={rowIndex}
+            col="end_date"
           />
         </td>
 
@@ -260,6 +282,8 @@ export default function TaskRow({
               onChange={(e) => setDepsValue(e.target.value)}
               onBlur={handleDepsBlur}
               onKeyDown={(e) => { if (e.key === 'Enter') handleDepsBlur(); if (e.key === 'Escape') setEditingField(null); }}
+              data-row={rowIndex}
+              data-col="deps"
               className="w-full text-[13px] font-mono px-1 py-1 border border-primary-300 rounded"
               placeholder="1,2,3"
             />
