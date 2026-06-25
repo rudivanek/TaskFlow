@@ -3,7 +3,7 @@ import { Task, Phase, Status, Responsible } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
-import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X, CalendarRange } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X, CalendarRange, RefreshCw } from 'lucide-react';
 import { parseISO, differenceInCalendarDays, format } from 'date-fns';
 
 type SortField = 'task_id' | 'task_sort';
@@ -35,6 +35,23 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [highlightedTaskIds, setHighlightedTaskIds] = useState<number[]>([]);
+  const [dateStats, setDateStats] = useState<{ minStart: string; maxEnd: string; totalDays: number } | null>(null);
+
+  const recalcDateStats = () => {
+    const startDates = tasks.map(t => t.start_date).filter(Boolean);
+    const endDates = tasks.map(t => t.end_date).filter(Boolean);
+    const minStart = startDates.length ? startDates.reduce((a, b) => a < b ? a : b) : null;
+    const maxEnd = endDates.length ? endDates.reduce((a, b) => a > b ? a : b) : null;
+    if (minStart && maxEnd) {
+      setDateStats({
+        minStart,
+        maxEnd,
+        totalDays: differenceInCalendarDays(parseISO(maxEnd), parseISO(minStart)) + 1,
+      });
+    } else {
+      setDateStats(null);
+    }
+  };
 
   const loadTasks = useCallback(async () => {
     try {
@@ -263,14 +280,6 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
     return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
   });
 
-  const startDates = tasks.map(t => t.start_date).filter(Boolean);
-  const endDates = tasks.map(t => t.end_date).filter(Boolean);
-  const minStart = startDates.length ? startDates.reduce((a, b) => a < b ? a : b) : null;
-  const maxEnd = endDates.length ? endDates.reduce((a, b) => a > b ? a : b) : null;
-  const totalDays = (minStart && maxEnd)
-    ? differenceInCalendarDays(parseISO(maxEnd), parseISO(minStart)) + 1
-    : null;
-
   const fmtDate = (d: string) => format(parseISO(d), 'dd MMM yy');
 
   function SortIcon({ field }: { field: SortField }) {
@@ -313,16 +322,28 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
           </select>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          {minStart && maxEnd && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
-              <CalendarRange className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-              <span className="text-[13px] text-slate-600 font-medium">{fmtDate(minStart)}</span>
-              <span className="text-[13px] text-slate-400">→</span>
-              <span className="text-[13px] text-slate-600 font-medium">{fmtDate(maxEnd)}</span>
-              <span className="text-[13px] text-slate-400">·</span>
-              <span className="text-[13px] font-semibold text-primary-600">{totalDays}d</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+            <CalendarRange className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+            {dateStats ? (
+              <>
+                <span className="text-[13px] text-slate-600 font-medium">{fmtDate(dateStats.minStart)}</span>
+                <span className="text-[13px] text-slate-400">→</span>
+                <span className="text-[13px] text-slate-600 font-medium">{fmtDate(dateStats.maxEnd)}</span>
+                <span className="text-[13px] text-slate-400">·</span>
+                <span className="text-[13px] font-semibold text-primary-600">{dateStats.totalDays}d</span>
+                <span className="text-[13px] text-slate-300 mx-0.5">|</span>
+              </>
+            ) : (
+              <span className="text-[13px] text-slate-400">Date range</span>
+            )}
+            <button
+              onClick={recalcDateStats}
+              className="p-0.5 rounded hover:bg-slate-200 transition-colors"
+              title="Recalculate date range"
+            >
+              <RefreshCw className="w-3 h-3 text-slate-400" />
+            </button>
+          </div>
           <span className="text-[13px] text-slate-400">{sortedTasks.length} tasks</span>
           <button
             onClick={handleCreateTask}
