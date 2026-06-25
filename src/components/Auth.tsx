@@ -39,6 +39,10 @@ export default function Auth() {
             <CheckSquare className="w-5 h-5 text-white" />
           </div>
           <h1 className="text-2xl font-semibold text-slate-900">Task Flow</h1>
+
+          <span className="pb-[1px] text-[10px] font-normal tracking-wide text-slate-400">
+    Sharpen.Studio
+  </span>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
