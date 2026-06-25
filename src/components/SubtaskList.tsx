@@ -48,14 +48,9 @@ export default function SubtaskList({ taskMainId }: SubtaskListProps) {
   };
 
   const cycleStatus = async (subtask: Subtask) => {
-    let updates: Partial<Subtask>;
-    if (subtask.not_started) {
-      updates = { not_started: false, doing: true, done: false };
-    } else if (subtask.doing) {
-      updates = { not_started: false, doing: false, done: true };
-    } else {
-      updates = { not_started: true, doing: false, done: false };
-    }
+    const updates: Partial<Subtask> = subtask.done
+      ? { not_started: true, doing: false, done: false }
+      : { not_started: false, doing: false, done: true };
     try {
       await taskServices.updateSubtask(subtask.id, updates);
       setSubtasks(subtasks.map(s => s.id === subtask.id ? { ...s, ...updates } : s));
@@ -66,7 +61,6 @@ export default function SubtaskList({ taskMainId }: SubtaskListProps) {
 
   const getStatusBadge = (subtask: Subtask) => {
     if (subtask.done) return { label: 'Done', color: 'bg-green-100 text-green-700' };
-    if (subtask.doing) return { label: 'Doing', color: 'bg-blue-100 text-blue-700' };
     return { label: 'Not Started', color: 'bg-slate-100 text-slate-600' };
   };
 

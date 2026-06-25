@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-24T14:00:00Z
+**Last Updated:** 2026-06-25T00:00:00Z
 
 ---
 
@@ -47,7 +47,7 @@ A streamlined project management application built with React + Vite + Tailwind 
 
 ### 1.5 Subtasks
 - Expandable list below parent task
-- Status cycle on click: Not Started -> Doing -> Done -> Not Started
+- Status toggle on click: Not Started -> Done -> Not Started (two states only; "Doing" removed)
 - Strikethrough styling when done
 - Add/delete subtasks inline
 - Color-coded status badges
