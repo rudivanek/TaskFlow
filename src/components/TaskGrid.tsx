@@ -472,7 +472,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
           </colgroup>
 
           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 group/hdr">
-            <tr className="text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+            <tr className="text-[13px] text-slate-500">
               <th className="px-1 py-2 border-r border-white" style={{ width: FIXED_COL_WIDTHS.expand }} />
               <th className="px-2 py-2 border-r border-white" style={{ width: FIXED_COL_WIDTHS.id }}>
                 <button onClick={() => onSort('task_id')} className="flex items-center hover:text-slate-700">
