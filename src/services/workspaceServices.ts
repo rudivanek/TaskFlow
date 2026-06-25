@@ -1,11 +1,10 @@
 import { supabase } from '../lib/supabase';
 import { Workspace } from '../types';
 
-export async function fetchWorkspaces(userId: string): Promise<Workspace[]> {
+export async function fetchWorkspaces(_userId: string): Promise<Workspace[]> {
   const { data, error } = await supabase
     .from('workspaces')
     .select('*')
-    .eq('user_id', userId)
     .order('sort_order', { ascending: true });
   if (error) throw error;
   return data || [];
@@ -15,7 +14,6 @@ export async function createWorkspace(name: string, userId: string): Promise<Wor
   const { data: existing } = await supabase
     .from('workspaces')
     .select('sort_order')
-    .eq('user_id', userId)
     .order('sort_order', { ascending: false })
     .limit(1);
   const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
