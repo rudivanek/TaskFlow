@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Trash2, Link2, CheckCheck } from 'lucide-react';
+import { MessageSquare, X, Send, Trash2, Link2, CheckCheck, Check } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { ProjectComment, Task } from '../types';
 import * as projectServices from '../services/projectServices';
 import * as taskServices from '../services/taskServices';
 import { supabase } from '../lib/supabase';
-import { markDiscussionAsRead } from '../utils/unreadComments';
+import {
+  getReadCommentIds,
+  markCommentAsRead,
+  markAllCommentsAsRead,
+} from '../utils/unreadComments';
 
 interface Props {
   projectId: string;
@@ -13,7 +17,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onCommentCountChange?: (count: number) => void;
-  onRead?: () => void;
+  onMarkRead?: (count: number) => void;
 }
 
 function formatRelativeTime(iso: string): string {
@@ -34,7 +38,7 @@ export default function ProjectDiscussionPanel({
   isOpen,
   onClose,
   onCommentCountChange,
-  onRead,
+  onMarkRead,
 }: Props) {
   const { user } = useAuth();
   const [comments, setComments] = useState<ProjectComment[]>([]);
@@ -43,7 +47,8 @@ export default function ProjectDiscussionPanel({
   const [text, setText] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [marking, setMarking] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,17 +56,6 @@ export default function ProjectDiscussionPanel({
       loadData();
     }
   }, [isOpen, projectId]);
-
-  async function handleMarkAsRead() {
-    if (!user) return;
-    setMarking(true);
-    try {
-      await markDiscussionAsRead(supabase, projectId, user.id);
-      onRead?.();
-    } finally {
-      setMarking(false);
-    }
-  }
 
   useEffect(() => {
     if (isOpen) {
@@ -79,10 +73,36 @@ export default function ProjectDiscussionPanel({
       setComments(commentsData);
       setTasks(tasksData);
       onCommentCountChange?.(commentsData.length);
+
+      if (user) {
+        const ids = await getReadCommentIds(supabase, projectId, user.id);
+        setReadIds(ids);
+      }
     } catch (err) {
       console.error('Failed to load discussion data:', err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleMarkOne(commentId: string) {
+    if (!user || readIds.has(commentId)) return;
+    await markCommentAsRead(supabase, commentId, user.id);
+    setReadIds(prev => new Set([...prev, commentId]));
+    onMarkRead?.(1);
+  }
+
+  async function handleMarkAll() {
+    if (!user) return;
+    setMarkingAll(true);
+    try {
+      await markAllCommentsAsRead(supabase, projectId, user.id);
+      const allIds = new Set(comments.map(c => c.id));
+      const unreadBefore = comments.filter(c => !readIds.has(c.id)).length;
+      setReadIds(allIds);
+      if (unreadBefore > 0) onMarkRead?.(unreadBefore);
+    } finally {
+      setMarkingAll(false);
     }
   }
 
@@ -101,8 +121,11 @@ export default function ProjectDiscussionPanel({
         text.trim(),
         selectedTaskId || null,
       );
+      // Auto-mark own post as read
+      await markCommentAsRead(supabase, comment.id, user.id);
       const updated = [...comments, comment];
       setComments(updated);
+      setReadIds(prev => new Set([...prev, comment.id]));
       onCommentCountChange?.(updated.length);
       setText('');
       setSelectedTaskId('');
@@ -133,6 +156,8 @@ export default function ProjectDiscussionPanel({
     return (name?.[0] ?? '?').toUpperCase();
   }
 
+  const unreadCount = comments.filter(c => !readIds.has(c.id)).length;
+
   return (
     <>
       {/* Backdrop */}
@@ -145,7 +170,7 @@ export default function ProjectDiscussionPanel({
 
       {/* Slide-in panel */}
       <div
-        className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out`}
+        className="fixed top-0 right-0 h-full z-50 bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out"
         style={{ width: '420px', transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
       >
         {/* Header */}
@@ -154,19 +179,26 @@ export default function ProjectDiscussionPanel({
             <MessageSquare className="w-4 h-4 text-primary-600 flex-shrink-0" />
             <span className="text-sm font-semibold text-slate-800">Discussion</span>
             {projectName && (
-              <span className="text-xs text-slate-400 truncate max-w-[140px]">— {projectName}</span>
+              <span className="text-xs text-slate-400 truncate max-w-[120px]">— {projectName}</span>
+            )}
+            {unreadCount > 0 && (
+              <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                {unreadCount}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              onClick={handleMarkAsRead}
-              disabled={marking}
-              title="Mark all as read"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-40"
-            >
-              <CheckCheck className="w-3.5 h-3.5" />
-              Mark as read
-            </button>
+            {unreadCount > 0 && (
+              <button
+                onClick={handleMarkAll}
+                disabled={markingAll}
+                title="Mark all as read"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-40"
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                Mark all read
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-1.5 hover:bg-slate-100 rounded-md transition-colors"
@@ -193,11 +225,16 @@ export default function ProjectDiscussionPanel({
               {comments.map(c => {
                 const taskName = getTaskName(c.task_id);
                 const isOwn = c.user_id === user?.id;
+                const isRead = readIds.has(c.id);
                 const displayName = c.author_name || c.user_id.slice(0, 8);
                 return (
                   <div
                     key={c.id}
-                    className="group bg-slate-50 rounded-xl border border-slate-100 px-4 py-3 transition-colors hover:border-slate-200"
+                    className={`group rounded-xl border px-4 py-3 transition-colors ${
+                      isRead
+                        ? 'bg-slate-50 border-slate-100 hover:border-slate-200'
+                        : 'bg-blue-50/60 border-blue-200/60 hover:border-blue-300/60'
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -210,16 +247,30 @@ export default function ProjectDiscussionPanel({
                         <span className="text-[11px] text-slate-400 flex-shrink-0">
                           {formatRelativeTime(c.created_at)}
                         </span>
+                        {!isRead && (
+                          <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        )}
                       </div>
-                      {isOwn && (
-                        <button
-                          onClick={() => handleDelete(c.id)}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-500 text-slate-300 transition-all flex-shrink-0"
-                          title="Delete comment"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        {!isRead && (
+                          <button
+                            onClick={() => handleMarkOne(c.id)}
+                            title="Mark as read"
+                            className="p-0.5 text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {isOwn && (
+                          <button
+                            onClick={() => handleDelete(c.id)}
+                            className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-500 text-slate-300 transition-all"
+                            title="Delete comment"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {taskName && (

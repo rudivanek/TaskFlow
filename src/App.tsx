@@ -439,7 +439,7 @@ export default function App() {
           isOpen={showDiscussion}
           onClose={() => setShowDiscussion(false)}
           onCommentCountChange={setTotalCommentCount}
-          onRead={() => setUnreadCount(0)}
+          onMarkRead={(count) => setUnreadCount(prev => Math.max(0, prev - count))}
         />
       )}
 
