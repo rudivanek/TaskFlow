@@ -160,7 +160,6 @@ export default function App() {
     </span>
   </span>
 
-            </span>
           </div>
         </div>
 
