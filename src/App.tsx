@@ -150,14 +150,16 @@ export default function App() {
             </div>
 <span className="text-base font-semibold text-slate-800">
   Task Flow
+
+      <span className="text-[7px] tracking-wide align-super">
+         V 1.1
+    </span>
   <span className="ml-2 text-xs font-normal text-slate-400">
     Powered by{" "}
     <span className="text-[7px] tracking-wide align-super">
       Sharpen.Studio
     </span>
-    <span className="text-[7px] tracking-wide align-super">
-         V 1.1
-    </span>
+
   </span>
 </span>
           </div>
