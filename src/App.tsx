@@ -160,6 +160,11 @@ export default function App() {
   </span>
 </span>
           </div>
+          {selectedProjectName && (
+            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+              <span className="text-[13px] font-semibold text-slate-700 truncate max-w-[220px]">{selectedProjectName}</span>
+            </div>
+          )}
         </div>
 
         {/* View toggle */}

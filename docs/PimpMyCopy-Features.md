@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-25T16:00:00Z
+**Last Updated:** 2026-06-25T16:30:00Z
 
 ---
 
@@ -18,6 +18,12 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Session persistence with auto-refresh tokens
 - Auth guard redirecting unauthenticated users to sign-in page
 - User profile auto-created on signup via database trigger
+
+### 1.2b Main Header Bar
+- Logo icon (no rounded borders) with app name "TaskFlow" and version badge
+- **Active project name** displayed in the header, immediately after the Sharpen.Studio branding, separated by a vertical divider. Updates whenever the selected project changes. Truncated at 220px if the name is long.
+- Center: view toggle (Grid / Kanban / Gantt) — visible only when a project is selected
+- Right: Export dropdown and user menu
 
 ### 1.3 Sidebar Navigation
 - Resizable sidebar (200px - 50% viewport, persists width in localStorage)
