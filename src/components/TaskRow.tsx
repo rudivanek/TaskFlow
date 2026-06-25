@@ -24,6 +24,7 @@ interface TaskRowProps {
   isDragOver?: boolean;
   isDragging?: boolean;
   dragEnabled?: boolean;
+  forceCollapsed?: boolean;
 }
 
 function DateCell({
@@ -63,8 +64,13 @@ export default function TaskRow({
   isDragOver = false,
   isDragging = false,
   dragEnabled = false,
+  forceCollapsed = false,
 }: TaskRowProps) {
   const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (forceCollapsed) setExpanded(false);
+  }, [forceCollapsed]);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [depsValue, setDepsValue] = useState('');
   const [showComment, setShowComment] = useState(false);
