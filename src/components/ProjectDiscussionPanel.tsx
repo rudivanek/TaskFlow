@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageSquare, X, Send, Trash2, Link2, CheckCheck, Check, Users, User } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import {
+  MessageSquare, X, Send, Trash2, Link2, CheckCheck, Check,
+  Users, User, Search, ChevronDown, ChevronUp, CornerDownRight,
+} from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { ProjectComment, Task, Profile } from '../types';
 import * as projectServices from '../services/projectServices';
@@ -11,6 +14,8 @@ import {
   markAllRelevantCommentsAsRead,
 } from '../utils/unreadComments';
 
+type CommentThread = ProjectComment & { replies: ProjectComment[] };
+
 interface Props {
   projectId: string;
   projectName: string;
@@ -19,6 +24,8 @@ interface Props {
   onCommentCountChange?: (count: number) => void;
   onMarkRead?: (count: number) => void;
 }
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -59,6 +66,23 @@ function parseMentionsFromText(
   return { notifyAll: false, notifiedUserIds: ids };
 }
 
+function highlightText(text: string, query: string): React.ReactNode {
+  if (!query.trim()) return <span>{text}</span>;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase()
+          ? <mark key={i} className="bg-yellow-100 text-yellow-800 rounded px-0.5">{part}</mark>
+          : <span key={i}>{part}</span>
+      )}
+    </>
+  );
+}
+
+// ─── component ───────────────────────────────────────────────────────────────
+
 export default function ProjectDiscussionPanel({
   projectId,
   projectName,
@@ -68,23 +92,81 @@ export default function ProjectDiscussionPanel({
   onMarkRead,
 }: Props) {
   const { user } = useAuth();
-  const [comments, setComments] = useState<ProjectComment[]>([]);
+  const [threads, setThreads] = useState<CommentThread[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+
+  // Search
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Thread expand/collapse
+  const [expandedThreadIds, setExpandedThreadIds] = useState<Set<string>>(new Set());
+
+  // Which thread is showing the reply compose
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+
+  // Top-level compose
   const [text, setText] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [markingAll, setMarkingAll] = useState(false);
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
-
-  // @mention state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStart, setMentionStart] = useState(0);
   const [mentionIndex, setMentionIndex] = useState(0);
 
+  // Reply compose (mirrors top-level)
+  const [replyText, setReplyText] = useState('');
+  const [replySubmitting, setReplySubmitting] = useState(false);
+  const [replyMentionQuery, setReplyMentionQuery] = useState<string | null>(null);
+  const [replyMentionStart, setReplyMentionStart] = useState(0);
+  const [replyMentionIndex, setReplyMentionIndex] = useState(0);
+
+  const [markingAll, setMarkingAll] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // ── derived ──────────────────────────────────────────────────────────────
+
+  const mentionResults = mentionQuery !== null
+    ? profiles.filter(p => p.email.toLowerCase().includes(mentionQuery.toLowerCase())).slice(0, 6)
+    : [];
+
+  const replyMentionResults = replyMentionQuery !== null
+    ? profiles.filter(p => p.email.toLowerCase().includes(replyMentionQuery.toLowerCase())).slice(0, 6)
+    : [];
+
+  const allComments = useMemo<ProjectComment[]>(() => [
+    ...threads,
+    ...threads.flatMap(t => t.replies),
+  ], [threads]);
+
+  const filteredThreads = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return threads;
+    return threads.filter(t =>
+      t.content.toLowerCase().includes(q) ||
+      t.replies.some(r => r.content.toLowerCase().includes(q))
+    );
+  }, [threads, searchQuery]);
+
+  function isRelevantToMe(comment: ProjectComment): boolean {
+    if (!user || comment.user_id === user.id) return false;
+    return comment.notify_all || comment.notified_user_ids.includes(user.id);
+  }
+
+  function threadHasUnread(thread: CommentThread): boolean {
+    return (
+      (isRelevantToMe(thread) && !readIds.has(thread.id)) ||
+      thread.replies.some(r => isRelevantToMe(r) && !readIds.has(r.id))
+    );
+  }
+
+  const unreadCount = allComments.filter(c => isRelevantToMe(c) && !readIds.has(c.id)).length;
+
+  // ── effects ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (isOpen && projectId) loadData();
@@ -100,7 +182,53 @@ export default function ProjectDiscussionPanel({
     if (isOpen) {
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     }
-  }, [comments.length, isOpen]);
+  }, [threads.length, isOpen]);
+
+  // Auto-expand threads where a reply matches the search query
+  useEffect(() => {
+    if (!searchQuery) return;
+    const q = searchQuery.toLowerCase();
+    const toExpand = new Set<string>();
+    threads.forEach(t => {
+      if (t.replies.some(r => r.content.toLowerCase().includes(q))) {
+        toExpand.add(t.id);
+      }
+    });
+    if (toExpand.size > 0) {
+      setExpandedThreadIds(prev => new Set([...prev, ...toExpand]));
+    }
+  }, [searchQuery, threads]);
+
+  // Realtime subscription — only active when panel is open
+  useEffect(() => {
+    if (!isOpen || !projectId) return;
+
+    const channel = supabase
+      .channel(`panel-${projectId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'project_comments',
+        filter: `project_id=eq.${projectId}`,
+      }, (payload) => {
+        const c = payload.new as ProjectComment;
+        if (c.parent_id === null) {
+          setThreads(prev => [...prev, { ...c, replies: [] }]);
+        } else {
+          setThreads(prev => prev.map(t =>
+            t.id === c.parent_id
+              ? { ...t, replies: [...t.replies, c] }
+              : t
+          ));
+          setExpandedThreadIds(prev => new Set([...prev, c.parent_id!]));
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [isOpen, projectId]);
+
+  // ── data loading ─────────────────────────────────────────────────────────
 
   async function loadData() {
     setLoading(true);
@@ -109,9 +237,17 @@ export default function ProjectDiscussionPanel({
         projectServices.fetchProjectComments(projectId),
         taskServices.fetchTasks(projectId),
       ]);
-      setComments(commentsData);
       setTasks(tasksData);
+
+      const topLevel = commentsData.filter(c => c.parent_id === null);
+      const replies = commentsData.filter(c => c.parent_id !== null);
+      const built: CommentThread[] = topLevel.map(c => ({
+        ...c,
+        replies: replies.filter(r => r.parent_id === c.id),
+      }));
+      setThreads(built);
       onCommentCountChange?.(commentsData.length);
+
       if (user) {
         const ids = await getReadCommentIds(supabase, projectId, user.id);
         setReadIds(ids);
@@ -123,10 +259,7 @@ export default function ProjectDiscussionPanel({
     }
   }
 
-  function isRelevantToMe(comment: ProjectComment): boolean {
-    if (!user || comment.user_id === user.id) return false;
-    return comment.notify_all || comment.notified_user_ids.includes(user.id);
-  }
+  // ── read tracking ────────────────────────────────────────────────────────
 
   async function handleMarkOne(commentId: string) {
     if (!user || readIds.has(commentId)) return;
@@ -139,7 +272,7 @@ export default function ProjectDiscussionPanel({
     if (!user) return;
     setMarkingAll(true);
     try {
-      const unreadRelevant = comments.filter(c => isRelevantToMe(c) && !readIds.has(c.id));
+      const unreadRelevant = allComments.filter(c => isRelevantToMe(c) && !readIds.has(c.id));
       if (unreadRelevant.length === 0) return;
       await markAllRelevantCommentsAsRead(supabase, projectId, user.id);
       setReadIds(prev => new Set([...prev, ...unreadRelevant.map(c => c.id)]));
@@ -149,13 +282,11 @@ export default function ProjectDiscussionPanel({
     }
   }
 
-  const mentionResults = mentionQuery !== null
-    ? profiles.filter(p => p.email.toLowerCase().includes(mentionQuery.toLowerCase())).slice(0, 6)
-    : [];
+  // ── @mention: top-level ──────────────────────────────────────────────────
 
   const applyMention = useCallback((profile: Profile) => {
-    const after = text.slice(mentionStart + 1 + (mentionQuery?.length ?? 0));
     const before = text.slice(0, mentionStart);
+    const after = text.slice(mentionStart + 1 + (mentionQuery?.length ?? 0));
     const newText = `${before}@${profile.email} ${after.trimStart()}`;
     setText(newText);
     setMentionQuery(null);
@@ -172,14 +303,9 @@ export default function ProjectDiscussionPanel({
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const { value, selectionStart } = e.target;
     setText(value);
-    const mention = detectMention(value, selectionStart ?? value.length);
-    if (mention) {
-      setMentionQuery(mention.query);
-      setMentionStart(mention.start);
-      setMentionIndex(0);
-    } else {
-      setMentionQuery(null);
-    }
+    const m = detectMention(value, selectionStart ?? value.length);
+    if (m) { setMentionQuery(m.query); setMentionStart(m.start); setMentionIndex(0); }
+    else setMentionQuery(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -192,27 +318,63 @@ export default function ProjectDiscussionPanel({
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost();
   };
 
+  // ── @mention: reply ───────────────────────────────────────────────────────
+
+  const applyReplyMention = useCallback((profile: Profile) => {
+    const before = replyText.slice(0, replyMentionStart);
+    const after = replyText.slice(replyMentionStart + 1 + (replyMentionQuery?.length ?? 0));
+    const newText = `${before}@${profile.email} ${after.trimStart()}`;
+    setReplyText(newText);
+    setReplyMentionQuery(null);
+    setTimeout(() => {
+      const ta = replyTextareaRef.current;
+      if (ta) {
+        const pos = before.length + profile.email.length + 2;
+        ta.focus();
+        ta.setSelectionRange(pos, pos);
+      }
+    }, 0);
+  }, [replyText, replyMentionStart, replyMentionQuery]);
+
+  const handleReplyTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { value, selectionStart } = e.target;
+    setReplyText(value);
+    const m = detectMention(value, selectionStart ?? value.length);
+    if (m) { setReplyMentionQuery(m.query); setReplyMentionStart(m.start); setReplyMentionIndex(0); }
+    else setReplyMentionQuery(null);
+  };
+
+  const handleReplyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (replyMentionQuery !== null && replyMentionResults.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setReplyMentionIndex(i => (i + 1) % replyMentionResults.length); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setReplyMentionIndex(i => (i - 1 + replyMentionResults.length) % replyMentionResults.length); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); applyReplyMention(replyMentionResults[replyMentionIndex]); return; }
+      if (e.key === 'Escape') { setReplyMentionQuery(null); return; }
+    }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      if (replyingToId) handlePostReply(replyingToId);
+    }
+  };
+
+  // ── post handlers ────────────────────────────────────────────────────────
+
   async function handlePost() {
     if (!text.trim() || !user) return;
     setSubmitting(true);
     try {
-      const authorName =
-        (user.user_metadata?.full_name as string | undefined) || user.email || '';
+      const authorName = (user.user_metadata?.full_name as string | undefined) || user.email || '';
       const { notifyAll, notifiedUserIds } = parseMentionsFromText(text.trim(), profiles);
       const comment = await projectServices.addProjectDiscussionComment(
-        projectId,
-        user.id,
-        authorName,
-        text.trim(),
-        selectedTaskId || null,
-        notifyAll,
-        notifiedUserIds,
+        projectId, user.id, authorName, text.trim(),
+        selectedTaskId || null, notifyAll, notifiedUserIds, null,
       );
       await markCommentAsRead(supabase, comment.id, user.id);
-      const updated = [...comments, comment];
-      setComments(updated);
+      setThreads(prev => {
+        const updated = [...prev, { ...comment, replies: [] }];
+        onCommentCountChange?.(updated.length + updated.reduce((s, t) => s + t.replies.length, 0));
+        return updated;
+      });
       setReadIds(prev => new Set([...prev, comment.id]));
-      onCommentCountChange?.(updated.length);
       setText('');
       setSelectedTaskId('');
       setMentionQuery(null);
@@ -223,16 +385,48 @@ export default function ProjectDiscussionPanel({
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handlePostReply(parentId: string) {
+    if (!replyText.trim() || !user) return;
+    setReplySubmitting(true);
+    try {
+      const authorName = (user.user_metadata?.full_name as string | undefined) || user.email || '';
+      const { notifyAll, notifiedUserIds } = parseMentionsFromText(replyText.trim(), profiles);
+      const reply = await projectServices.addProjectDiscussionComment(
+        projectId, user.id, authorName, replyText.trim(),
+        null, notifyAll, notifiedUserIds, parentId,
+      );
+      await markCommentAsRead(supabase, reply.id, user.id);
+      setThreads(prev => prev.map(t =>
+        t.id === parentId ? { ...t, replies: [...t.replies, reply] } : t
+      ));
+      setReadIds(prev => new Set([...prev, reply.id]));
+      setExpandedThreadIds(prev => new Set([...prev, parentId]));
+      setReplyText('');
+      setReplyingToId(null);
+      setReplyMentionQuery(null);
+    } catch (err) {
+      console.error('Failed to post reply:', err);
+    } finally {
+      setReplySubmitting(false);
+    }
+  }
+
+  async function handleDelete(id: string, parentId?: string) {
     try {
       await projectServices.deleteProjectComment(id);
-      const updated = comments.filter(c => c.id !== id);
-      setComments(updated);
-      onCommentCountChange?.(updated.length);
+      if (parentId) {
+        setThreads(prev => prev.map(t =>
+          t.id === parentId ? { ...t, replies: t.replies.filter(r => r.id !== id) } : t
+        ));
+      } else {
+        setThreads(prev => prev.filter(t => t.id !== id));
+      }
     } catch (err) {
       console.error('Failed to delete comment:', err);
     }
   }
+
+  // ── display helpers ───────────────────────────────────────────────────────
 
   function getTaskName(taskId: string | null): string | null {
     if (!taskId) return null;
@@ -248,7 +442,15 @@ export default function ProjectDiscussionPanel({
     return names.join(', ');
   }
 
-  const unreadCount = comments.filter(c => isRelevantToMe(c) && !readIds.has(c.id)).length;
+  function toggleThread(id: string) {
+    setExpandedThreadIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  // ── render ────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -260,10 +462,10 @@ export default function ProjectDiscussionPanel({
         onClick={onClose}
       />
 
-      {/* Slide-in panel */}
+      {/* Panel */}
       <div
         className="fixed top-0 right-0 h-full z-50 bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out"
-        style={{ width: '440px', transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
+        style={{ width: '460px', transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0 bg-white">
@@ -284,7 +486,6 @@ export default function ProjectDiscussionPanel({
               <button
                 onClick={handleMarkAll}
                 disabled={markingAll}
-                title="Mark all as read"
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-40"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
@@ -297,89 +498,253 @@ export default function ProjectDiscussionPanel({
           </div>
         </div>
 
-        {/* Comment feed */}
+        {/* Search bar */}
+        <div className="px-5 py-2.5 border-b border-slate-100 flex-shrink-0">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search discussions..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-7 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-300 focus:border-primary-300"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Thread feed */}
         <div className="flex-1 overflow-y-auto px-5 py-4 min-h-0">
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="w-5 h-5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : comments.length === 0 ? (
+          ) : filteredThreads.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400">
               <MessageSquare className="w-10 h-10 mb-3 text-slate-200" />
-              <p className="text-sm font-medium text-slate-400">No comments yet</p>
-              <p className="text-xs mt-1 text-slate-300">Start the discussion below</p>
+              <p className="text-sm font-medium text-slate-400">
+                {searchQuery ? 'No results found' : 'No discussions yet'}
+              </p>
+              <p className="text-xs mt-1 text-slate-300">
+                {searchQuery ? 'Try a different search term' : 'Start the discussion below'}
+              </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {comments.map(c => {
-                const taskName = getTaskName(c.task_id);
-                const isOwn = c.user_id === user?.id;
-                const relevant = isRelevantToMe(c);
-                const isRead = readIds.has(c.id);
-                const unread = relevant && !isRead;
-                const displayName = c.author_name || c.user_id.slice(0, 8);
-                const recipientLabel = getRecipientLabel(c);
+            <div className="space-y-4">
+              {filteredThreads.map(thread => {
+                const isOwn = thread.user_id === user?.id;
+                const relevant = isRelevantToMe(thread);
+                const unread = relevant && !readIds.has(thread.id);
+                const hasUnread = threadHasUnread(thread);
+                const isExpanded = expandedThreadIds.has(thread.id);
+                const taskName = getTaskName(thread.task_id);
+                const displayName = thread.author_name || thread.user_id.slice(0, 8);
 
                 return (
-                  <div
-                    key={c.id}
-                    className={`group rounded-xl border px-4 py-3 transition-colors ${
+                  <div key={thread.id} className="flex flex-col">
+                    {/* Top-level comment */}
+                    <div className={`group rounded-xl border px-4 py-3 transition-colors ${
                       unread
                         ? 'bg-blue-50/60 border-blue-200/60 hover:border-blue-300/60'
-                        : 'bg-slate-50 border-slate-100 hover:border-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <div className="w-5 h-5 bg-primary-100 rounded-full flex-shrink-0 flex items-center justify-center">
-                          <span className="text-[9px] font-bold text-primary-600">{getInitial(displayName)}</span>
+                        : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+                    }`}>
+                      {/* Author row */}
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <div className="w-5 h-5 bg-primary-100 rounded-full flex-shrink-0 flex items-center justify-center">
+                            <span className="text-[9px] font-bold text-primary-600">{getInitial(displayName)}</span>
+                          </div>
+                          <span className="text-xs font-semibold text-slate-700 truncate">{displayName}</span>
+                          <span className="text-[11px] text-slate-400 flex-shrink-0">→</span>
+                          <span className="flex items-center gap-1 flex-shrink-0">
+                            {thread.notify_all || thread.notified_user_ids.length === 0
+                              ? <Users className="w-3 h-3 text-slate-400" />
+                              : <User className="w-3 h-3 text-slate-400" />
+                            }
+                            <span className="text-[11px] text-slate-500 truncate max-w-[130px]">{getRecipientLabel(thread)}</span>
+                          </span>
+                          {unread && <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                          {!unread && hasUnread && <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-300" title="Unread replies" />}
                         </div>
-                        <span className="text-xs font-semibold text-slate-700 truncate">{displayName}</span>
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">→</span>
-                        <span className="flex items-center gap-1 flex-shrink-0">
-                          {c.notify_all || c.notified_user_ids.length === 0
-                            ? <Users className="w-3 h-3 text-slate-400" />
-                            : <User className="w-3 h-3 text-slate-400" />
-                          }
-                          <span className="text-[11px] text-slate-500 truncate max-w-[140px]">{recipientLabel}</span>
-                        </span>
-                        {unread && <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-[11px] text-slate-400">{formatRelativeTime(thread.created_at)}</span>
+                          {unread && (
+                            <button onClick={() => handleMarkOne(thread.id)} title="Mark as read" className="p-0.5 text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded transition-colors">
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {isOwn && (
+                            <button onClick={() => handleDelete(thread.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-500 text-slate-300 transition-all" title="Delete">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className="text-[11px] text-slate-400">{formatRelativeTime(c.created_at)}</span>
-                        {unread && (
+
+                      {taskName && (
+                        <div className="mb-2">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 text-[11px] rounded-full border border-slate-200">
+                            <Link2 className="w-2.5 h-2.5 flex-shrink-0" />
+                            <span className="truncate max-w-[240px]">{taskName}</span>
+                          </span>
+                        </div>
+                      )}
+
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed mb-2">
+                        {highlightText(thread.content, searchQuery)}
+                      </p>
+
+                      {/* Action row */}
+                      <div className="flex items-center gap-3 mt-1">
+                        <button
+                          onClick={() => {
+                            setReplyingToId(replyingToId === thread.id ? null : thread.id);
+                            setReplyText('');
+                            setReplyMentionQuery(null);
+                          }}
+                          className="flex items-center gap-1 text-xs text-primary-500 hover:text-primary-700 font-medium transition-colors"
+                        >
+                          <CornerDownRight className="w-3 h-3" />
+                          Reply
+                        </button>
+                        {thread.replies.length > 0 && (
                           <button
-                            onClick={() => handleMarkOne(c.id)}
-                            title="Mark as read"
-                            className="p-0.5 text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                            onClick={() => toggleThread(thread.id)}
+                            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors"
                           >
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {isOwn && (
-                          <button
-                            onClick={() => handleDelete(c.id)}
-                            className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-500 text-slate-300 transition-all"
-                            title="Delete comment"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            {isExpanded
+                              ? <><ChevronUp className="w-3 h-3" />Hide {thread.replies.length} {thread.replies.length === 1 ? 'reply' : 'replies'}</>
+                              : <><ChevronDown className="w-3 h-3" />{thread.replies.length} {thread.replies.length === 1 ? 'reply' : 'replies'}</>
+                            }
                           </button>
                         )}
                       </div>
                     </div>
 
-                    {taskName && (
-                      <div className="mb-2">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 text-[11px] rounded-full border border-slate-200">
-                          <Link2 className="w-2.5 h-2.5 flex-shrink-0" />
-                          <span className="truncate max-w-[260px]">{taskName}</span>
-                        </span>
+                    {/* Replies */}
+                    {isExpanded && thread.replies.length > 0 && (
+                      <div className="ml-5 mt-1 flex flex-col gap-1 border-l-2 border-slate-100 pl-3">
+                        {thread.replies.map(reply => {
+                          const replyOwn = reply.user_id === user?.id;
+                          const replyRelevant = isRelevantToMe(reply);
+                          const replyUnread = replyRelevant && !readIds.has(reply.id);
+                          const replyDisplayName = reply.author_name || reply.user_id.slice(0, 8);
+                          return (
+                            <div key={reply.id} className={`group rounded-lg border px-3 py-2.5 transition-colors ${
+                              replyUnread
+                                ? 'bg-blue-50/60 border-blue-200/60'
+                                : 'bg-slate-50 border-slate-100 hover:border-slate-200'
+                            }`}>
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                  <div className="w-4 h-4 bg-primary-100 rounded-full flex-shrink-0 flex items-center justify-center">
+                                    <span className="text-[8px] font-bold text-primary-600">{getInitial(replyDisplayName)}</span>
+                                  </div>
+                                  <span className="text-xs font-semibold text-slate-700 truncate">{replyDisplayName}</span>
+                                  <span className="text-[11px] text-slate-400">→</span>
+                                  <span className="flex items-center gap-0.5 flex-shrink-0">
+                                    {reply.notify_all || reply.notified_user_ids.length === 0
+                                      ? <Users className="w-2.5 h-2.5 text-slate-400" />
+                                      : <User className="w-2.5 h-2.5 text-slate-400" />
+                                    }
+                                    <span className="text-[11px] text-slate-500 truncate max-w-[110px]">{getRecipientLabel(reply)}</span>
+                                  </span>
+                                  {replyUnread && <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <span className="text-[11px] text-slate-400">{formatRelativeTime(reply.created_at)}</span>
+                                  {replyUnread && (
+                                    <button onClick={() => handleMarkOne(reply.id)} title="Mark as read" className="p-0.5 text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded transition-colors">
+                                      <Check className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                  {replyOwn && (
+                                    <button onClick={() => handleDelete(reply.id, thread.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-500 text-slate-300 transition-all" title="Delete">
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
+                                {highlightText(reply.content, searchQuery)}
+                              </p>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
-                      {c.content}
-                    </p>
+                    {/* Inline reply compose */}
+                    {replyingToId === thread.id && (
+                      <div className="ml-5 mt-1 border-l-2 border-primary-200 pl-3">
+                        <div className="bg-primary-50/40 border border-primary-100 rounded-lg p-3 flex flex-col gap-2">
+                          <div className="relative">
+                            {/* Reply @mention dropdown */}
+                            {replyMentionQuery !== null && replyMentionResults.length > 0 && (
+                              <div className="absolute bottom-full mb-1 left-0 right-0 z-10 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                                {replyMentionResults.map((p, i) => (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    onMouseDown={e => { e.preventDefault(); applyReplyMention(p); }}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                                      i === replyMentionIndex ? 'bg-primary-50 text-primary-700' : 'text-slate-700 hover:bg-slate-50'
+                                    }`}
+                                  >
+                                    <div className="w-5 h-5 bg-primary-100 rounded-full flex-shrink-0 flex items-center justify-center">
+                                      <span className="text-[9px] font-bold text-primary-600">{getInitial(p.email)}</span>
+                                    </div>
+                                    <span className="truncate">{p.email}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {replyMentionQuery !== null && replyMentionQuery.length > 0 && replyMentionResults.length === 0 && (
+                              <div className="absolute bottom-full mb-1 left-0 z-10 bg-white border border-slate-200 rounded-lg shadow-md px-3 py-2">
+                                <span className="text-xs text-slate-400">No users match "@{replyMentionQuery}"</span>
+                              </div>
+                            )}
+                            <textarea
+                              ref={replyTextareaRef}
+                              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary-300 focus:border-primary-300 bg-white"
+                              style={{ minHeight: '60px' }}
+                              placeholder="Write a reply... @ to mention"
+                              value={replyText}
+                              onChange={handleReplyTextChange}
+                              onKeyDown={handleReplyKeyDown}
+                              disabled={replySubmitting}
+                              autoFocus
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] text-slate-400">@ to mention · Ctrl+Enter to post</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => { setReplyingToId(null); setReplyText(''); setReplyMentionQuery(null); }}
+                                className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handlePostReply(thread.id)}
+                                disabled={!replyText.trim() || replySubmitting}
+                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <Send className="w-3 h-3" />
+                                Reply
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -388,9 +753,8 @@ export default function ProjectDiscussionPanel({
           )}
         </div>
 
-        {/* Compose area */}
+        {/* Top-level compose */}
         <div className="px-5 py-4 border-t border-slate-100 flex-shrink-0 space-y-2 bg-white">
-          {/* Task link */}
           <select
             value={selectedTaskId}
             onChange={e => setSelectedTaskId(e.target.value)}
@@ -402,9 +766,7 @@ export default function ProjectDiscussionPanel({
             ))}
           </select>
 
-          {/* Textarea with @mention dropdown */}
           <div className="relative">
-            {/* Mention dropdown — appears above textarea */}
             {mentionQuery !== null && mentionResults.length > 0 && (
               <div className="absolute bottom-full mb-1 left-0 right-0 z-10 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
                 {mentionResults.map((p, i) => (
@@ -424,19 +786,17 @@ export default function ProjectDiscussionPanel({
                 ))}
               </div>
             )}
-            {/* No-results hint */}
             {mentionQuery !== null && mentionQuery.length > 0 && mentionResults.length === 0 && (
               <div className="absolute bottom-full mb-1 left-0 z-10 bg-white border border-slate-200 rounded-lg shadow-md px-3 py-2">
                 <span className="text-xs text-slate-400">No users match "@{mentionQuery}"</span>
               </div>
             )}
-
             <div className="flex gap-2 items-end">
               <textarea
                 ref={textareaRef}
                 className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary-300 focus:border-primary-300"
                 style={{ minHeight: '72px' }}
-                placeholder="Write a comment... Type @ to mention someone"
+                placeholder="Write a comment... @ to mention"
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
@@ -451,7 +811,7 @@ export default function ProjectDiscussionPanel({
               </button>
             </div>
           </div>
-          <p className="text-[10px] text-slate-400">Type @ to mention — Ctrl+Enter to post</p>
+          <p className="text-[10px] text-slate-400">@ to mention · Ctrl+Enter to post</p>
         </div>
       </div>
     </>
