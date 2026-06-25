@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-25T00:00:00Z
+**Last Updated:** 2026-06-25T12:00:00Z
 
 ---
 
@@ -67,6 +67,7 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Drag-and-drop between columns to change status
 - Click card to open full detail modal
 - Search filter toolbar
+- Sort toggle: "ID" (by task_id) or "Sort" (by task_sort), each with ascending/descending toggle; matches Task Grid sort behavior
 
 ### 1.7 Kanban Task Detail Modal
 - Full task editing form (all fields)

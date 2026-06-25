@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import KanbanTaskDetailModal from './KanbanTaskDetailModal';
 import { isOverdue, isDueToday, isDueSoon, formatDisplayDate } from '../utils/dateUtils';
-import { Search, Loader2, MessageSquare, Calendar } from 'lucide-react';
+import { Search, Loader2, MessageSquare, Calendar, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface KanbanBoardProps {
   projectId: string;
@@ -18,6 +18,8 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<'task_id' | 'task_sort'>('task_sort');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -113,9 +115,27 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
     return 'border-l-slate-200';
   };
 
-  const filteredTasks = tasks.filter(t =>
-    !searchQuery || t.task_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTasks = tasks
+    .filter(t => !searchQuery || t.task_name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      const av = sortField === 'task_id' ? (a.task_id ?? 0) : (a.task_sort ?? 0);
+      const bv = sortField === 'task_id' ? (b.task_id ?? 0) : (b.task_sort ?? 0);
+      return sortDir === 'asc' ? av - bv : bv - av;
+    });
+
+  const handleSort = (field: 'task_id' | 'task_sort') => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: 'task_id' | 'task_sort' }) => {
+    if (sortField !== field) return <ChevronsUpDown className="w-3 h-3" />;
+    return sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
+  };
 
   if (loading) {
     return (
@@ -139,6 +159,21 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
           />
         </div>
         <span className="text-xs text-slate-400 ml-auto">{filteredTasks.length} tasks</span>
+        <div className="flex items-center gap-1 border border-slate-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => handleSort('task_id')}
+            className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium transition-colors ${sortField === 'task_id' ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            ID <SortIcon field="task_id" />
+          </button>
+          <button
+            onClick={() => handleSort('task_sort')}
+            title="Sort by manual sort order"
+            className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium transition-colors ${sortField === 'task_sort' ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            Sort <SortIcon field="task_sort" />
+          </button>
+        </div>
       </div>
 
       {error && (
