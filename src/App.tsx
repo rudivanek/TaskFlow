@@ -148,10 +148,13 @@ export default function App() {
             <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center">
               <CheckSquare className="w-4 h-4 text-white" />
             </div>
-           <span className="text-base font-semibold text-slate-800">
+<span className="text-base font-semibold text-slate-800">
   TaskFlow
-  <span className="ml-2 text-[9px] font-normal tracking-wider text-slate-400 align-middle">
-    Powered by Sharpen.Studio
+  <span className="ml-2 text-xs font-normal text-slate-400">
+    Powered by{" "}
+    <span className="text-[7px] tracking-wide align-super">
+      Sharpen.Studio
+    </span>
   </span>
 </span>
           </div>
