@@ -154,7 +154,6 @@ export default function App() {
     Powered by Sharpen.Studio
   </span>
 </span>
-</span>
           </div>
         </div>
 
