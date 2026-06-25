@@ -233,20 +233,20 @@ export default function GanttChart({ projectId, phases, statuses, responsibles }
     return months;
   }, [dateHeaders, dayWidth]);
 
-  const getDependencyPaths = () => {
+  const getDependencyPaths = (taskList: Task[]) => {
     const paths: { from: Task; to: Task; path: string }[] = [];
-    for (const task of tasks) {
+    for (const task of taskList) {
       if (!task.depends_on_task_ids || task.depends_on_task_ids.length === 0) continue;
-      const toIdx = tasks.indexOf(task);
+      const toIdx = taskList.indexOf(task);
       const toY = toIdx * rowHeight + rowHeight / 2;
 
       const toStartDate = dragState?.taskId === task.id && dragPreview ? dragPreview.startDate : task.start_date;
       const toX = getBarX(toStartDate);
 
       for (const depId of task.depends_on_task_ids) {
-        const fromTask = tasks.find(t => t.task_id === depId);
+        const fromTask = taskList.find(t => t.task_id === depId);
         if (!fromTask) continue;
-        const fromIdx = tasks.indexOf(fromTask);
+        const fromIdx = taskList.indexOf(fromTask);
         const fromY = fromIdx * rowHeight + rowHeight / 2;
 
         const fromEndDate = dragState?.taskId === fromTask.id && dragPreview ? dragPreview.endDate : fromTask.end_date;
@@ -290,7 +290,7 @@ export default function GanttChart({ projectId, phases, statuses, responsibles }
 
   const chartWidth = totalDays * dayWidth;
   const chartHeight = sortedTasks.length * rowHeight;
-  const depPaths = getDependencyPaths();
+  const depPaths = getDependencyPaths(sortedTasks);
 
   return (
     <div className="flex flex-col h-full">
