@@ -8,6 +8,7 @@ import { Phase, Status, Responsible, Task, Subtask } from './types';
 import * as taskServices from './services/taskServices';
 import GanttChart from './components/GanttChart';
 import ProjectDiscussionPanel from './components/ProjectDiscussionPanel';
+import ProjectCommentsModal from './components/ProjectCommentsModal';
 import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
 import { supabase } from './lib/supabase';
 import {
@@ -21,6 +22,7 @@ import {
   ChevronDown,
   Download,
   MessageSquare,
+  MessageCircle,
 } from 'lucide-react';
 
 type ViewMode = 'grid' | 'kanban' | 'gantt';
@@ -44,6 +46,7 @@ export default function App() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDiscussion, setShowDiscussion] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(true);
   const [selectedProjectName, setSelectedProjectName] = useState('');
@@ -70,6 +73,7 @@ export default function App() {
       });
       fetchCommentCount(selectedProjectId);
       setShowDiscussion(false);
+        setShowComments(false);
     } else {
       setCommentCount(0);
     }
@@ -259,6 +263,20 @@ export default function App() {
               )}
             </div>
 
+            {/* Comments button */}
+            <button
+              onClick={() => setShowComments(true)}
+              className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Comments
+              {commentCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-primary-600 text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none">
+                  {commentCount > 99 ? '99+' : commentCount}
+                </span>
+              )}
+            </button>
+
             {/* Discussion button with count badge */}
             <button
               onClick={() => setShowDiscussion(true)}
@@ -369,6 +387,15 @@ export default function App() {
           projectName={selectedProjectName}
           isOpen={showDiscussion}
           onClose={() => setShowDiscussion(false)}
+          onCommentCountChange={setCommentCount}
+        />
+      )}
+
+      {selectedProjectId && showComments && (
+        <ProjectCommentsModal
+          projectId={selectedProjectId}
+          projectName={selectedProjectName}
+          onClose={() => setShowComments(false)}
           onCommentCountChange={setCommentCount}
         />
       )}
