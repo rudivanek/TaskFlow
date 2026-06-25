@@ -149,7 +149,7 @@ export default function App() {
               <CheckSquare className="w-4 h-4 text-white" />
             </div>
 <span className="text-base font-semibold text-slate-800">
-  TaskFlow
+  Task Flow
   <span className="ml-2 text-xs font-normal text-slate-400">
     Powered by{" "}
     <span className="text-[7px] tracking-wide align-super">
