@@ -82,15 +82,15 @@ export default function TaskRow({
   const nameRef = useRef<HTMLInputElement>(null);
 
   const getStatusRowBg = () => {
-    if (!task.status_id) return '';
+    if (!task.status_id) return undefined;
     const status = statuses.find(s => s.id === task.status_id);
-    if (!status) return '';
+    if (!status) return undefined;
     switch (status.status.toLowerCase()) {
-      case 'done': return 'bg-green-50/60';
-      case 'in progress': return 'bg-blue-50/60';
-      case 'in review': return 'bg-amber-50/60';
-      case 'blocked': return 'bg-red-50/60';
-      default: return '';
+      case 'done': return 'rgba(220, 252, 231, 0.6)';
+      case 'in progress': return 'rgba(219, 234, 254, 0.6)';
+      case 'in review': return 'rgba(254, 243, 199, 0.6)';
+      case 'blocked': return 'rgba(254, 226, 226, 0.6)';
+      default: return undefined;
     }
   };
 
@@ -125,9 +125,10 @@ export default function TaskRow({
         onDragOver={onDragOver}
         onDrop={onDrop}
         onDragEnd={onDragEnd}
+        style={!isDragOver && !isHighlighted ? { backgroundColor: getStatusRowBg() } : undefined}
         className={`group border-b border-slate-100 transition-colors
           ${isDragging ? 'opacity-40' : ''}
-          ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : isHighlighted ? 'bg-slate-100' : `${getStatusRowBg()} hover:brightness-95`}
+          ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : isHighlighted ? 'bg-slate-100' : 'hover:brightness-95'}
         `}
       >
         {/* Expand */}
