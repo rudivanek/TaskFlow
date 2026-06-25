@@ -38,7 +38,7 @@ export default function Auth() {
           <div className="w-10 h-10 bg-primary-600 flex items-center justify-center">
             <CheckSquare className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-2xl font-semibold text-slate-900">TaskFlow</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Task Flow</h1>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
