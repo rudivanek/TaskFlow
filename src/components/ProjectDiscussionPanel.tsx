@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Trash2, Link2 } from 'lucide-react';
+import { MessageSquare, X, Send, Trash2, Link2, CheckCheck } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { ProjectComment, Task } from '../types';
 import * as projectServices from '../services/projectServices';
@@ -43,18 +43,25 @@ export default function ProjectDiscussionPanel({
   const [text, setText] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [marking, setMarking] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen && projectId) {
       loadData();
-      if (user) {
-        markDiscussionAsRead(supabase, projectId, user.id).then(() => {
-          onRead?.();
-        });
-      }
     }
   }, [isOpen, projectId]);
+
+  async function handleMarkAsRead() {
+    if (!user) return;
+    setMarking(true);
+    try {
+      await markDiscussionAsRead(supabase, projectId, user.id);
+      onRead?.();
+    } finally {
+      setMarking(false);
+    }
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -147,15 +154,26 @@ export default function ProjectDiscussionPanel({
             <MessageSquare className="w-4 h-4 text-primary-600 flex-shrink-0" />
             <span className="text-sm font-semibold text-slate-800">Discussion</span>
             {projectName && (
-              <span className="text-xs text-slate-400 truncate max-w-[200px]">— {projectName}</span>
+              <span className="text-xs text-slate-400 truncate max-w-[140px]">— {projectName}</span>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-slate-100 rounded-md transition-colors flex-shrink-0"
-          >
-            <X className="w-4 h-4 text-slate-400" />
-          </button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={handleMarkAsRead}
+              disabled={marking}
+              title="Mark all as read"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-40"
+            >
+              <CheckCheck className="w-3.5 h-3.5" />
+              Mark as read
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-slate-100 rounded-md transition-colors"
+            >
+              <X className="w-4 h-4 text-slate-400" />
+            </button>
+          </div>
         </div>
 
         {/* Comment feed */}

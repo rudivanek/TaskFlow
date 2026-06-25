@@ -49,6 +49,7 @@ export default function App() {
   const [showDiscussion, setShowDiscussion] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [totalCommentCount, setTotalCommentCount] = useState(0);
   const [noteCount, setNoteCount] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(true);
   const [selectedProjectName, setSelectedProjectName] = useState('');
@@ -79,11 +80,13 @@ export default function App() {
         if (data) setSelectedProjectName(data.project);
       });
       getUnreadCommentCount(supabase, selectedProjectId).then(setUnreadCount);
+      fetchTotalCommentCount(selectedProjectId);
       fetchNoteCount(selectedProjectId);
       setShowDiscussion(false);
       setShowComments(false);
     } else {
       setUnreadCount(0);
+      setTotalCommentCount(0);
       setNoteCount(0);
     }
   }, [selectedProjectId, user]);
@@ -107,6 +110,7 @@ export default function App() {
           if (newUserId !== user.id && !showDiscussionRef.current) {
             setUnreadCount(prev => prev + 1);
           }
+          setTotalCommentCount(prev => prev + 1);
         },
       )
       .subscribe();
@@ -125,6 +129,14 @@ export default function App() {
     params.set('view', viewMode);
     window.history.replaceState({}, '', `?${params.toString()}`);
   }, [selectedProjectId, viewMode]);
+
+  async function fetchTotalCommentCount(projectId: string) {
+    const { count } = await supabase
+      .from('project_comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId);
+    setTotalCommentCount(count ?? 0);
+  }
 
   async function fetchNoteCount(projectId: string) {
     const { count } = await supabase
@@ -319,11 +331,15 @@ export default function App() {
             >
               <MessageSquare className="w-4 h-4" />
               Discussion
-              {unreadCount > 0 && (
+              {unreadCount > 0 ? (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
-              )}
+              ) : totalCommentCount > 0 ? (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-slate-400 text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none">
+                  {totalCommentCount > 999 ? '999+' : totalCommentCount}
+                </span>
+              ) : null}
             </button>
           </div>
         )}
@@ -422,6 +438,7 @@ export default function App() {
           projectName={selectedProjectName}
           isOpen={showDiscussion}
           onClose={() => setShowDiscussion(false)}
+          onCommentCountChange={setTotalCommentCount}
           onRead={() => setUnreadCount(0)}
         />
       )}
