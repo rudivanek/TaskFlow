@@ -47,10 +47,9 @@ A streamlined project management application built with React + Vite + Tailwind 
 
 ### 1.5 Subtasks
 - Expandable list below parent task
-- Status toggle on click: Not Started -> Done -> Not Started (two states only; "Doing" removed)
-- Strikethrough styling when done
+- Checkbox to toggle done/not-started; checked = Done, unchecked = Not Started
+- Strikethrough styling on task name when done
 - Add/delete subtasks inline
-- Color-coded status badges
 
 ### 1.6 Kanban Board View
 - One column per status (from statuses table, ordered by sort_order)
