@@ -15,6 +15,9 @@ interface TaskGridProps {
   phases: Phase[];
   statuses: Status[];
   responsibles: Responsible[];
+  sortField: SortField;
+  sortDir: SortDir;
+  onSort: (field: SortField) => void;
 }
 
 interface PendingDelete {
@@ -23,7 +26,7 @@ interface PendingDelete {
   dependents: Task[];
 }
 
-export default function TaskGrid({ projectId, phases, statuses, responsibles }: TaskGridProps) {
+export default function TaskGrid({ projectId, phases, statuses, responsibles, sortField, sortDir, onSort }: TaskGridProps) {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
@@ -31,8 +34,6 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [error, setError] = useState('');
-  const [sortField, setSortField] = useState<SortField>('task_sort');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [highlightedTaskIds, setHighlightedTaskIds] = useState<number[]>([]);
@@ -284,14 +285,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
     return matchesSearch && matchesStatus;
   });
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
-  };
+  const handleSort = (field: SortField) => onSort(field);
 
   const sortedTasks = [...filteredTasks].sort((a, b) => {
     const av = a[sortField] ?? 0;

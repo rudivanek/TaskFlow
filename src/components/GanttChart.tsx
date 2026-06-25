@@ -10,6 +10,9 @@ interface GanttChartProps {
   phases: Phase[];
   statuses: Status[];
   responsibles: Responsible[];
+  sortField: 'task_id' | 'task_sort';
+  sortDir: 'asc' | 'desc';
+  onSort: (field: 'task_id' | 'task_sort') => void;
 }
 
 type DragMode = 'move' | 'resize-left' | 'resize-right';
@@ -25,12 +28,10 @@ interface DragState {
 
 const DAY_WIDTHS = [20, 32, 48, 64];
 
-export default function GanttChart({ projectId, phases, statuses, responsibles }: GanttChartProps) {
+export default function GanttChart({ projectId, phases, statuses, responsibles, sortField, sortDir, onSort }: GanttChartProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [sortField, setSortField] = useState<'task_id' | 'task_sort'>('task_sort');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [dragPreview, setDragPreview] = useState<{ startDate: string; endDate: string; days: number } | null>(null);
@@ -260,14 +261,7 @@ export default function GanttChart({ projectId, phases, statuses, responsibles }
     return paths;
   };
 
-  const handleSort = (field: 'task_id' | 'task_sort') => {
-    if (sortField === field) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
-  };
+  const handleSort = (field: 'task_id' | 'task_sort') => onSort(field);
 
   const SortIcon = ({ field }: { field: 'task_id' | 'task_sort' }) => {
     if (sortField !== field) return <ChevronsUpDown className="w-3 h-3" />;

@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-25T14:00:00Z
+**Last Updated:** 2026-06-25T15:00:00Z
 
 ---
 
@@ -90,7 +90,7 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Tooltip on hover showing task ID, name, date range, and duration
 - Interactive drag-to-resize: drag left edge to change start date, drag right edge to change end date
 - Interactive drag-to-move: drag the bar center to shift both start and end dates while keeping duration
-- Sort toggle: "ID" (by task_id) or "Sort" (by task_sort), each with ascending/descending toggle; matches Task Grid and Kanban sort behavior
+- Sort toggle: "ID" (by task_id) or "Sort" (by task_sort), each with ascending/descending toggle; sort state is shared with Task Grid — changing sort in either view updates both
 - Visual resize handles appear on hover (vertical pill indicators on bar edges)
 - Live preview tooltip showing new dates/duration during drag
 - On drop, persists changes to Supabase and automatically cascades dependency dates to downstream tasks

@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 
 type ViewMode = 'grid' | 'kanban' | 'gantt';
+type SortField = 'task_id' | 'task_sort';
+type SortDir = 'asc' | 'desc';
 
 export default function App() {
   const { user, loading, signOut } = useAuth();
@@ -44,6 +46,17 @@ export default function App() {
   const [showComments, setShowComments] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(true);
   const [selectedProjectName, setSelectedProjectName] = useState('');
+  const [sortField, setSortField] = useState<SortField>('task_sort');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
 
   useEffect(() => {
     if (user) loadLookups();
@@ -290,6 +303,9 @@ export default function App() {
               phases={phases}
               statuses={statuses}
               responsibles={responsibles}
+              sortField={sortField}
+              sortDir={sortDir}
+              onSort={handleSort}
             />
           ) : viewMode === 'kanban' ? (
             <KanbanBoard
@@ -306,6 +322,9 @@ export default function App() {
               phases={phases}
               statuses={statuses}
               responsibles={responsibles}
+              sortField={sortField}
+              sortDir={sortDir}
+              onSort={handleSort}
             />
           )}
         </main>
