@@ -10,7 +10,7 @@ import GanttChart from './components/GanttChart';
 import ProjectDiscussionPanel from './components/ProjectDiscussionPanel';
 import ProjectCommentsModal from './components/ProjectCommentsModal';
 import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
-import { getUnreadCommentCount } from './utils/unreadComments';
+import { getUnreadCountsByProjects } from './utils/unreadComments';
 import { supabase } from './lib/supabase';
 import {
   CheckSquare,
@@ -48,7 +48,8 @@ export default function App() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDiscussion, setShowDiscussion] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  // Per-project unread counts (used by both Sidebar badges and header badge)
+  const [unreadByProject, setUnreadByProject] = useState<Record<string, number>>({});
   const [totalCommentCount, setTotalCommentCount] = useState(0);
   const [noteCount, setNoteCount] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(true);
@@ -56,10 +57,13 @@ export default function App() {
   const [sortField, setSortField] = useState<SortField>('task_sort');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const showDiscussionRef = useRef(showDiscussion);
+  const selectedProjectIdRef = useRef(selectedProjectId);
 
-  useEffect(() => {
-    showDiscussionRef.current = showDiscussion;
-  }, [showDiscussion]);
+  // Derived: unread count for the currently selected project
+  const unreadCount = unreadByProject[selectedProjectId ?? ''] ?? 0;
+
+  useEffect(() => { showDiscussionRef.current = showDiscussion; }, [showDiscussion]);
+  useEffect(() => { selectedProjectIdRef.current = selectedProjectId; }, [selectedProjectId]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -74,51 +78,67 @@ export default function App() {
     if (user) loadLookups();
   }, [user]);
 
+  // When selected project changes, load its name, total comment count, and notes
   useEffect(() => {
     if (selectedProjectId && user) {
       supabase.from('projects').select('project').eq('id', selectedProjectId).single().then(({ data }) => {
         if (data) setSelectedProjectName(data.project);
       });
-      getUnreadCommentCount(supabase, selectedProjectId).then(setUnreadCount);
       fetchTotalCommentCount(selectedProjectId);
       fetchNoteCount(selectedProjectId);
       setShowDiscussion(false);
       setShowComments(false);
     } else {
-      setUnreadCount(0);
       setTotalCommentCount(0);
       setNoteCount(0);
     }
   }, [selectedProjectId, user]);
 
-  // Realtime subscription — increment unread badge when a new comment arrives from another user
+  // Called by Sidebar once it knows all project IDs — fetch all unread counts in one query
+  const handleProjectsLoaded = useCallback((projectIds: string[]) => {
+    if (!user || projectIds.length === 0) return;
+    getUnreadCountsByProjects(supabase, projectIds).then(counts => {
+      setUnreadByProject(counts);
+    });
+  }, [user]);
+
+  // Global realtime subscription — covers ALL projects so badge shows anywhere
   useEffect(() => {
-    if (!selectedProjectId || !user) return;
+    if (!user) return;
 
     const channel = supabase
-      .channel(`discussion-${selectedProjectId}`)
+      .channel('global-discussion-comments')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'project_comments',
-          filter: `project_id=eq.${selectedProjectId}`,
-        },
+        { event: 'INSERT', schema: 'public', table: 'project_comments' },
         (payload) => {
-          const c = payload.new as { user_id?: string; notify_all?: boolean; notified_user_ids?: string[] };
+          const c = payload.new as {
+            project_id: string;
+            user_id?: string;
+            notify_all?: boolean;
+            notified_user_ids?: string[];
+          };
           const isOwn = c.user_id === user.id;
           const isForMe = c.notify_all !== false || (c.notified_user_ids ?? []).includes(user.id);
-          if (!isOwn && isForMe && !showDiscussionRef.current) {
-            setUnreadCount(prev => prev + 1);
+
+          const isCurrent = c.project_id === selectedProjectIdRef.current;
+          if (isCurrent) setTotalCommentCount(prev => prev + 1);
+
+          if (!isOwn && isForMe) {
+            const panelOpen = isCurrent && showDiscussionRef.current;
+            if (!panelOpen) {
+              setUnreadByProject(prev => ({
+                ...prev,
+                [c.project_id]: (prev[c.project_id] ?? 0) + 1,
+              }));
+            }
           }
-          setTotalCommentCount(prev => prev + 1);
         },
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [selectedProjectId, user]);
+  }, [user]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -216,14 +236,8 @@ export default function App() {
             </div>
 <span className="inline-flex items-end gap-2 text-base font-semibold text-slate-800">
   <span>Task Flow</span>
-
-  <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">
-    V 1.1
-  </span>
-
-  <span className="pb-[1px] text-[10px] font-normal tracking-wide text-slate-400">
-    Sharpen.Studio
-  </span>
+  <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">V 1.1</span>
+  <span className="pb-[1px] text-[10px] font-normal tracking-wide text-slate-400">Sharpen.Studio</span>
 </span>
           </div>
           {selectedProjectName && (
@@ -240,35 +254,26 @@ export default function App() {
               <button
                 onClick={() => setViewMode('grid')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'grid'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                  viewMode === 'grid' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
-                <LayoutGrid className="w-4 h-4" />
-                Grid
+                <LayoutGrid className="w-4 h-4" />Grid
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'kanban'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                  viewMode === 'kanban' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
-                <Kanban className="w-4 h-4" />
-                Kanban
+                <Kanban className="w-4 h-4" />Kanban
               </button>
               <button
                 onClick={() => setViewMode('gantt')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'gantt'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                  viewMode === 'gantt' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
-                <GanttChartSquare className="w-4 h-4" />
-                Gantt
+                <GanttChartSquare className="w-4 h-4" />Gantt
               </button>
             </div>
 
@@ -278,34 +283,20 @@ export default function App() {
                 onClick={() => setShowExportMenu(!showExportMenu)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                <Download className="w-4 h-4" />
-                Export
-                <ChevronDown className="w-3.5 h-3.5" />
+                <Download className="w-4 h-4" />Export<ChevronDown className="w-3.5 h-3.5" />
               </button>
               {showExportMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
                   <div className="absolute left-0 top-full mt-1 z-50 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
-                    <button
-                      onClick={handleExportTasks}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
-                    >
-                      <Download className="w-4 h-4 text-slate-400" />
-                      Main Tasks to CSV
+                    <button onClick={handleExportTasks} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left">
+                      <Download className="w-4 h-4 text-slate-400" />Main Tasks to CSV
                     </button>
-                    <button
-                      onClick={handleExportTasksWithSubtasks}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
-                    >
-                      <Download className="w-4 h-4 text-slate-400" />
-                      Tasks with Subtasks to CSV
+                    <button onClick={handleExportTasksWithSubtasks} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left">
+                      <Download className="w-4 h-4 text-slate-400" />Tasks with Subtasks to CSV
                     </button>
-                    <button
-                      onClick={handleExportGantt}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
-                    >
-                      <Download className="w-4 h-4 text-slate-400" />
-                      Export Gantt (Excel)
+                    <button onClick={handleExportGantt} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left">
+                      <Download className="w-4 h-4 text-slate-400" />Export Gantt (Excel)
                     </button>
                   </div>
                 </>
@@ -317,8 +308,7 @@ export default function App() {
               onClick={() => setShowComments(true)}
               className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              <MessageCircle className="w-4 h-4" />
-              Comments
+              <MessageCircle className="w-4 h-4" />Comments
               {noteCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-primary-600 text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none">
                   {noteCount > 99 ? '99+' : noteCount}
@@ -326,13 +316,12 @@ export default function App() {
               )}
             </button>
 
-            {/* Discussion button — red unread badge */}
+            {/* Discussion button */}
             <button
               onClick={() => setShowDiscussion(true)}
               className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              <MessageSquare className="w-4 h-4" />
-              Discussion
+              <MessageSquare className="w-4 h-4" />Discussion
               {unreadCount > 0 ? (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -358,7 +347,6 @@ export default function App() {
             <span className="text-sm text-slate-600 hidden sm:inline">{user.email}</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
-
           {showUserMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
@@ -371,8 +359,7 @@ export default function App() {
                   onClick={() => { signOut(); setShowUserMenu(false); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
                 >
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
+                  <LogOut className="w-4 h-4" />Sign Out
                 </button>
               </div>
             </>
@@ -387,6 +374,8 @@ export default function App() {
           onSelectProject={setSelectedProjectId}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          unreadByProject={unreadByProject}
+          onProjectsLoaded={handleProjectsLoaded}
         />
 
         <main className="flex-1 overflow-hidden bg-white">
@@ -441,7 +430,13 @@ export default function App() {
           isOpen={showDiscussion}
           onClose={() => setShowDiscussion(false)}
           onCommentCountChange={setTotalCommentCount}
-          onMarkRead={(count) => setUnreadCount(prev => Math.max(0, prev - count))}
+          onMarkRead={(count) => {
+            if (!selectedProjectId) return;
+            setUnreadByProject(prev => ({
+              ...prev,
+              [selectedProjectId]: Math.max(0, (prev[selectedProjectId] ?? 0) - count),
+            }));
+          }}
         />
       )}
 

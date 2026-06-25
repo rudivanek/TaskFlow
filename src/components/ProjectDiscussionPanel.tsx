@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageSquare, X, Send, Trash2, Link2, CheckCheck, Check, Users, User } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { ProjectComment, Task, Profile } from '../types';
@@ -36,6 +36,29 @@ function getInitial(name: string): string {
   return (name?.[0] ?? '?').toUpperCase();
 }
 
+function detectMention(value: string, cursor: number): { query: string; start: number } | null {
+  const beforeCursor = value.slice(0, cursor);
+  const match = beforeCursor.match(/@(\S*)$/);
+  if (!match) return null;
+  return { query: match[1], start: cursor - match[0].length };
+}
+
+function parseMentionsFromText(
+  text: string,
+  profiles: Profile[],
+): { notifyAll: boolean; notifiedUserIds: string[] } {
+  const regex = /@(\S+)/g;
+  const matches = [...text.matchAll(regex)].map(m => m[1].replace(/[.,!?:;]+$/, ''));
+  if (matches.length === 0) return { notifyAll: true, notifiedUserIds: [] };
+  const ids: string[] = [];
+  for (const email of matches) {
+    const profile = profiles.find(p => p.email.toLowerCase() === email.toLowerCase());
+    if (profile && !ids.includes(profile.id)) ids.push(profile.id);
+  }
+  if (ids.length === 0) return { notifyAll: true, notifiedUserIds: [] };
+  return { notifyAll: false, notifiedUserIds: ids };
+}
+
 export default function ProjectDiscussionPanel({
   projectId,
   projectName,
@@ -51,12 +74,17 @@ export default function ProjectDiscussionPanel({
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState('');
-  const [notifyAll, setNotifyAll] = useState(true);
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+
+  // @mention state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionStart, setMentionStart] = useState(0);
+  const [mentionIndex, setMentionIndex] = useState(0);
+
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isOpen && projectId) loadData();
@@ -84,7 +112,6 @@ export default function ProjectDiscussionPanel({
       setComments(commentsData);
       setTasks(tasksData);
       onCommentCountChange?.(commentsData.length);
-
       if (user) {
         const ids = await getReadCommentIds(supabase, projectId, user.id);
         setReadIds(ids);
@@ -122,14 +149,56 @@ export default function ProjectDiscussionPanel({
     }
   }
 
+  const mentionResults = mentionQuery !== null
+    ? profiles.filter(p => p.email.toLowerCase().includes(mentionQuery.toLowerCase())).slice(0, 6)
+    : [];
+
+  const applyMention = useCallback((profile: Profile) => {
+    const after = text.slice(mentionStart + 1 + (mentionQuery?.length ?? 0));
+    const before = text.slice(0, mentionStart);
+    const newText = `${before}@${profile.email} ${after.trimStart()}`;
+    setText(newText);
+    setMentionQuery(null);
+    setTimeout(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        const pos = before.length + profile.email.length + 2;
+        ta.focus();
+        ta.setSelectionRange(pos, pos);
+      }
+    }, 0);
+  }, [text, mentionStart, mentionQuery]);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { value, selectionStart } = e.target;
+    setText(value);
+    const mention = detectMention(value, selectionStart ?? value.length);
+    if (mention) {
+      setMentionQuery(mention.query);
+      setMentionStart(mention.start);
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionQuery !== null && mentionResults.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionResults.length); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionResults.length) % mentionResults.length); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); applyMention(mentionResults[mentionIndex]); return; }
+      if (e.key === 'Escape') { setMentionQuery(null); return; }
+    }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost();
+  };
+
   async function handlePost() {
     if (!text.trim() || !user) return;
-    if (!notifyAll && selectedUserIds.length === 0) return;
-
     setSubmitting(true);
     try {
       const authorName =
         (user.user_metadata?.full_name as string | undefined) || user.email || '';
+      const { notifyAll, notifiedUserIds } = parseMentionsFromText(text.trim(), profiles);
       const comment = await projectServices.addProjectDiscussionComment(
         projectId,
         user.id,
@@ -137,9 +206,8 @@ export default function ProjectDiscussionPanel({
         text.trim(),
         selectedTaskId || null,
         notifyAll,
-        selectedUserIds,
+        notifiedUserIds,
       );
-      // Auto-mark own post as read
       await markCommentAsRead(supabase, comment.id, user.id);
       const updated = [...comments, comment];
       setComments(updated);
@@ -147,8 +215,7 @@ export default function ProjectDiscussionPanel({
       onCommentCountChange?.(updated.length);
       setText('');
       setSelectedTaskId('');
-      setNotifyAll(true);
-      setSelectedUserIds([]);
+      setMentionQuery(null);
     } catch (err) {
       console.error('Failed to post comment:', err);
     } finally {
@@ -181,14 +248,7 @@ export default function ProjectDiscussionPanel({
     return names.join(', ');
   }
 
-  function toggleUserId(id: string) {
-    setSelectedUserIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  }
-
   const unreadCount = comments.filter(c => isRelevantToMe(c) && !readIds.has(c.id)).length;
-  const canPost = text.trim().length > 0 && (notifyAll || selectedUserIds.length > 0);
 
   return (
     <>
@@ -231,10 +291,7 @@ export default function ProjectDiscussionPanel({
                 Mark all read
               </button>
             )}
-            <button
-              onClick={onClose}
-              className="p-1.5 hover:bg-slate-100 rounded-md transition-colors"
-            >
+            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-md transition-colors">
               <X className="w-4 h-4 text-slate-400" />
             </button>
           </div>
@@ -272,27 +329,21 @@ export default function ProjectDiscussionPanel({
                         : 'bg-slate-50 border-slate-100 hover:border-slate-200'
                     }`}
                   >
-                    {/* Author → recipient row */}
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         <div className="w-5 h-5 bg-primary-100 rounded-full flex-shrink-0 flex items-center justify-center">
-                          <span className="text-[9px] font-bold text-primary-600">
-                            {getInitial(displayName)}
-                          </span>
+                          <span className="text-[9px] font-bold text-primary-600">{getInitial(displayName)}</span>
                         </div>
                         <span className="text-xs font-semibold text-slate-700 truncate">{displayName}</span>
                         <span className="text-[11px] text-slate-400 flex-shrink-0">→</span>
                         <span className="flex items-center gap-1 flex-shrink-0">
-                          {c.notify_all || c.notified_user_ids.length === 0 ? (
-                            <Users className="w-3 h-3 text-slate-400" />
-                          ) : (
-                            <User className="w-3 h-3 text-slate-400" />
-                          )}
+                          {c.notify_all || c.notified_user_ids.length === 0
+                            ? <Users className="w-3 h-3 text-slate-400" />
+                            : <User className="w-3 h-3 text-slate-400" />
+                          }
                           <span className="text-[11px] text-slate-500 truncate max-w-[140px]">{recipientLabel}</span>
                         </span>
-                        {unread && (
-                          <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        )}
+                        {unread && <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500" />}
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <span className="text-[11px] text-slate-400">{formatRelativeTime(c.created_at)}</span>
@@ -338,7 +389,7 @@ export default function ProjectDiscussionPanel({
         </div>
 
         {/* Compose area */}
-        <div className="px-5 py-4 border-t border-slate-100 flex-shrink-0 space-y-2.5 bg-white">
+        <div className="px-5 py-4 border-t border-slate-100 flex-shrink-0 space-y-2 bg-white">
           {/* Task link */}
           <select
             value={selectedTaskId}
@@ -347,72 +398,60 @@ export default function ProjectDiscussionPanel({
           >
             <option value="">Link to task (optional)</option>
             {tasks.map(t => (
-              <option key={t.id} value={t.id}>
-                #{t.task_id} {t.task_name}
-              </option>
+              <option key={t.id} value={t.id}>#{t.task_id} {t.task_name}</option>
             ))}
           </select>
 
-          {/* Notify selector */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-slate-500">Notify</label>
-              <select
-                value={notifyAll ? 'all' : 'specific'}
-                onChange={e => {
-                  setNotifyAll(e.target.value === 'all');
-                  setSelectedUserIds([]);
-                }}
-                className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-600"
-              >
-                <option value="all">All users</option>
-                <option value="specific">Specific people...</option>
-              </select>
-            </div>
-
-            {!notifyAll && (
-              <div className="flex flex-col gap-1 max-h-28 overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50">
-                {profiles.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-1 px-1">No other users found</p>
-                ) : (
-                  profiles.map(p => (
-                    <label key={p.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-900 px-1 py-0.5 rounded hover:bg-slate-100">
-                      <input
-                        type="checkbox"
-                        checked={selectedUserIds.includes(p.id)}
-                        onChange={() => toggleUserId(p.id)}
-                        className="rounded border-slate-300 text-primary-600"
-                      />
-                      {p.email}
-                    </label>
-                  ))
-                )}
+          {/* Textarea with @mention dropdown */}
+          <div className="relative">
+            {/* Mention dropdown — appears above textarea */}
+            {mentionQuery !== null && mentionResults.length > 0 && (
+              <div className="absolute bottom-full mb-1 left-0 right-0 z-10 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                {mentionResults.map((p, i) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onMouseDown={e => { e.preventDefault(); applyMention(p); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                      i === mentionIndex ? 'bg-primary-50 text-primary-700' : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="w-5 h-5 bg-primary-100 rounded-full flex-shrink-0 flex items-center justify-center">
+                      <span className="text-[9px] font-bold text-primary-600">{getInitial(p.email)}</span>
+                    </div>
+                    <span className="truncate">{p.email}</span>
+                  </button>
+                ))}
               </div>
             )}
-          </div>
+            {/* No-results hint */}
+            {mentionQuery !== null && mentionQuery.length > 0 && mentionResults.length === 0 && (
+              <div className="absolute bottom-full mb-1 left-0 z-10 bg-white border border-slate-200 rounded-lg shadow-md px-3 py-2">
+                <span className="text-xs text-slate-400">No users match "@{mentionQuery}"</span>
+              </div>
+            )}
 
-          {/* Message input */}
-          <div className="flex gap-2 items-end">
-            <textarea
-              className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400"
-              style={{ minHeight: '68px' }}
-              placeholder="Write a comment..."
-              value={text}
-              onChange={e => setText(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost();
-              }}
-              disabled={submitting}
-            />
-            <button
-              onClick={handlePost}
-              disabled={!canPost || submitting}
-              className="p-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0 self-end"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+            <div className="flex gap-2 items-end">
+              <textarea
+                ref={textareaRef}
+                className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary-300 focus:border-primary-300"
+                style={{ minHeight: '72px' }}
+                placeholder="Write a comment... Type @ to mention someone"
+                value={text}
+                onChange={handleTextChange}
+                onKeyDown={handleKeyDown}
+                disabled={submitting}
+              />
+              <button
+                onClick={handlePost}
+                disabled={!text.trim() || submitting}
+                className="p-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0 self-end"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <p className="text-[10px] text-slate-400">Ctrl+Enter to post</p>
+          <p className="text-[10px] text-slate-400">Type @ to mention — Ctrl+Enter to post</p>
         </div>
       </div>
     </>

@@ -23,9 +23,11 @@ interface SidebarProps {
   onSelectProject: (projectId: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  unreadByProject?: Record<string, number>;
+  onProjectsLoaded?: (projectIds: string[]) => void;
 }
 
-export default function Sidebar({ selectedProjectId, onSelectProject, collapsed, onToggleCollapse }: SidebarProps) {
+export default function Sidebar({ selectedProjectId, onSelectProject, collapsed, onToggleCollapse, unreadByProject = {}, onProjectsLoaded }: SidebarProps) {
   const { user } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -83,6 +85,9 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
         setExpandedWorkspaces(new Set(ws.map(w => w.id)));
         const prjs = await projectServices.fetchProjects(ws.map(w => w.id), true);
         setProjects(prjs);
+        // Report all active project IDs so App.tsx can load unread counts
+        const activeIds = prjs.filter(p => !p.deleted).map(p => p.id);
+        if (activeIds.length > 0) onProjectsLoaded?.(activeIds);
       }
     } catch (err) {
       console.error('Failed to load sidebar data:', err);
@@ -263,7 +268,12 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
                   }`}
                 >
                   <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />
-                  <span className="truncate">{p.project}</span>
+                  <span className="truncate flex-1">{p.project}</span>
+                  {(unreadByProject[p.id] ?? 0) > 0 && (
+                    <span className="flex-shrink-0 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                      {(unreadByProject[p.id] ?? 0) > 9 ? '9+' : unreadByProject[p.id]}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -421,9 +431,14 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
                             className="flex-1 text-sm px-1 py-0 border border-primary-300 rounded"
                           />
                         ) : (
-                          <span className="truncate">{p.project}</span>
+                          <span className="truncate flex-1">{p.project}</span>
                         )}
                         {p.favorite && <Star className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />}
+                        {(unreadByProject[p.id] ?? 0) > 0 && (
+                          <span className="flex-shrink-0 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                            {(unreadByProject[p.id] ?? 0) > 9 ? '9+' : unreadByProject[p.id]}
+                          </span>
+                        )}
                       </div>
                     ))}
 
