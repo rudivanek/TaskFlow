@@ -159,7 +159,7 @@ export default function App() {
       V.1.1
     </span>
   </span>
-</span>
+
             </span>
           </div>
         </div>
