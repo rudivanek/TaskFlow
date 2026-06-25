@@ -3,7 +3,7 @@ import { Task, Phase, Status, Responsible } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
-import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X, CalendarRange } from 'lucide-react';
 
 type SortField = 'task_id' | 'task_sort';
 type SortDir = 'asc' | 'desc';
@@ -262,6 +262,16 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
     return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
   });
 
+  const startDates = tasks.map(t => t.start_date).filter(Boolean);
+  const endDates = tasks.map(t => t.end_date).filter(Boolean);
+  const minStart = startDates.length ? startDates.reduce((a, b) => a < b ? a : b) : null;
+  const maxEnd = endDates.length ? endDates.reduce((a, b) => a > b ? a : b) : null;
+  const totalDays = (minStart && maxEnd)
+    ? Math.round((new Date(maxEnd).getTime() - new Date(minStart).getTime()) / 86400000) + 1
+    : null;
+
+  const fmtDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+
   function SortIcon({ field }: { field: SortField }) {
     if (sortField !== field) return <ChevronsUpDown className="w-3 h-3 ml-1 text-slate-400" />;
     return sortDir === 'asc'
@@ -301,7 +311,17 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
             {statuses.map(s => <option key={s.id} value={s.id}>{s.status}</option>)}
           </select>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-3">
+          {minStart && maxEnd && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+              <CalendarRange className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+              <span className="text-[13px] text-slate-600 font-medium">{fmtDate(minStart)}</span>
+              <span className="text-[13px] text-slate-400">→</span>
+              <span className="text-[13px] text-slate-600 font-medium">{fmtDate(maxEnd)}</span>
+              <span className="text-[13px] text-slate-400">·</span>
+              <span className="text-[13px] font-semibold text-primary-600">{totalDays}d</span>
+            </div>
+          )}
           <span className="text-[13px] text-slate-400">{sortedTasks.length} tasks</span>
           <button
             onClick={handleCreateTask}
