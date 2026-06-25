@@ -156,7 +156,7 @@ export default function App() {
       Sharpen.Studio
     </span>
     <span className="text-[7px] tracking-wide align-super">
-      V 1.1
+         V 1.1
     </span>
   </span>
 </span>
