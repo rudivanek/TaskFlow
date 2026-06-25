@@ -156,7 +156,7 @@ export default function App() {
     </span>
   <span className="ml-2 text-xs font-normal text-slate-400">
     Powered by{" "}
-    <span className="text-[7px] tracking-wide align-super">
+    <span className="text-[17px] tracking-wide align-super">
       Sharpen.Studio
     </span>
 
