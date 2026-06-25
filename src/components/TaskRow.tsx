@@ -87,6 +87,7 @@ export default function TaskRow({
     if (!status) return undefined;
     switch (status.status.toLowerCase()) {
       case 'done': return 'rgba(220, 252, 231, 0.6)';
+      case 'doing':
       case 'in progress': return 'rgba(219, 234, 254, 0.6)';
       case 'in review': return 'rgba(254, 243, 199, 0.6)';
       case 'blocked': return 'rgba(254, 226, 226, 0.6)';
