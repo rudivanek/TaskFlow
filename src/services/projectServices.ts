@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Project, ProjectComment, ProjectNote } from '../types';
+import { Project, ProjectComment, ProjectNote, Profile } from '../types';
 
 export async function fetchProjects(workspaceIds: string[], showDeleted = false): Promise<Project[]> {
   if (workspaceIds.length === 0) return [];
@@ -90,14 +90,34 @@ export async function addProjectDiscussionComment(
   authorName: string,
   content: string,
   taskId: string | null,
+  notifyAll: boolean,
+  notifiedUserIds: string[],
 ): Promise<ProjectComment> {
   const { data, error } = await supabase
     .from('project_comments')
-    .insert({ project_id: projectId, user_id: userId, author_name: authorName, content, task_id: taskId })
+    .insert({
+      project_id: projectId,
+      user_id: userId,
+      author_name: authorName,
+      content,
+      task_id: taskId,
+      notify_all: notifyAll,
+      notified_user_ids: notifyAll ? [] : notifiedUserIds,
+    })
     .select()
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function fetchProfiles(excludeUserId: string): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, email')
+    .neq('id', excludeUserId)
+    .order('email');
+  if (error) throw error;
+  return data || [];
 }
 
 export async function updateProjectComment(id: string, content: string): Promise<void> {

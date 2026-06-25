@@ -106,8 +106,10 @@ export default function App() {
           filter: `project_id=eq.${selectedProjectId}`,
         },
         (payload) => {
-          const newUserId = (payload.new as { user_id?: string }).user_id;
-          if (newUserId !== user.id && !showDiscussionRef.current) {
+          const c = payload.new as { user_id?: string; notify_all?: boolean; notified_user_ids?: string[] };
+          const isOwn = c.user_id === user.id;
+          const isForMe = c.notify_all !== false || (c.notified_user_ids ?? []).includes(user.id);
+          if (!isOwn && isForMe && !showDiscussionRef.current) {
             setUnreadCount(prev => prev + 1);
           }
           setTotalCommentCount(prev => prev + 1);

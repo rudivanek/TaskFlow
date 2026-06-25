@@ -71,6 +71,13 @@ export interface ProjectComment {
   created_at: string;
   updated_at: string;
   task_id: string | null;
+  notify_all: boolean;
+  notified_user_ids: string[];
+}
+
+export interface Profile {
+  id: string;
+  email: string;
 }
 
 export interface ProjectNote {

@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Trash2, Link2, CheckCheck, Check } from 'lucide-react';
+import { MessageSquare, X, Send, Trash2, Link2, CheckCheck, Check, Users, User } from 'lucide-react';
 import { useAuth } from './AuthContext';
-import { ProjectComment, Task } from '../types';
+import { ProjectComment, Task, Profile } from '../types';
 import * as projectServices from '../services/projectServices';
 import * as taskServices from '../services/taskServices';
 import { supabase } from '../lib/supabase';
 import {
   getReadCommentIds,
   markCommentAsRead,
-  markAllCommentsAsRead,
+  markAllRelevantCommentsAsRead,
 } from '../utils/unreadComments';
 
 interface Props {
@@ -32,6 +32,10 @@ function formatRelativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' });
 }
 
+function getInitial(name: string): string {
+  return (name?.[0] ?? '?').toUpperCase();
+}
+
 export default function ProjectDiscussionPanel({
   projectId,
   projectName,
@@ -43,19 +47,26 @@ export default function ProjectDiscussionPanel({
   const { user } = useAuth();
   const [comments, setComments] = useState<ProjectComment[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState('');
+  const [notifyAll, setNotifyAll] = useState(true);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen && projectId) {
-      loadData();
-    }
+    if (isOpen && projectId) loadData();
   }, [isOpen, projectId]);
+
+  useEffect(() => {
+    if (user) {
+      projectServices.fetchProfiles(user.id).then(setProfiles).catch(() => {});
+    }
+  }, [user]);
 
   useEffect(() => {
     if (isOpen) {
@@ -85,6 +96,11 @@ export default function ProjectDiscussionPanel({
     }
   }
 
+  function isRelevantToMe(comment: ProjectComment): boolean {
+    if (!user || comment.user_id === user.id) return false;
+    return comment.notify_all || comment.notified_user_ids.includes(user.id);
+  }
+
   async function handleMarkOne(commentId: string) {
     if (!user || readIds.has(commentId)) return;
     await markCommentAsRead(supabase, commentId, user.id);
@@ -96,11 +112,11 @@ export default function ProjectDiscussionPanel({
     if (!user) return;
     setMarkingAll(true);
     try {
-      await markAllCommentsAsRead(supabase, projectId, user.id);
-      const allIds = new Set(comments.map(c => c.id));
-      const unreadBefore = comments.filter(c => !readIds.has(c.id)).length;
-      setReadIds(allIds);
-      if (unreadBefore > 0) onMarkRead?.(unreadBefore);
+      const unreadRelevant = comments.filter(c => isRelevantToMe(c) && !readIds.has(c.id));
+      if (unreadRelevant.length === 0) return;
+      await markAllRelevantCommentsAsRead(supabase, projectId, user.id);
+      setReadIds(prev => new Set([...prev, ...unreadRelevant.map(c => c.id)]));
+      onMarkRead?.(unreadRelevant.length);
     } finally {
       setMarkingAll(false);
     }
@@ -108,18 +124,20 @@ export default function ProjectDiscussionPanel({
 
   async function handlePost() {
     if (!text.trim() || !user) return;
+    if (!notifyAll && selectedUserIds.length === 0) return;
+
     setSubmitting(true);
     try {
       const authorName =
-        (user.user_metadata?.full_name as string | undefined) ||
-        user.email ||
-        '';
+        (user.user_metadata?.full_name as string | undefined) || user.email || '';
       const comment = await projectServices.addProjectDiscussionComment(
         projectId,
         user.id,
         authorName,
         text.trim(),
         selectedTaskId || null,
+        notifyAll,
+        selectedUserIds,
       );
       // Auto-mark own post as read
       await markCommentAsRead(supabase, comment.id, user.id);
@@ -129,6 +147,8 @@ export default function ProjectDiscussionPanel({
       onCommentCountChange?.(updated.length);
       setText('');
       setSelectedTaskId('');
+      setNotifyAll(true);
+      setSelectedUserIds([]);
     } catch (err) {
       console.error('Failed to post comment:', err);
     } finally {
@@ -152,11 +172,23 @@ export default function ProjectDiscussionPanel({
     return tasks.find(t => t.id === taskId)?.task_name ?? null;
   }
 
-  function getInitial(name: string): string {
-    return (name?.[0] ?? '?').toUpperCase();
+  function getRecipientLabel(comment: ProjectComment): string {
+    if (comment.notify_all || comment.notified_user_ids.length === 0) return 'All';
+    const names = comment.notified_user_ids.map(id => {
+      const found = profiles.find(p => p.id === id);
+      return found?.email ?? id.slice(0, 8);
+    });
+    return names.join(', ');
   }
 
-  const unreadCount = comments.filter(c => !readIds.has(c.id)).length;
+  function toggleUserId(id: string) {
+    setSelectedUserIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  }
+
+  const unreadCount = comments.filter(c => isRelevantToMe(c) && !readIds.has(c.id)).length;
+  const canPost = text.trim().length > 0 && (notifyAll || selectedUserIds.length > 0);
 
   return (
     <>
@@ -171,7 +203,7 @@ export default function ProjectDiscussionPanel({
       {/* Slide-in panel */}
       <div
         className="fixed top-0 right-0 h-full z-50 bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out"
-        style={{ width: '420px', transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
+        style={{ width: '440px', transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0 bg-white">
@@ -225,34 +257,46 @@ export default function ProjectDiscussionPanel({
               {comments.map(c => {
                 const taskName = getTaskName(c.task_id);
                 const isOwn = c.user_id === user?.id;
+                const relevant = isRelevantToMe(c);
                 const isRead = readIds.has(c.id);
+                const unread = relevant && !isRead;
                 const displayName = c.author_name || c.user_id.slice(0, 8);
+                const recipientLabel = getRecipientLabel(c);
+
                 return (
                   <div
                     key={c.id}
                     className={`group rounded-xl border px-4 py-3 transition-colors ${
-                      isRead
-                        ? 'bg-slate-50 border-slate-100 hover:border-slate-200'
-                        : 'bg-blue-50/60 border-blue-200/60 hover:border-blue-300/60'
+                      unread
+                        ? 'bg-blue-50/60 border-blue-200/60 hover:border-blue-300/60'
+                        : 'bg-slate-50 border-slate-100 hover:border-slate-200'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div className="w-6 h-6 bg-primary-100 rounded-full flex-shrink-0 flex items-center justify-center">
-                          <span className="text-[10px] font-bold text-primary-600">
+                    {/* Author → recipient row */}
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <div className="w-5 h-5 bg-primary-100 rounded-full flex-shrink-0 flex items-center justify-center">
+                          <span className="text-[9px] font-bold text-primary-600">
                             {getInitial(displayName)}
                           </span>
                         </div>
                         <span className="text-xs font-semibold text-slate-700 truncate">{displayName}</span>
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">
-                          {formatRelativeTime(c.created_at)}
+                        <span className="text-[11px] text-slate-400 flex-shrink-0">→</span>
+                        <span className="flex items-center gap-1 flex-shrink-0">
+                          {c.notify_all || c.notified_user_ids.length === 0 ? (
+                            <Users className="w-3 h-3 text-slate-400" />
+                          ) : (
+                            <User className="w-3 h-3 text-slate-400" />
+                          )}
+                          <span className="text-[11px] text-slate-500 truncate max-w-[140px]">{recipientLabel}</span>
                         </span>
-                        {!isRead && (
+                        {unread && (
                           <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500" />
                         )}
                       </div>
-                      <div className="flex items-center gap-0.5 flex-shrink-0">
-                        {!isRead && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className="text-[11px] text-slate-400">{formatRelativeTime(c.created_at)}</span>
+                        {unread && (
                           <button
                             onClick={() => handleMarkOne(c.id)}
                             title="Mark as read"
@@ -274,7 +318,7 @@ export default function ProjectDiscussionPanel({
                     </div>
 
                     {taskName && (
-                      <div className="mt-2">
+                      <div className="mb-2">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 text-[11px] rounded-full border border-slate-200">
                           <Link2 className="w-2.5 h-2.5 flex-shrink-0" />
                           <span className="truncate max-w-[260px]">{taskName}</span>
@@ -282,7 +326,7 @@ export default function ProjectDiscussionPanel({
                       </div>
                     )}
 
-                    <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
                       {c.content}
                     </p>
                   </div>
@@ -294,7 +338,8 @@ export default function ProjectDiscussionPanel({
         </div>
 
         {/* Compose area */}
-        <div className="px-5 py-4 border-t border-slate-100 flex-shrink-0 space-y-2 bg-white">
+        <div className="px-5 py-4 border-t border-slate-100 flex-shrink-0 space-y-2.5 bg-white">
+          {/* Task link */}
           <select
             value={selectedTaskId}
             onChange={e => setSelectedTaskId(e.target.value)}
@@ -308,10 +353,49 @@ export default function ProjectDiscussionPanel({
             ))}
           </select>
 
+          {/* Notify selector */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-slate-500">Notify</label>
+              <select
+                value={notifyAll ? 'all' : 'specific'}
+                onChange={e => {
+                  setNotifyAll(e.target.value === 'all');
+                  setSelectedUserIds([]);
+                }}
+                className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-600"
+              >
+                <option value="all">All users</option>
+                <option value="specific">Specific people...</option>
+              </select>
+            </div>
+
+            {!notifyAll && (
+              <div className="flex flex-col gap-1 max-h-28 overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50">
+                {profiles.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-1 px-1">No other users found</p>
+                ) : (
+                  profiles.map(p => (
+                    <label key={p.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-900 px-1 py-0.5 rounded hover:bg-slate-100">
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.includes(p.id)}
+                        onChange={() => toggleUserId(p.id)}
+                        className="rounded border-slate-300 text-primary-600"
+                      />
+                      {p.email}
+                    </label>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Message input */}
           <div className="flex gap-2 items-end">
             <textarea
               className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400"
-              style={{ minHeight: '72px' }}
+              style={{ minHeight: '68px' }}
               placeholder="Write a comment..."
               value={text}
               onChange={e => setText(e.target.value)}
@@ -322,7 +406,7 @@ export default function ProjectDiscussionPanel({
             />
             <button
               onClick={handlePost}
-              disabled={!text.trim() || submitting}
+              disabled={!canPost || submitting}
               className="p-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0 self-end"
             >
               <Send className="w-4 h-4" />
