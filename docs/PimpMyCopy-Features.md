@@ -50,6 +50,14 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Checkbox to toggle done/not-started; checked = Done, unchecked = Not Started
 - Strikethrough styling on task name when done
 - Add/delete subtasks inline
+- **Suggested parent status flow**: after toggling a subtask, the app evaluates the collective state:
+  - All Done → suggests "Done" for the parent task
+  - All Not Started → suggests "Not Started" for the parent task
+  - Mixed → suggests "Doing" for the parent task
+  - If the parent task's current status already matches the suggestion, nothing happens
+  - Otherwise a confirmation modal appears: "Would you like to change the task status to X?"
+  - User can confirm ("Change Status") or dismiss ("Don't Change"); parent status is never changed automatically
+- Works in both Task Grid view and Kanban (via the task detail modal)
 
 ### 1.6 Kanban Board View
 - One column per status (from statuses table, ordered by sort_order)

@@ -5,9 +5,10 @@ import { Plus, Trash2, GripVertical } from 'lucide-react';
 
 interface SubtaskListProps {
   taskMainId: string;
+  onStatusChange?: (suggestedStatusName: string) => void;
 }
 
-export default function SubtaskList({ taskMainId }: SubtaskListProps) {
+export default function SubtaskList({ taskMainId, onStatusChange }: SubtaskListProps) {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -47,13 +48,24 @@ export default function SubtaskList({ taskMainId }: SubtaskListProps) {
     }
   };
 
+  const evaluateAndSuggest = (updated: Subtask[]) => {
+    if (!onStatusChange || updated.length === 0) return;
+    const allDone = updated.every(s => s.done);
+    const allNotStarted = updated.every(s => s.not_started);
+    if (allDone) onStatusChange('Done');
+    else if (allNotStarted) onStatusChange('Not Started');
+    else onStatusChange('Doing');
+  };
+
   const toggleDone = async (subtask: Subtask) => {
     const updates: Partial<Subtask> = subtask.done
       ? { not_started: true, doing: false, done: false }
       : { not_started: false, doing: false, done: true };
     try {
       await taskServices.updateSubtask(subtask.id, updates);
-      setSubtasks(subtasks.map(s => s.id === subtask.id ? { ...s, ...updates } : s));
+      const updated = subtasks.map(s => s.id === subtask.id ? { ...s, ...updates } : s);
+      setSubtasks(updated);
+      evaluateAndSuggest(updated);
     } catch (err) {
       console.error(err);
     }

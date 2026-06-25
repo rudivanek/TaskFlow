@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Task, Phase, Status, Responsible, Subtask } from '../types';
+import { Task, Phase, Status, Responsible } from '../types';
 import * as taskServices from '../services/taskServices';
 import SubtaskList from './SubtaskList';
+import SubtaskStatusModal from './SubtaskStatusModal';
 import { isOverdue, isDueToday, isDueSoon } from '../utils/dateUtils';
 import { X, MessageSquare, Calendar, Loader2 } from 'lucide-react';
 
@@ -30,6 +31,21 @@ export default function KanbanTaskDetailModal({
 }: KanbanTaskDetailModalProps) {
   const [taskName, setTaskName] = useState(task.task_name);
   const [comment, setComment] = useState(task.task_comment || '');
+  const [pendingStatusSuggestion, setPendingStatusSuggestion] = useState<string | null>(null);
+
+  const handleSubtaskStatusChange = (suggestedStatusName: string) => {
+    const currentStatusName = statuses.find(s => s.id === task.status_id)?.status;
+    if (currentStatusName === suggestedStatusName) return;
+    setPendingStatusSuggestion(suggestedStatusName);
+  };
+
+  const confirmStatusSuggestion = () => {
+    if (!pendingStatusSuggestion) return;
+    const targetStatus = statuses.find(s => s.status === pendingStatusSuggestion);
+    setPendingStatusSuggestion(null);
+    if (!targetStatus) return;
+    onUpdate(task.id, { status_id: targetStatus.id });
+  };
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -156,7 +172,7 @@ export default function KanbanTaskDetailModal({
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Subtasks</label>
             <div className="border border-slate-200 rounded-lg overflow-hidden">
-              <SubtaskList taskMainId={task.id} />
+              <SubtaskList taskMainId={task.id} onStatusChange={handleSubtaskStatusChange} />
             </div>
           </div>
         </div>
@@ -185,6 +201,14 @@ export default function KanbanTaskDetailModal({
           </div>
         </div>
       </div>
+
+      {pendingStatusSuggestion && (
+        <SubtaskStatusModal
+          suggestedStatusName={pendingStatusSuggestion}
+          onConfirm={confirmStatusSuggestion}
+          onDismiss={() => setPendingStatusSuggestion(null)}
+        />
+      )}
     </div>
   );
 }

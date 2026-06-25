@@ -3,6 +3,7 @@ import { Task, Phase, Status, Responsible } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
+import SubtaskStatusModal from './SubtaskStatusModal';
 import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X, CalendarRange, RefreshCw, ChevronsDownUp, Rows3 } from 'lucide-react';
 import { parseISO, differenceInCalendarDays, format } from 'date-fns';
 
@@ -37,6 +38,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
   const [highlightedTaskIds, setHighlightedTaskIds] = useState<number[]>([]);
   const [dateStats, setDateStats] = useState<{ minStart: string; maxEnd: string; totalDays: number } | null>(null);
   const [expandTrigger, setExpandTrigger] = useState<{ action: 'expand' | 'collapse'; seq: number }>({ action: 'collapse', seq: 0 });
+  const [pendingStatusSuggestion, setPendingStatusSuggestion] = useState<{ taskId: string; suggestedStatusName: string } | null>(null);
 
   const recalcDateStats = () => {
     const startDates = tasks.map(t => t.start_date).filter(Boolean);
@@ -211,8 +213,24 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
     }
   };
 
-  const dragEnabled = sortField === 'task_sort' && sortDir === 'asc';
+  const handleSubtaskChange = (taskId: string, suggestedStatusName: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const currentStatusName = statuses.find(s => s.id === task.status_id)?.status;
+    if (currentStatusName === suggestedStatusName) return;
+    setPendingStatusSuggestion({ taskId, suggestedStatusName });
+  };
 
+  const confirmStatusSuggestion = async () => {
+    if (!pendingStatusSuggestion) return;
+    const { taskId, suggestedStatusName } = pendingStatusSuggestion;
+    setPendingStatusSuggestion(null);
+    const targetStatus = statuses.find(s => s.status === suggestedStatusName);
+    if (!targetStatus) return;
+    await handleUpdate(taskId, { status_id: targetStatus.id });
+  };
+
+  const dragEnabled = sortField === 'task_sort' && sortDir === 'asc';
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     setDraggedId(taskId);
     e.dataTransfer.effectAllowed = 'move';
@@ -415,6 +433,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
                 onUpdateDependencies={handleUpdateDependencies}
                 onDelete={handleDelete}
                 onDepsHover={setHighlightedTaskIds}
+                onSubtaskChange={handleSubtaskChange}
                 isHighlighted={highlightedTaskIds.includes(task.task_id)}
                 dragEnabled={dragEnabled}
                 isDragging={draggedId === task.id}
@@ -495,6 +514,13 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
             </div>
           </div>
         </div>
+      )}
+      {pendingStatusSuggestion && (
+        <SubtaskStatusModal
+          suggestedStatusName={pendingStatusSuggestion.suggestedStatusName}
+          onConfirm={confirmStatusSuggestion}
+          onDismiss={() => setPendingStatusSuggestion(null)}
+        />
       )}
     </div>
   );
