@@ -74,6 +74,7 @@ export interface ProjectComment {
   task_id: string | null;
   notify_all: boolean;
   notified_user_ids: string[];
+  image_urls: string[];
 }
 
 export interface Profile {

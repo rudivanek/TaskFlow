@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   MessageSquare, X, Send, Trash2, Link2, CheckCheck, Check,
-  Users, User, Search, ChevronDown, ChevronUp, CornerDownRight,
+  Users, User, Search, ChevronDown, ChevronUp, CornerDownRight, ImagePlus,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { ProjectComment, Task, Profile } from '../types';
@@ -13,6 +13,7 @@ import {
   markCommentAsRead,
   markAllRelevantCommentsAsRead,
 } from '../utils/unreadComments';
+import { uploadDiscussionImage } from '../utils/uploadDiscussionImage';
 
 type CommentThread = ProjectComment & { replies: ProjectComment[] };
 
@@ -81,6 +82,83 @@ function highlightText(text: string, query: string): React.ReactNode {
   );
 }
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+function filterImageFiles(files: File[]): File[] {
+  return files.filter(f => {
+    if (!f.type.startsWith('image/')) return false;
+    if (f.size > MAX_FILE_SIZE) {
+      alert(`"${f.name}" exceeds the 5 MB limit and was skipped.`);
+      return false;
+    }
+    return true;
+  });
+}
+
+function buildPreviews(files: File[], onPreviews: (previews: string[]) => void) {
+  const results: string[] = new Array(files.length).fill('');
+  let done = 0;
+  files.forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      results[i] = e.target?.result as string;
+      done++;
+      if (done === files.length) onPreviews(results);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─── image attachment strip (reused for both compose areas) ──────────────────
+
+interface ImageStripProps {
+  previews: string[];
+  onRemove: (i: number) => void;
+}
+
+function ImageStrip({ previews, onRemove }: ImageStripProps) {
+  if (previews.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 mt-1.5">
+      {previews.map((src, i) => (
+        <div key={i} className="relative group w-20 h-20 flex-shrink-0">
+          <img
+            src={src}
+            alt={`attachment-${i}`}
+            className="w-20 h-20 object-cover rounded-md border border-slate-200"
+          />
+          <button
+            type="button"
+            onClick={() => onRemove(i)}
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── posted thumbnails ───────────────────────────────────────────────────────
+
+function CommentImages({ urls }: { urls: string[] }) {
+  if (!urls || urls.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {urls.map((url, i) => (
+        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block flex-shrink-0">
+          <img
+            src={url}
+            alt={`attachment-${i}`}
+            className="w-24 h-24 object-cover rounded-md border border-slate-200 hover:opacity-90 transition-opacity cursor-zoom-in"
+          />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 // ─── component ───────────────────────────────────────────────────────────────
 
 export default function ProjectDiscussionPanel({
@@ -115,12 +193,22 @@ export default function ProjectDiscussionPanel({
   const [mentionStart, setMentionStart] = useState(0);
   const [mentionIndex, setMentionIndex] = useState(0);
 
-  // Reply compose (mirrors top-level)
+  // Top-level image state
+  const [pendingImages, setPendingImages] = useState<File[]>([]);
+  const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reply compose
   const [replyText, setReplyText] = useState('');
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [replyMentionQuery, setReplyMentionQuery] = useState<string | null>(null);
   const [replyMentionStart, setReplyMentionStart] = useState(0);
   const [replyMentionIndex, setReplyMentionIndex] = useState(0);
+
+  // Reply image state
+  const [pendingReplyImages, setPendingReplyImages] = useState<File[]>([]);
+  const [pendingReplyPreviews, setPendingReplyPreviews] = useState<string[]>([]);
+  const replyFileInputRef = useRef<HTMLInputElement>(null);
 
   const [markingAll, setMarkingAll] = useState(false);
 
@@ -184,7 +272,6 @@ export default function ProjectDiscussionPanel({
     }
   }, [threads.length, isOpen]);
 
-  // Auto-expand threads where a reply matches the search query
   useEffect(() => {
     if (!searchQuery) return;
     const q = searchQuery.toLowerCase();
@@ -199,10 +286,8 @@ export default function ProjectDiscussionPanel({
     }
   }, [searchQuery, threads]);
 
-  // Realtime subscription — only active when panel is open
   useEffect(() => {
     if (!isOpen || !projectId) return;
-
     const channel = supabase
       .channel(`panel-${projectId}`)
       .on('postgres_changes', {
@@ -224,7 +309,6 @@ export default function ProjectDiscussionPanel({
         }
       })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [isOpen, projectId]);
 
@@ -238,7 +322,6 @@ export default function ProjectDiscussionPanel({
         taskServices.fetchTasks(projectId),
       ]);
       setTasks(tasksData);
-
       const topLevel = commentsData.filter(c => c.parent_id === null);
       const replies = commentsData.filter(c => c.parent_id !== null);
       const built: CommentThread[] = topLevel.map(c => ({
@@ -247,7 +330,6 @@ export default function ProjectDiscussionPanel({
       }));
       setThreads(built);
       onCommentCountChange?.(commentsData.length);
-
       if (user) {
         const ids = await getReadCommentIds(supabase, projectId, user.id);
         setReadIds(ids);
@@ -280,6 +362,52 @@ export default function ProjectDiscussionPanel({
     } finally {
       setMarkingAll(false);
     }
+  }
+
+  // ── image helpers ─────────────────────────────────────────────────────────
+
+  function addTopImages(files: File[]) {
+    const valid = filterImageFiles(files);
+    if (valid.length === 0) return;
+    buildPreviews(valid, (previews) => {
+      setPendingPreviews(prev => [...prev, ...previews]);
+    });
+    setPendingImages(prev => [...prev, ...valid]);
+  }
+
+  function removeTopImage(index: number) {
+    setPendingImages(prev => prev.filter((_, i) => i !== index));
+    setPendingPreviews(prev => prev.filter((_, i) => i !== index));
+  }
+
+  function addReplyImages(files: File[]) {
+    const valid = filterImageFiles(files);
+    if (valid.length === 0) return;
+    buildPreviews(valid, (previews) => {
+      setPendingReplyPreviews(prev => [...prev, ...previews]);
+    });
+    setPendingReplyImages(prev => [...prev, ...valid]);
+  }
+
+  function removeReplyImage(index: number) {
+    setPendingReplyImages(prev => prev.filter((_, i) => i !== index));
+    setPendingReplyPreviews(prev => prev.filter((_, i) => i !== index));
+  }
+
+  function handleTopPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageFiles = Array.from(e.clipboardData.items)
+      .filter(item => item.type.startsWith('image/'))
+      .map(item => item.getAsFile())
+      .filter(Boolean) as File[];
+    if (imageFiles.length > 0) addTopImages(imageFiles);
+  }
+
+  function handleReplyPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageFiles = Array.from(e.clipboardData.items)
+      .filter(item => item.type.startsWith('image/'))
+      .map(item => item.getAsFile())
+      .filter(Boolean) as File[];
+    if (imageFiles.length > 0) addReplyImages(imageFiles);
   }
 
   // ── @mention: top-level ──────────────────────────────────────────────────
@@ -359,14 +487,21 @@ export default function ProjectDiscussionPanel({
   // ── post handlers ────────────────────────────────────────────────────────
 
   async function handlePost() {
-    if (!text.trim() || !user) return;
+    const hasContent = text.trim().length > 0 || pendingImages.length > 0;
+    if (!hasContent || !user) return;
     setSubmitting(true);
     try {
       const authorName = (user.user_metadata?.full_name as string | undefined) || user.email || '';
       const { notifyAll, notifiedUserIds } = parseMentionsFromText(text.trim(), profiles);
+
+      const uploadedUrls = await Promise.all(
+        pendingImages.map(file => uploadDiscussionImage(supabase, file, user.id))
+      );
+      const imageUrls = uploadedUrls.filter(Boolean) as string[];
+
       const comment = await projectServices.addProjectDiscussionComment(
         projectId, user.id, authorName, text.trim(),
-        selectedTaskId || null, notifyAll, notifiedUserIds, null,
+        selectedTaskId || null, notifyAll, notifiedUserIds, null, imageUrls,
       );
       await markCommentAsRead(supabase, comment.id, user.id);
       setThreads(prev => {
@@ -378,6 +513,8 @@ export default function ProjectDiscussionPanel({
       setText('');
       setSelectedTaskId('');
       setMentionQuery(null);
+      setPendingImages([]);
+      setPendingPreviews([]);
     } catch (err) {
       console.error('Failed to post comment:', err);
     } finally {
@@ -386,14 +523,21 @@ export default function ProjectDiscussionPanel({
   }
 
   async function handlePostReply(parentId: string) {
-    if (!replyText.trim() || !user) return;
+    const hasContent = replyText.trim().length > 0 || pendingReplyImages.length > 0;
+    if (!hasContent || !user) return;
     setReplySubmitting(true);
     try {
       const authorName = (user.user_metadata?.full_name as string | undefined) || user.email || '';
       const { notifyAll, notifiedUserIds } = parseMentionsFromText(replyText.trim(), profiles);
+
+      const uploadedUrls = await Promise.all(
+        pendingReplyImages.map(file => uploadDiscussionImage(supabase, file, user.id))
+      );
+      const imageUrls = uploadedUrls.filter(Boolean) as string[];
+
       const reply = await projectServices.addProjectDiscussionComment(
         projectId, user.id, authorName, replyText.trim(),
-        null, notifyAll, notifiedUserIds, parentId,
+        null, notifyAll, notifiedUserIds, parentId, imageUrls,
       );
       await markCommentAsRead(supabase, reply.id, user.id);
       setThreads(prev => prev.map(t =>
@@ -404,6 +548,8 @@ export default function ProjectDiscussionPanel({
       setReplyText('');
       setReplyingToId(null);
       setReplyMentionQuery(null);
+      setPendingReplyImages([]);
+      setPendingReplyPreviews([]);
     } catch (err) {
       console.error('Failed to post reply:', err);
     } finally {
@@ -601,13 +747,17 @@ export default function ProjectDiscussionPanel({
                         {highlightText(thread.content, searchQuery)}
                       </p>
 
+                      <CommentImages urls={thread.image_urls} />
+
                       {/* Action row */}
-                      <div className="flex items-center gap-3 mt-1">
+                      <div className="flex items-center gap-3 mt-2">
                         <button
                           onClick={() => {
                             setReplyingToId(replyingToId === thread.id ? null : thread.id);
                             setReplyText('');
                             setReplyMentionQuery(null);
+                            setPendingReplyImages([]);
+                            setPendingReplyPreviews([]);
                           }}
                           className="flex items-center gap-1 text-xs text-primary-500 hover:text-primary-700 font-medium transition-colors"
                         >
@@ -675,6 +825,7 @@ export default function ProjectDiscussionPanel({
                               <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
                                 {highlightText(reply.content, searchQuery)}
                               </p>
+                              <CommentImages urls={reply.image_urls} />
                             </div>
                           );
                         })}
@@ -686,7 +837,6 @@ export default function ProjectDiscussionPanel({
                       <div className="ml-5 mt-1 border-l-2 border-primary-200 pl-3">
                         <div className="bg-primary-50/40 border border-primary-100 rounded-lg p-3 flex flex-col gap-2">
                           <div className="relative">
-                            {/* Reply @mention dropdown */}
                             {replyMentionQuery !== null && replyMentionResults.length > 0 && (
                               <div className="absolute bottom-full mb-1 left-0 right-0 z-10 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
                                 {replyMentionResults.map((p, i) => (
@@ -715,30 +865,60 @@ export default function ProjectDiscussionPanel({
                               ref={replyTextareaRef}
                               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary-300 focus:border-primary-300 bg-white"
                               style={{ minHeight: '60px' }}
-                              placeholder="Write a reply... @ to mention"
+                              placeholder="Write a reply... @ to mention, paste images with Ctrl+V"
                               value={replyText}
                               onChange={handleReplyTextChange}
                               onKeyDown={handleReplyKeyDown}
+                              onPaste={handleReplyPaste}
                               disabled={replySubmitting}
                               autoFocus
                             />
                           </div>
+
+                          <ImageStrip previews={pendingReplyPreviews} onRemove={removeReplyImage} />
+
                           <div className="flex items-center justify-between">
-                            <p className="text-[10px] text-slate-400">@ to mention · Ctrl+Enter to post</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-[10px] text-slate-400">@ mention · Ctrl+Enter</p>
+                              <input
+                                ref={replyFileInputRef}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={e => { addReplyImages(Array.from(e.target.files ?? [])); e.target.value = ''; }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => replyFileInputRef.current?.click()}
+                                className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+                              >
+                                <ImagePlus className="w-3 h-3" />
+                                Image
+                              </button>
+                            </div>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => { setReplyingToId(null); setReplyText(''); setReplyMentionQuery(null); }}
+                                onClick={() => {
+                                  setReplyingToId(null);
+                                  setReplyText('');
+                                  setReplyMentionQuery(null);
+                                  setPendingReplyImages([]);
+                                  setPendingReplyPreviews([]);
+                                }}
                                 className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                               >
                                 Cancel
                               </button>
                               <button
                                 onClick={() => handlePostReply(thread.id)}
-                                disabled={!replyText.trim() || replySubmitting}
+                                disabled={(!replyText.trim() && pendingReplyImages.length === 0) || replySubmitting}
                                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                               >
-                                <Send className="w-3 h-3" />
-                                Reply
+                                {replySubmitting
+                                  ? <><span className="animate-spin inline-block w-3 h-3 border border-white border-t-transparent rounded-full" /> Uploading...</>
+                                  : <><Send className="w-3 h-3" />Reply</>
+                                }
                               </button>
                             </div>
                           </div>
@@ -791,27 +971,52 @@ export default function ProjectDiscussionPanel({
                 <span className="text-xs text-slate-400">No users match "@{mentionQuery}"</span>
               </div>
             )}
-            <div className="flex gap-2 items-end">
-              <textarea
-                ref={textareaRef}
-                className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary-300 focus:border-primary-300"
-                style={{ minHeight: '72px' }}
-                placeholder="Write a comment... @ to mention"
-                value={text}
-                onChange={handleTextChange}
-                onKeyDown={handleKeyDown}
-                disabled={submitting}
+            <textarea
+              ref={textareaRef}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary-300 focus:border-primary-300"
+              style={{ minHeight: '72px' }}
+              placeholder="Write a comment... @ to mention, paste images with Ctrl+V"
+              value={text}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handleTopPaste}
+              disabled={submitting}
+            />
+          </div>
+
+          <ImageStrip previews={pendingPreviews} onRemove={removeTopImage} />
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] text-slate-400">@ to mention · Ctrl+Enter to post</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={e => { addTopImages(Array.from(e.target.files ?? [])); e.target.value = ''; }}
               />
               <button
-                onClick={handlePost}
-                disabled={!text.trim() || submitting}
-                className="p-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0 self-end"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
               >
-                <Send className="w-4 h-4" />
+                <ImagePlus className="w-3 h-3" />
+                Image
               </button>
             </div>
+            <button
+              onClick={handlePost}
+              disabled={(!text.trim() && pendingImages.length === 0) || submitting}
+              className="flex items-center gap-1.5 p-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {submitting
+                ? <span className="animate-spin inline-block w-4 h-4 border border-white border-t-transparent rounded-full" />
+                : <Send className="w-4 h-4" />
+              }
+            </button>
           </div>
-          <p className="text-[10px] text-slate-400">@ to mention · Ctrl+Enter to post</p>
         </div>
       </div>
     </>

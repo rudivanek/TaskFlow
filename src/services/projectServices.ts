@@ -93,6 +93,7 @@ export async function addProjectDiscussionComment(
   notifyAll: boolean,
   notifiedUserIds: string[],
   parentId?: string | null,
+  imageUrls: string[] = [],
 ): Promise<ProjectComment> {
   const { data, error } = await supabase
     .from('project_comments')
@@ -105,6 +106,7 @@ export async function addProjectDiscussionComment(
       notify_all: notifyAll,
       notified_user_ids: notifyAll ? [] : notifiedUserIds,
       parent_id: parentId ?? null,
+      image_urls: imageUrls,
     })
     .select()
     .single();
