@@ -357,7 +357,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
   function RTh({ colKey, className, children }: { colKey: string; className?: string; children: React.ReactNode }) {
     return (
       <th
-        className={`px-2 py-2 relative border-r border-white ${className ?? ''}`}
+        className={`px-2 py-2 relative border-r border-white font-normal ${className ?? ''}`}
         style={{ width: colWidths[colKey], minWidth: colWidths[colKey] }}
       >
         <div className="pr-1 overflow-hidden">{children}</div>
@@ -473,13 +473,13 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
 
           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 group/hdr">
             <tr className="text-[13px] font-normal text-slate-500">
-              <th className="px-1 py-2 border-r border-white" style={{ width: FIXED_COL_WIDTHS.expand }} />
-              <th className="px-2 py-2 border-r border-white" style={{ width: FIXED_COL_WIDTHS.id }}>
+              <th className="px-1 py-2 font-normal border-r border-white" style={{ width: FIXED_COL_WIDTHS.expand }} />
+              <th className="px-2 py-2 font-normal border-r border-white" style={{ width: FIXED_COL_WIDTHS.id }}>
                 <button onClick={() => onSort('task_id')} className="flex items-center hover:text-slate-700">
                   ID <SortIcon field="task_id" />
                 </button>
               </th>
-              <th className="px-2 py-2 border-r border-white" style={{ width: FIXED_COL_WIDTHS.sort }}>
+              <th className="px-2 py-2 font-normal border-r border-white" style={{ width: FIXED_COL_WIDTHS.sort }}>
                 <button onClick={() => onSort('task_sort')} className="flex items-center hover:text-slate-700" title="Sort by order. When active, drag rows to reorder.">
                   Sort <SortIcon field="task_sort" />
                 </button>
