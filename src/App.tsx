@@ -145,7 +145,7 @@ export default function App() {
       <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-primary-600 flex items-center justify-center">
               <CheckSquare className="w-4 h-4 text-white" />
             </div>
 <span className="inline-flex items-end gap-2 text-base font-semibold text-slate-800">
