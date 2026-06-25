@@ -81,6 +81,19 @@ export default function TaskRow({
   const [commentValue, setCommentValue] = useState(task.task_comment || '');
   const nameRef = useRef<HTMLInputElement>(null);
 
+  const getStatusRowBg = () => {
+    if (!task.status_id) return '';
+    const status = statuses.find(s => s.id === task.status_id);
+    if (!status) return '';
+    switch (status.status.toLowerCase()) {
+      case 'done': return 'bg-green-50/60';
+      case 'in progress': return 'bg-blue-50/60';
+      case 'in review': return 'bg-amber-50/60';
+      case 'blocked': return 'bg-red-50/60';
+      default: return '';
+    }
+  };
+
   useEffect(() => {
     setCommentValue(task.task_comment || '');
   }, [task.task_comment]);
@@ -114,7 +127,7 @@ export default function TaskRow({
         onDragEnd={onDragEnd}
         className={`group border-b border-slate-100 transition-colors
           ${isDragging ? 'opacity-40' : ''}
-          ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : isHighlighted ? 'bg-slate-100' : 'hover:bg-slate-50/50'}
+          ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : isHighlighted ? 'bg-slate-100' : `${getStatusRowBg()} hover:brightness-95`}
         `}
       >
         {/* Expand */}

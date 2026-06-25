@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-25T13:00:00Z
+**Last Updated:** 2026-06-25T14:00:00Z
 
 ---
 
@@ -44,6 +44,7 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Add Task button and Alt+N keyboard shortcut
 - Delete validation (blocks if other tasks depend on this one)
 - Task comment toggle per row
+- Status row tinting: each row receives a subtle background tint matching its task status (green=Done, blue=In Progress, amber=In Review, red=Blocked; no tint for unset/other statuses)
 
 ### 1.5 Subtasks
 - Expandable list below parent task
