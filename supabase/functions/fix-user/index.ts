@@ -18,31 +18,22 @@ Deno.serve(async (req: Request) => {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  const TARGET_UUID = "58e02521-6c14-4227-8b6e-92b1c07f2300";
-  const TARGET_EMAIL = "proyectosweb@sharpen.studio";
-  const TARGET_PASSWORD = "Istratega1*1";
+  const newUsers = [
+    { email: "rod@sharpen.studio", password: "Istratega1*1" },
+    { email: "sema@sharpen.studio", password: "Istratega1*1" },
+  ];
 
-  // Step 1: Delete the broken user via admin API (preserves UUID reuse)
-  await supabaseAdmin.auth.admin.deleteUser(TARGET_UUID);
-
-  // Step 2: Recreate via admin API with the same UUID
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
-    email: TARGET_EMAIL,
-    password: TARGET_PASSWORD,
-    email_confirm: true,
-    user_metadata: {},
-    // @ts-ignore - id is supported in newer versions
-    id: TARGET_UUID,
-  });
-
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message, code: error.code }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  const results = [];
+  for (const u of newUsers) {
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email: u.email,
+      password: u.password,
+      email_confirm: true,
     });
+    results.push(error ? { email: u.email, error: error.message } : { email: u.email, id: data.user?.id });
   }
 
-  return new Response(JSON.stringify({ success: true, user_id: data.user?.id, email: data.user?.email }), {
+  return new Response(JSON.stringify({ results }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
