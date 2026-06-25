@@ -405,6 +405,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles }: 
                 onDelete={handleDelete}
                 onDepsHover={setHighlightedTaskIds}
                 isHighlighted={highlightedTaskIds.includes(task.task_id)}
+                dragEnabled={dragEnabled}
                 isDragging={draggedId === task.id}
                 isDragOver={dragOverId === task.id}
                 onDragStart={(e) => handleDragStart(e, task.id)}
