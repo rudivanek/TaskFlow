@@ -148,16 +148,13 @@ export default function App() {
             <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center">
               <CheckSquare className="w-4 h-4 text-white" />
             </div>
-
-<div className="flex items-baseline gap-2">
-  <span className="text-base font-semibold text-slate-800">
-    TaskFlow
-  </span>
-
-  <span className="text-xs font-medium text-slate-400">
+           <span className="text-base font-semibold text-slate-800">
+  TaskFlow
+  <span className="ml-2 text-[11px] font-normal tracking-wide text-slate-400">
     Powered by Sharpen.Studio
   </span>
-</div>
+</span>
+          </div>
         </div>
 
         {/* View toggle */}
