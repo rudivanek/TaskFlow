@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Task, Phase, Status, Responsible } from '../types';
 import * as taskServices from '../services/taskServices';
 import { parseISO, differenceInCalendarDays, addDays, format } from 'date-fns';
-import { Loader2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Loader2, ZoomIn, ZoomOut, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { formatDisplayDate } from '../utils/dateUtils';
 
 interface GanttChartProps {
@@ -29,6 +29,8 @@ export default function GanttChart({ projectId, phases, statuses, responsibles }
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [sortField, setSortField] = useState<'task_id' | 'task_sort'>('task_sort');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [dragPreview, setDragPreview] = useState<{ startDate: string; endDate: string; days: number } | null>(null);
@@ -258,6 +260,26 @@ export default function GanttChart({ projectId, phases, statuses, responsibles }
     return paths;
   };
 
+  const handleSort = (field: 'task_id' | 'task_sort') => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: 'task_id' | 'task_sort' }) => {
+    if (sortField !== field) return <ChevronsUpDown className="w-3 h-3" />;
+    return sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
+  };
+
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const av = sortField === 'task_id' ? (a.task_id ?? 0) : (a.task_sort ?? 0);
+    const bv = sortField === 'task_id' ? (b.task_id ?? 0) : (b.task_sort ?? 0);
+    return sortDir === 'asc' ? av - bv : bv - av;
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -267,14 +289,29 @@ export default function GanttChart({ projectId, phases, statuses, responsibles }
   }
 
   const chartWidth = totalDays * dayWidth;
-  const chartHeight = tasks.length * rowHeight;
+  const chartHeight = sortedTasks.length * rowHeight;
   const depPaths = getDependencyPaths();
 
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white">
-        <span className="text-sm text-slate-600 font-medium">{tasks.length} tasks</span>
+        <span className="text-sm text-slate-600 font-medium">{sortedTasks.length} tasks</span>
+        <div className="flex items-center gap-1 border border-slate-200 rounded-lg overflow-hidden ml-2">
+          <button
+            onClick={() => handleSort('task_id')}
+            className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium transition-colors ${sortField === 'task_id' ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            ID <SortIcon field="task_id" />
+          </button>
+          <button
+            onClick={() => handleSort('task_sort')}
+            title="Sort by manual sort order"
+            className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium transition-colors ${sortField === 'task_sort' ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            Sort <SortIcon field="task_sort" />
+          </button>
+        </div>
         <div className="flex items-center gap-2 ml-4">
           <div className="flex items-center gap-1.5 text-xs text-slate-400">
             <span className="inline-block w-3 h-3 rounded-sm bg-slate-200 border border-slate-400"></span>
@@ -324,7 +361,7 @@ export default function GanttChart({ projectId, phases, statuses, responsibles }
             <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Task</span>
           </div>
           <div className="overflow-hidden">
-            {tasks.map((task) => {
+            {sortedTasks.map((task) => {
               const color = getStatusColor(task.status_id);
               const isDragging = dragState?.taskId === task.id;
               return (
@@ -411,7 +448,7 @@ export default function GanttChart({ projectId, phases, statuses, responsibles }
               </svg>
 
               {/* Row backgrounds */}
-              {tasks.map((task, idx) => (
+              {sortedTasks.map((task, idx) => (
                 <div
                   key={`row-${task.id}`}
                   className={`absolute left-0 right-0 border-b border-slate-50 transition-colors ${
@@ -452,7 +489,7 @@ export default function GanttChart({ projectId, phases, statuses, responsibles }
               </svg>
 
               {/* Task bars */}
-              {tasks.map((task, idx) => {
+              {sortedTasks.map((task, idx) => {
                 const isDragging = dragState?.taskId === task.id;
                 const startDate = isDragging && dragPreview ? dragPreview.startDate : task.start_date;
                 const endDate = isDragging && dragPreview ? dragPreview.endDate : task.end_date;
