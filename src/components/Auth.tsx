@@ -38,8 +38,7 @@ export default function Auth() {
           <div className="w-10 h-10 bg-primary-600 flex items-center justify-center">
             <CheckSquare className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-2xl font-semibold text-slate-900"Sharpen.Studio
- - >Task Flow
+          <h1 className="text-2xl font-semibold text-slate-900"Sharpen.Studio - Task Flow
 </h1>
           
         </div>
