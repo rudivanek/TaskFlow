@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-25T18:30:00Z
+**Last Updated:** 2026-06-25T19:30:00Z
 
 ---
 
@@ -149,9 +149,39 @@ A streamlined project management application built with React + Vite + Tailwind 
 - File downloaded as `<ProjectName>_gantt_<YYYY-MM-DD_HH-mm-ss>.xlsx`
 
 ### 1.12 Database Schema
-Tables: users, workspaces, projects, tasks_main, tasks_sub, phases, statuses, responsibles
+Tables: users, workspaces, projects, tasks_main, tasks_sub, phases, statuses, responsibles, project_comments
 RPC Functions: get_next_task_id_for_project, set_multiple_dependencies, cascade_dependency_dates, duplicate_project
-All tables have Row Level Security enabled with per-user access policies.
+All tables have Row Level Security enabled. All authenticated users share full access to all data (shared workspace model).
+
+### 1.13 Project Discussion Panel
+- Slide-in panel from the right side of the screen (420px wide, full height, z-50)
+- Triggered by the "Discussion" button in the project header, next to the Export dropdown
+- A semi-transparent backdrop overlay closes the panel on click; panel also has an X close button
+- Panel header shows the Discussion icon, the label "Discussion", and the current project name
+
+**Comment feed:**
+- Scrollable list of comments ordered by creation time (oldest first)
+- Each comment card shows: author initial avatar, author name (bold), relative timestamp (e.g. "2h ago"), comment text
+- If the comment is linked to a task, a pill badge shows the task name prefixed with a link icon
+- Delete button (trash icon) appears on hover, visible only to the comment's author
+- Empty state when no comments exist
+
+**Compose area (pinned at bottom):**
+- Optional "Link to task" dropdown populated with all tasks for the current project (task ID + name); first option is blank/none
+- Plain textarea for the comment body (Ctrl+Enter submits)
+- Post button (send icon); disabled while submitting or when text is empty
+- After posting, new comment is appended to the feed and the form is cleared
+
+**Comment count badge:**
+- The "Discussion" header button shows a blue circular badge with the total comment count
+- Count is fetched when a project is selected and updated live after each post or delete
+- Badge is hidden when count is 0
+
+**Database:**
+- Table: `project_comments` with columns: id, project_id, user_id, author_name, content, created_at, updated_at, task_id (FK → tasks_main)
+- author_name is stored at post time from user metadata or email
+- task_id is nullable; links a comment to a specific task
+- RLS: all authenticated users can read, insert, and delete any comment (shared workspace model)
 
 ### 1.11 Design System
 - Color palette: Slate/Blue tones (no purple)

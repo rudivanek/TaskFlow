@@ -84,6 +84,22 @@ export async function addProjectComment(projectId: string, userId: string, conte
   return data;
 }
 
+export async function addProjectDiscussionComment(
+  projectId: string,
+  userId: string,
+  authorName: string,
+  content: string,
+  taskId: string | null,
+): Promise<ProjectComment> {
+  const { data, error } = await supabase
+    .from('project_comments')
+    .insert({ project_id: projectId, user_id: userId, author_name: authorName, content, task_id: taskId })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function updateProjectComment(id: string, content: string): Promise<void> {
   const { error } = await supabase
     .from('project_comments')
