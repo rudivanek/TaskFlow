@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-25T16:30:00Z
+**Last Updated:** 2026-06-25T18:30:00Z
 
 ---
 
@@ -18,6 +18,11 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Session persistence with auto-refresh tokens
 - Auth guard redirecting unauthenticated users to sign-in page
 - User profile auto-created on signup via database trigger
+
+### 1.2a Shared Data Access Model
+- All authenticated users share full read and write access to all workspaces, projects, tasks, subtasks, and comments — regardless of which user created them.
+- RLS policies on all tables use `USING (true)` / `WITH CHECK (true)` scoped to `TO authenticated`, so any valid session grants complete access.
+- This is intentional: the app operates as a single shared workspace where all collaborators see the same data.
 
 ### 1.2b Main Header Bar
 - Logo icon (no rounded borders) with app name "TaskFlow" and version badge
