@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatMain } from './ChatMain';
 import { PWAInstallPrompt } from './PWAInstallPrompt';
+import { usePushNotifications } from '../../utils/usePushNotifications';
 
 const LAST_CHANNEL_KEY = 'taskflow_last_channel_id';
 const LAST_CONV_KEY = 'taskflow_last_conv_id';
@@ -24,6 +25,11 @@ export function ChatPage({ onTotalUnreadChange }: Props) {
   const [unreadByChannel, setUnreadByChannel] = useState<Record<string, number>>({});
   const [unreadByConv, setUnreadByConv] = useState<Record<string, number>>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { permission, isSubscribed, subscribe } = usePushNotifications();
+
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  const showPushBanner = 'PushManager' in window && permission !== 'granted' && !isSubscribed;
 
   useEffect(() => {
     init();
@@ -159,6 +165,24 @@ export function ChatPage({ onTotalUnreadChange }: Props) {
   return (
     <div className="flex flex-col w-full h-full overflow-hidden">
       <PWAInstallPrompt />
+
+      {showPushBanner && (
+        <div className="bg-blue-600 text-white px-4 py-2.5 flex items-center justify-between flex-shrink-0">
+          <p className="text-xs font-medium">
+            {isIOS && !isStandalone
+              ? 'To get notifications on iPhone, install via Share \u2191 \u2192 Add to Home Screen'
+              : 'Enable notifications to get alerted when new messages arrive'}
+          </p>
+          {!(isIOS && !isStandalone) && (
+            <button
+              onClick={subscribe}
+              className="text-xs bg-white text-blue-600 font-semibold px-3 py-1.5 rounded-md hover:bg-blue-50 flex-shrink-0 ml-3"
+            >
+              Enable
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Mobile backdrop */}

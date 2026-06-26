@@ -14,6 +14,7 @@ import { RemindersPanel } from './components/RemindersPanel';
 import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
 import { getUnreadCountsByProjects } from './utils/unreadComments';
 import { useNotificationSound } from './utils/useNotificationSound';
+import { usePushNotifications } from './utils/usePushNotifications';
 import { supabase } from './lib/supabase';
 import {
   CheckSquare,
@@ -37,6 +38,7 @@ type SortDir = 'asc' | 'desc';
 export default function App() {
   const { user, loading, signOut } = useAuth();
   const { updateSoundEnabled, playChime } = useNotificationSound();
+  const { isSubscribed: pushSubscribed, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -461,6 +463,20 @@ export default function App() {
                         <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${soundEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
                       </div>
                     </div>
+                    {'PushManager' in window && (
+                      <div className="flex items-center justify-between mt-2">
+                        <div>
+                          <p className="text-xs font-medium text-slate-700">Push Notifications</p>
+                          <p className="text-[10px] text-slate-400">Alerts when app is closed</p>
+                        </div>
+                        <div
+                          onClick={() => pushSubscribed ? unsubscribePush() : subscribePush()}
+                          className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer flex-shrink-0 ${pushSubscribed ? 'bg-blue-500' : 'bg-slate-300'}`}
+                        >
+                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${pushSubscribed ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => { signOut(); setShowUserMenu(false); }}
