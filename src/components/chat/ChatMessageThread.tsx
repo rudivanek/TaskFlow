@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Trash2, ChevronDown, ChevronUp, ImagePlus, Send } from 'lucide-react';
+import { Trash2, ImagePlus, Send } from 'lucide-react';
 import { ChatMessage } from '../../types';
 import { formatRelativeTime } from '../../utils/formatRelativeTime';
 
@@ -11,9 +11,7 @@ interface Props {
   thread: Thread;
   currentUserId: string | undefined;
   searchQuery: string;
-  isExpanded: boolean;
   isReplying: boolean;
-  onToggleExpand: () => void;
   onReply: () => void;
   onPostReply: (content: string, images: File[]) => void;
   onDelete: (id: string) => void;
@@ -84,8 +82,7 @@ function MessageBubble({ msg, currentUserId, searchQuery, isReply = false, onDel
 
 export function ChatMessageThread({
   thread, currentUserId, searchQuery,
-  isExpanded, isReplying,
-  onToggleExpand, onReply, onPostReply, onDelete,
+  isReplying, onReply, onPostReply, onDelete,
 }: Props) {
   const [replyContent, setReplyContent] = useState('');
   const [replyImages, setReplyImages] = useState<File[]>([]);
@@ -118,30 +115,11 @@ export function ChatMessageThread({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="w-full flex flex-col gap-1">
       <MessageBubble msg={thread} currentUserId={currentUserId} searchQuery={searchQuery} onDelete={onDelete} />
 
-      <div className="flex items-center gap-3 pl-1">
-        <button
-          onClick={onReply}
-          className="text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
-        >
-          Reply
-        </button>
-        {thread.replies.length > 0 && (
-          <button
-            onClick={onToggleExpand}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            {isExpanded
-              ? <><ChevronUp className="w-3 h-3" />Hide {thread.replies.length} {thread.replies.length === 1 ? 'reply' : 'replies'}</>
-              : <><ChevronDown className="w-3 h-3" />{thread.replies.length} {thread.replies.length === 1 ? 'reply' : 'replies'}</>
-            }
-          </button>
-        )}
-      </div>
-
-      {isExpanded && thread.replies.length > 0 && (
+      {/* Always-visible replies */}
+      {thread.replies.length > 0 && (
         <div className="ml-4 border-l-2 border-gray-100 pl-3 flex flex-col gap-1">
           {thread.replies.map(reply => (
             <MessageBubble
@@ -156,6 +134,17 @@ export function ChatMessageThread({
         </div>
       )}
 
+      {/* Reply action */}
+      <div className="pl-1">
+        <button
+          onClick={onReply}
+          className="text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
+        >
+          Reply
+        </button>
+      </div>
+
+      {/* Inline reply compose */}
       {isReplying && (
         <div className="ml-4 border-l-2 border-blue-200 pl-3">
           <div className="bg-blue-50/60 border border-blue-100 rounded-lg p-3 flex flex-col gap-2">

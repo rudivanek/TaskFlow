@@ -29,7 +29,6 @@ export function ChatMain({
   const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -156,7 +155,6 @@ export function ChatMain({
       content: replyContent.trim(),
       image_urls: imageUrls,
     });
-    setExpandedIds(prev => new Set([...prev, parentId]));
     setReplyingToId(null);
     await markRead();
   }
@@ -227,20 +225,14 @@ export function ChatMain({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+        <div className="w-full space-y-4">
             {filteredThreads.map(thread => (
               <ChatMessageThread
                 key={thread.id}
                 thread={thread}
                 currentUserId={currentUser?.id}
                 searchQuery={searchQuery}
-                isExpanded={expandedIds.has(thread.id)}
                 isReplying={replyingToId === thread.id}
-                onToggleExpand={() => setExpandedIds(prev => {
-                  const next = new Set(prev);
-                  next.has(thread.id) ? next.delete(thread.id) : next.add(thread.id);
-                  return next;
-                })}
                 onReply={() => setReplyingToId(replyingToId === thread.id ? null : thread.id)}
                 onPostReply={(c, imgs) => handlePostReply(thread.id, c, imgs)}
                 onDelete={handleDelete}
