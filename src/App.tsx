@@ -66,9 +66,9 @@ export default function App() {
 
   // Chat
   const [chatMode, setChatMode] = useState(() => {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('page') === 'chat' || window.location.pathname === '/chat';
-});
+    const params = new URLSearchParams(window.location.search);
+    return params.get('page') === 'chat' || window.location.pathname === '/chat';
+  });
   const [totalChatUnread, setTotalChatUnread] = useState(0);
   const [includeInChat, setIncludeInChat] = useState(false);
 
@@ -81,6 +81,23 @@ export default function App() {
   useEffect(() => { showDiscussionRef.current = showDiscussion; }, [showDiscussion]);
   useEffect(() => { selectedProjectIdRef.current = selectedProjectId; }, [selectedProjectId]);
   useEffect(() => { chatModeRef.current = chatMode; }, [chatMode]);
+
+  // Handle notification click from service worker
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'NOTIFICATION_CLICK') {
+        setChatMode(true);
+        setTotalChatUnread(0);
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+    };
+  }, []);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -229,7 +246,8 @@ export default function App() {
     }
   };
 
-  const handleChatToggle = async (checked: boolean) => {    if (!selectedProjectId) return;
+  const handleChatToggle = async (checked: boolean) => {
+    if (!selectedProjectId) return;
     setIncludeInChat(checked);
     await supabase.from('projects').update({ include_in_chat: checked }).eq('id', selectedProjectId);
     if (checked) {
