@@ -2,7 +2,7 @@
   "name": "TaskFlow Chat",
   "short_name": "TF Chat",
   "description": "TaskFlow team chat — stay connected with your team",
-  "start_url": "/?page=chat",
+  "start_url": "/chat",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
