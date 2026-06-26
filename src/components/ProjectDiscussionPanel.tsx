@@ -4,7 +4,7 @@ import {
   Users, User, Search, ChevronDown, ChevronUp, CornerDownRight, ImagePlus,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
-import { ProjectComment, Task, Profile } from '../types';
+import { ProjectComment, Task, Profile, ChatMessage } from '../types';
 import * as projectServices from '../services/projectServices';
 import * as taskServices from '../services/taskServices';
 import { supabase } from '../lib/supabase';
@@ -18,7 +18,26 @@ import { formatRelativeTime } from '../utils/formatRelativeTime';
 import { useNotificationSound } from '../utils/useNotificationSound';
 import { ReminderButton } from './ReminderButton';
 
-type CommentThread = ProjectComment & { replies: ProjectComment[] };
+type UnifiedComment = ProjectComment & { _source: 'discussion' | 'chat' };
+type CommentThread = UnifiedComment & { replies: UnifiedComment[] };
+
+function chatMsgToComment(m: ChatMessage, projectId: string): UnifiedComment {
+  return {
+    id: m.id,
+    project_id: projectId,
+    parent_id: m.parent_id,
+    user_id: m.author_id,
+    author_name: m.author_name,
+    content: m.content,
+    image_urls: m.image_urls ?? [],
+    created_at: m.created_at,
+    updated_at: m.created_at,
+    task_id: null,
+    notify_all: false,
+    notified_user_ids: [],
+    _source: 'chat',
+  };
+}
 
 interface Props {
   projectId: string;
@@ -163,6 +182,7 @@ export default function ProjectDiscussionPanel({
   const { user } = useAuth();
   const { playChime } = useNotificationSound();
   const [threads, setThreads] = useState<CommentThread[]>([]);
+  const [channelId, setChannelId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -293,12 +313,13 @@ export default function ProjectDiscussionPanel({
           const isForMe = c.notify_all || (c.notified_user_ids ?? []).includes(user?.id ?? '');
           if (isForMe) playChime();
         }
+        const unified: UnifiedComment = { ...c, _source: 'discussion' };
         if (c.parent_id === null) {
-          setThreads(prev => [...prev, { ...c, replies: [] }]);
+          setThreads(prev => prev.find(t => t.id === unified.id) ? prev : [...prev, { ...unified, replies: [] }]);
         } else {
           setThreads(prev => prev.map(t =>
             t.id === c.parent_id
-              ? { ...t, replies: [...t.replies, c] }
+              ? { ...t, replies: t.replies.find(r => r.id === unified.id) ? t.replies : [...t.replies, unified] }
               : t
           ));
           setExpandedThreadIds(prev => new Set([...prev, c.parent_id!]));
@@ -307,6 +328,54 @@ export default function ProjectDiscussionPanel({
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [isOpen, projectId]);
+
+  // Realtime: chat_messages for the linked channel
+  useEffect(() => {
+    if (!isOpen || !channelId) return;
+    const sub = supabase
+      .channel(`panel-chat-${channelId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `channel_id=eq.${channelId}`,
+      }, (payload) => {
+        const m = payload.new as ChatMessage;
+        if (m.author_id !== user?.id) playChime();
+        const unified = chatMsgToComment(m, projectId);
+        if (m.parent_id === null) {
+          setThreads(prev => prev.find(t => t.id === unified.id) ? prev : [...prev, { ...unified, replies: [] }]);
+        } else {
+          setThreads(prev => {
+            const parentExists = prev.find(t => t.id === m.parent_id);
+            if (parentExists) {
+              return prev.map(t =>
+                t.id === m.parent_id
+                  ? { ...t, replies: t.replies.find(r => r.id === unified.id) ? t.replies : [...t.replies, unified] }
+                  : t
+              );
+            }
+            // Parent not yet in threads (race condition) — add as top-level
+            return prev.find(t => t.id === unified.id) ? prev : [...prev, { ...unified, replies: [] }];
+          });
+          setExpandedThreadIds(prev => new Set([...prev, m.parent_id!]));
+        }
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `channel_id=eq.${channelId}`,
+      }, (payload) => {
+        const deletedId = (payload.old as ChatMessage).id;
+        setThreads(prev => prev
+          .filter(t => t.id !== deletedId)
+          .map(t => ({ ...t, replies: t.replies.filter(r => r.id !== deletedId) }))
+        );
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [isOpen, channelId]);
 
   // ── data loading ─────────────────────────────────────────────────────────
 
@@ -318,14 +387,39 @@ export default function ProjectDiscussionPanel({
         taskServices.fetchTasks(projectId),
       ]);
       setTasks(tasksData);
-      const topLevel = commentsData.filter(c => c.parent_id === null);
-      const replies = commentsData.filter(c => c.parent_id !== null);
+
+      // Also load chat messages from the linked channel
+      const { data: channelData } = await supabase
+        .from('chat_channels')
+        .select('id')
+        .eq('project_id', projectId)
+        .single();
+      const linkedChannelId = channelData?.id ?? null;
+      setChannelId(linkedChannelId);
+
+      const discussionComments: UnifiedComment[] = commentsData.map(c => ({ ...c, _source: 'discussion' as const }));
+
+      let chatComments: UnifiedComment[] = [];
+      if (linkedChannelId) {
+        const { data: chatMsgs } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('channel_id', linkedChannelId)
+          .order('created_at', { ascending: true });
+        if (chatMsgs) chatComments = (chatMsgs as ChatMessage[]).map(m => chatMsgToComment(m, projectId));
+      }
+
+      const allComments = [...discussionComments, ...chatComments].sort(
+        (a, b) => a.created_at.localeCompare(b.created_at)
+      );
+      const topLevel = allComments.filter(c => c.parent_id === null);
+      const replies = allComments.filter(c => c.parent_id !== null);
       const built: CommentThread[] = topLevel.map(c => ({
         ...c,
         replies: replies.filter(r => r.parent_id === c.id),
       }));
       setThreads(built);
-      onCommentCountChange?.(commentsData.length);
+      onCommentCountChange?.(allComments.length);
       if (user) {
         const ids = await getReadCommentIds(supabase, projectId, user.id);
         setReadIds(ids);
@@ -501,7 +595,7 @@ export default function ProjectDiscussionPanel({
       );
       await markCommentAsRead(supabase, comment.id, user.id);
       setThreads(prev => {
-        const updated = [...prev, { ...comment, replies: [] }];
+        const updated: CommentThread[] = [...prev, { ...comment, _source: 'discussion' as const, replies: [] }];
         onCommentCountChange?.(updated.length + updated.reduce((s, t) => s + t.replies.length, 0));
         return updated;
       });
@@ -524,22 +618,49 @@ export default function ProjectDiscussionPanel({
     setReplySubmitting(true);
     try {
       const authorName = (user.user_metadata?.full_name as string | undefined) || user.email || '';
-      const { notifyAll, notifiedUserIds } = parseMentionsFromText(replyText.trim(), profiles);
-
       const uploadedUrls = await Promise.all(
         pendingReplyImages.map(file => uploadDiscussionImage(supabase, file, user.id))
       );
       const imageUrls = uploadedUrls.filter(Boolean) as string[];
 
-      const reply = await projectServices.addProjectDiscussionComment(
-        projectId, user.id, authorName, replyText.trim(),
-        null, notifyAll, notifiedUserIds, parentId, imageUrls,
-      );
-      await markCommentAsRead(supabase, reply.id, user.id);
+      const parentThread = threads.find(t => t.id === parentId);
+      const parentSource = parentThread?._source;
+
+      let replyUnified: UnifiedComment;
+
+      if (parentSource === 'chat' && channelId) {
+        // Parent is a chat message — reply must go to chat_messages (FK constraint)
+        const { data: inserted } = await supabase
+          .from('chat_messages')
+          .insert({
+            channel_id: channelId,
+            conversation_id: null,
+            parent_id: parentId,
+            author_id: user.id,
+            author_name: authorName,
+            content: replyText.trim(),
+            image_urls: imageUrls,
+          })
+          .select()
+          .single();
+        if (!inserted) throw new Error('Insert failed');
+        replyUnified = chatMsgToComment(inserted as ChatMessage, projectId);
+      } else {
+        const { notifyAll, notifiedUserIds } = parseMentionsFromText(replyText.trim(), profiles);
+        const reply = await projectServices.addProjectDiscussionComment(
+          projectId, user.id, authorName, replyText.trim(),
+          null, notifyAll, notifiedUserIds, parentId, imageUrls,
+        );
+        await markCommentAsRead(supabase, reply.id, user.id);
+        setReadIds(prev => new Set([...prev, reply.id]));
+        replyUnified = { ...reply, _source: 'discussion' };
+      }
+
       setThreads(prev => prev.map(t =>
-        t.id === parentId ? { ...t, replies: [...t.replies, reply] } : t
+        t.id === parentId
+          ? { ...t, replies: t.replies.find(r => r.id === replyUnified.id) ? t.replies : [...t.replies, replyUnified] }
+          : t
       ));
-      setReadIds(prev => new Set([...prev, reply.id]));
       setExpandedThreadIds(prev => new Set([...prev, parentId]));
       setReplyText('');
       setReplyingToId(null);
@@ -553,9 +674,13 @@ export default function ProjectDiscussionPanel({
     }
   }
 
-  async function handleDelete(id: string, parentId?: string) {
+  async function handleDelete(id: string, parentId?: string, source?: 'discussion' | 'chat') {
     try {
-      await projectServices.deleteProjectComment(id);
+      if (source === 'chat') {
+        await supabase.from('chat_messages').delete().eq('id', id);
+      } else {
+        await projectServices.deleteProjectComment(id);
+      }
       if (parentId) {
         setThreads(prev => prev.map(t =>
           t.id === parentId ? { ...t, replies: t.replies.filter(r => r.id !== id) } : t
@@ -688,6 +813,7 @@ export default function ProjectDiscussionPanel({
                 const isExpanded = expandedThreadIds.has(thread.id);
                 const taskName = getTaskName(thread.task_id);
                 const displayName = thread.author_name || thread.user_id.slice(0, 8);
+                const isChat = thread._source === 'chat';
 
                 return (
                   <div key={thread.id} className="flex flex-col">
@@ -695,6 +821,8 @@ export default function ProjectDiscussionPanel({
                     <div className={`group rounded-xl border px-4 py-3 transition-colors ${
                       unread
                         ? 'bg-blue-50/60 border-blue-200/60 hover:border-blue-300/60'
+                        : isChat
+                        ? 'bg-slate-50 border-slate-200 hover:border-slate-300 shadow-sm'
                         : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
                     }`}>
                       {/* Author row */}
@@ -704,14 +832,22 @@ export default function ProjectDiscussionPanel({
                             <span className="text-[9px] font-bold text-primary-600">{getInitial(displayName)}</span>
                           </div>
                           <span className="text-xs font-semibold text-slate-700 truncate">{displayName}</span>
-                          <span className="text-[11px] text-slate-400 flex-shrink-0">→</span>
-                          <span className="flex items-center gap-1 flex-shrink-0">
-                            {thread.notify_all || thread.notified_user_ids.length === 0
-                              ? <Users className="w-3 h-3 text-slate-400" />
-                              : <User className="w-3 h-3 text-slate-400" />
-                            }
-                            <span className="text-[11px] text-slate-500 truncate max-w-[130px]">{getRecipientLabel(thread)}</span>
-                          </span>
+                          {isChat ? (
+                            <span className="flex items-center gap-0.5 text-[10px] text-blue-600 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 font-medium flex-shrink-0">
+                              Chat
+                            </span>
+                          ) : (
+                            <>
+                              <span className="text-[11px] text-slate-400 flex-shrink-0">→</span>
+                              <span className="flex items-center gap-1 flex-shrink-0">
+                                {thread.notify_all || thread.notified_user_ids.length === 0
+                                  ? <Users className="w-3 h-3 text-slate-400" />
+                                  : <User className="w-3 h-3 text-slate-400" />
+                                }
+                                <span className="text-[11px] text-slate-500 truncate max-w-[130px]">{getRecipientLabel(thread)}</span>
+                              </span>
+                            </>
+                          )}
                           {unread && <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500" />}
                           {!unread && hasUnread && <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-300" title="Unread replies" />}
                         </div>
@@ -729,7 +865,7 @@ export default function ProjectDiscussionPanel({
                               authorName={thread.author_name || thread.user_id.slice(0, 8)}
                             />
                             {isOwn && (
-                              <button onClick={() => handleDelete(thread.id)} className="p-0.5 hover:text-red-500 text-slate-300 transition-all" title="Delete">
+                              <button onClick={() => handleDelete(thread.id, undefined, thread._source)} className="p-0.5 hover:text-red-500 text-slate-300 transition-all" title="Delete">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             )}
@@ -789,6 +925,7 @@ export default function ProjectDiscussionPanel({
                           const replyRelevant = isRelevantToMe(reply);
                           const replyUnread = replyRelevant && !readIds.has(reply.id);
                           const replyDisplayName = reply.author_name || reply.user_id.slice(0, 8);
+                          const replyIsChat = reply._source === 'chat';
                           return (
                             <div key={reply.id} className={`group rounded-lg border px-3 py-2.5 transition-colors ${
                               replyUnread
@@ -801,14 +938,20 @@ export default function ProjectDiscussionPanel({
                                     <span className="text-[8px] font-bold text-primary-600">{getInitial(replyDisplayName)}</span>
                                   </div>
                                   <span className="text-xs font-semibold text-slate-700 truncate">{replyDisplayName}</span>
-                                  <span className="text-[11px] text-slate-400">→</span>
-                                  <span className="flex items-center gap-0.5 flex-shrink-0">
-                                    {reply.notify_all || reply.notified_user_ids.length === 0
-                                      ? <Users className="w-2.5 h-2.5 text-slate-400" />
-                                      : <User className="w-2.5 h-2.5 text-slate-400" />
-                                    }
-                                    <span className="text-[11px] text-slate-500 truncate max-w-[110px]">{getRecipientLabel(reply)}</span>
-                                  </span>
+                                  {replyIsChat ? (
+                                    <span className="text-[10px] text-blue-600 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 font-medium flex-shrink-0">Chat</span>
+                                  ) : (
+                                    <>
+                                      <span className="text-[11px] text-slate-400">→</span>
+                                      <span className="flex items-center gap-0.5 flex-shrink-0">
+                                        {reply.notify_all || reply.notified_user_ids.length === 0
+                                          ? <Users className="w-2.5 h-2.5 text-slate-400" />
+                                          : <User className="w-2.5 h-2.5 text-slate-400" />
+                                        }
+                                        <span className="text-[11px] text-slate-500 truncate max-w-[110px]">{getRecipientLabel(reply)}</span>
+                                      </span>
+                                    </>
+                                  )}
                                   {replyUnread && <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500" />}
                                 </div>
                                 <div className="flex items-center gap-1 flex-shrink-0">
@@ -825,7 +968,7 @@ export default function ProjectDiscussionPanel({
                                       authorName={reply.author_name || reply.user_id.slice(0, 8)}
                                     />
                                     {replyOwn && (
-                                      <button onClick={() => handleDelete(reply.id, thread.id)} className="p-0.5 hover:text-red-500 text-slate-300 transition-all" title="Delete">
+                                      <button onClick={() => handleDelete(reply.id, thread.id, reply._source)} className="p-0.5 hover:text-red-500 text-slate-300 transition-all" title="Delete">
                                         <Trash2 className="w-3 h-3" />
                                       </button>
                                     )}
