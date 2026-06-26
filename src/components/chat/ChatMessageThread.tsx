@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react';
-import { Trash2, ImagePlus, Send, ChevronUp } from 'lucide-react';
-import { ChatMessage } from '../../types';
+import { Trash2, ImagePlus, Send, ChevronUp, MessageSquare } from 'lucide-react';
+import { UnifiedMessage } from '../../types';
 import { formatRelativeTime } from '../../utils/formatRelativeTime';
 
-interface Thread extends ChatMessage {
-  replies: ChatMessage[];
+interface Thread extends UnifiedMessage {
+  replies: UnifiedMessage[];
 }
 
 interface Props {
@@ -16,7 +16,7 @@ interface Props {
   onToggleCollapse: () => void;
   onReply: () => void;
   onPostReply: (content: string, images: File[]) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, source: 'chat' | 'discussion') => void;
 }
 
 function highlightText(text: string, query: string): React.ReactNode {
@@ -35,23 +35,30 @@ function highlightText(text: string, query: string): React.ReactNode {
 }
 
 interface BubbleProps {
-  msg: ChatMessage;
+  msg: UnifiedMessage;
   currentUserId: string | undefined;
   searchQuery: string;
   isReply?: boolean;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, source: 'chat' | 'discussion') => void;
 }
 
 function MessageBubble({ msg, currentUserId, searchQuery, isReply = false, onDelete }: BubbleProps) {
   return (
-    <div className={`group w-full border border-gray-200 rounded-lg p-3 shadow-sm ${isReply ? 'bg-gray-50' : 'bg-white'}`}>
+    <div className={`group w-full border rounded-lg p-3 shadow-sm ${isReply ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200'}`}>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-semibold text-gray-700">{msg.author_name}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-gray-700">{msg.author_name}</span>
+          {msg.source === 'discussion' && (
+            <span className="flex items-center gap-0.5 text-[10px] text-teal-600 bg-teal-50 border border-teal-200 rounded px-1 py-0.5 font-medium">
+              <MessageSquare className="w-2.5 h-2.5" />Diskussion
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">{formatRelativeTime(msg.created_at)}</span>
           {msg.author_id === currentUserId && (
             <button
-              onClick={() => onDelete(msg.id)}
+              onClick={() => onDelete(msg.id, msg.source)}
               className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-300 hover:text-red-500 transition-all"
               title="Delete"
             >
@@ -120,24 +127,19 @@ export function ChatMessageThread({
     <div className="w-full flex flex-col gap-1">
       <MessageBubble msg={thread} currentUserId={currentUserId} searchQuery={searchQuery} onDelete={onDelete} />
 
-      {/* Replies — shown by default, collapsible */}
-      {thread.replies.length > 0 && (
-        <>
-          {!isCollapsed && (
-            <div className="ml-4 border-l-2 border-gray-100 pl-3 flex flex-col gap-1">
-              {thread.replies.map(reply => (
-                <MessageBubble
-                  key={reply.id}
-                  msg={reply}
-                  currentUserId={currentUserId}
-                  searchQuery={searchQuery}
-                  isReply
-                  onDelete={onDelete}
-                />
-              ))}
-            </div>
-          )}
-        </>
+      {thread.replies.length > 0 && !isCollapsed && (
+        <div className="ml-4 border-l-2 border-gray-100 pl-3 flex flex-col gap-1">
+          {thread.replies.map(reply => (
+            <MessageBubble
+              key={reply.id}
+              msg={reply}
+              currentUserId={currentUserId}
+              searchQuery={searchQuery}
+              isReply
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
       )}
 
       {/* Actions row */}

@@ -110,6 +110,17 @@ export interface Profile {
   email: string;
 }
 
+export interface UnifiedMessage {
+  id: string;
+  source: 'chat' | 'discussion';
+  parent_id: string | null;
+  author_id: string;
+  author_name: string;
+  content: string;
+  image_urls: string[];
+  created_at: string;
+}
+
 export interface ProjectNote {
   id: string;
   project_id: string;

@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X, Send, ImagePlus } from 'lucide-react';
-import { ChatChannel, ChatDirectConversation, ChatMessage, Profile } from '../../types';
+import { ChatChannel, ChatDirectConversation, ChatMessage, ProjectComment, Profile, UnifiedMessage } from '../../types';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { uploadDiscussionImage } from '../../utils/uploadDiscussionImage';
 import { ChatMessageThread } from './ChatMessageThread';
 
-interface Thread extends ChatMessage {
-  replies: ChatMessage[];
+interface Thread extends UnifiedMessage {
+  replies: UnifiedMessage[];
 }
 
 interface Props {
@@ -20,10 +20,36 @@ interface Props {
   onMarkRead: (channelId: string | null, convId: string | null) => void;
 }
 
+function fromChatMessage(m: ChatMessage): UnifiedMessage {
+  return {
+    id: m.id,
+    source: 'chat',
+    parent_id: m.parent_id,
+    author_id: m.author_id,
+    author_name: m.author_name,
+    content: m.content,
+    image_urls: m.image_urls ?? [],
+    created_at: m.created_at,
+  };
+}
+
+function fromProjectComment(c: ProjectComment): UnifiedMessage {
+  return {
+    id: c.id,
+    source: 'discussion',
+    parent_id: c.parent_id,
+    author_id: c.user_id,
+    author_name: c.author_name,
+    content: c.content,
+    image_urls: c.image_urls ?? [],
+    created_at: c.created_at,
+  };
+}
+
 export function ChatMain({
   channelId, conversationId, channels, conversations, allUsers, currentUser, onMarkRead,
 }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [content, setContent] = useState('');
   const [pendingImages, setPendingImages] = useState<File[]>([]);
   const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
@@ -34,6 +60,9 @@ export function ChatMain({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const activeId = channelId ?? conversationId;
+
+  const channel = channels.find(c => c.id === channelId) ?? null;
+  const projectId = channel?.project_id ?? null;
 
   useEffect(() => {
     if (!activeId) return;
@@ -48,24 +77,22 @@ export function ChatMain({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
+  // Realtime: chat_messages
   useEffect(() => {
     if (!activeId) return;
+    const filter = channelId
+      ? `channel_id=eq.${channelId}`
+      : `conversation_id=eq.${conversationId}`;
     const ch = supabase
       .channel(`chat-msgs-${activeId}`)
       .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_messages',
-        filter: channelId ? `channel_id=eq.${channelId}` : `conversation_id=eq.${conversationId}`,
+        event: 'INSERT', schema: 'public', table: 'chat_messages', filter,
       }, (payload) => {
-        const msg = payload.new as ChatMessage;
+        const msg = fromChatMessage(payload.new as ChatMessage);
         setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg]);
       })
       .on('postgres_changes', {
-        event: 'DELETE',
-        schema: 'public',
-        table: 'chat_messages',
-        filter: channelId ? `channel_id=eq.${channelId}` : `conversation_id=eq.${conversationId}`,
+        event: 'DELETE', schema: 'public', table: 'chat_messages', filter,
       }, (payload) => {
         setMessages(prev => prev.filter(m => m.id !== (payload.old as ChatMessage).id));
       })
@@ -73,13 +100,51 @@ export function ChatMain({
     return () => { supabase.removeChannel(ch); };
   }, [activeId]);
 
+  // Realtime: project_comments (only for project channels)
+  useEffect(() => {
+    if (!projectId) return;
+    const ch = supabase
+      .channel(`proj-comments-${projectId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'project_comments',
+        filter: `project_id=eq.${projectId}`,
+      }, (payload) => {
+        const msg = fromProjectComment(payload.new as ProjectComment);
+        setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg]);
+      })
+      .on('postgres_changes', {
+        event: 'DELETE', schema: 'public', table: 'project_comments',
+        filter: `project_id=eq.${projectId}`,
+      }, (payload) => {
+        setMessages(prev => prev.filter(m => m.id !== (payload.old as ProjectComment).id));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [projectId]);
+
   async function loadMessages() {
     if (!activeId) return;
-    let query = supabase.from('chat_messages').select('*').order('created_at', { ascending: true });
-    if (channelId) query = query.eq('channel_id', channelId);
-    else if (conversationId) query = query.eq('conversation_id', conversationId);
-    const { data } = await query;
-    if (data) setMessages(data);
+    const results: UnifiedMessage[] = [];
+
+    // Load chat_messages
+    let chatQuery = supabase.from('chat_messages').select('*').order('created_at', { ascending: true });
+    if (channelId) chatQuery = chatQuery.eq('channel_id', channelId);
+    else if (conversationId) chatQuery = chatQuery.eq('conversation_id', conversationId);
+    const { data: chatData } = await chatQuery;
+    if (chatData) results.push(...chatData.map(fromChatMessage));
+
+    // Load project_comments for project channels
+    if (projectId) {
+      const { data: commentData } = await supabase
+        .from('project_comments')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: true });
+      if (commentData) results.push(...commentData.map(fromProjectComment));
+    }
+
+    results.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    setMessages(results);
     await markRead();
   }
 
@@ -146,7 +211,8 @@ export function ChatMain({
 
     const { data: inserted } = await supabase.from('chat_messages').insert(row).select().single();
     if (inserted) {
-      setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted]);
+      const unified = fromChatMessage(inserted as ChatMessage);
+      setMessages(prev => prev.find(m => m.id === unified.id) ? prev : [...prev, unified]);
     }
     await markRead();
   }
@@ -156,32 +222,66 @@ export function ChatMain({
     const uploaded = await Promise.all(replyImages.map(f => uploadDiscussionImage(supabase, f, currentUser.id)));
     const imageUrls = uploaded.filter(Boolean) as string[];
 
-    const row = {
-      channel_id: channelId ?? null,
-      conversation_id: conversationId ?? null,
-      parent_id: parentId,
-      author_id: currentUser.id,
-      author_name: (currentUser.user_metadata?.full_name as string) || currentUser.email || '',
-      content: replyContent.trim(),
-      image_urls: imageUrls,
-    };
+    const parentMsg = messages.find(m => m.id === parentId);
+    const authorName = (currentUser.user_metadata?.full_name as string) || currentUser.email || '';
 
     setReplyingToId(null);
-    const { data: inserted } = await supabase.from('chat_messages').insert(row).select().single();
-    if (inserted) {
-      setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted]);
+
+    if (parentMsg?.source === 'discussion' && projectId) {
+      // Reply goes to project_comments to keep the Diskussion thread intact
+      const row = {
+        project_id: projectId,
+        parent_id: parentId,
+        user_id: currentUser.id,
+        author_name: authorName,
+        content: replyContent.trim(),
+        image_urls: imageUrls,
+        task_id: null as string | null,
+        notify_all: false,
+        notified_user_ids: [] as string[],
+      };
+      const { data: inserted } = await supabase.from('project_comments').insert(row).select().single();
+      if (inserted) {
+        const unified = fromProjectComment(inserted as ProjectComment);
+        setMessages(prev => prev.find(m => m.id === unified.id) ? prev : [...prev, unified]);
+      }
+    } else {
+      // Reply goes to chat_messages
+      const row = {
+        channel_id: channelId ?? null,
+        conversation_id: conversationId ?? null,
+        parent_id: parentId,
+        author_id: currentUser.id,
+        author_name: authorName,
+        content: replyContent.trim(),
+        image_urls: imageUrls,
+      };
+      const { data: inserted } = await supabase.from('chat_messages').insert(row).select().single();
+      if (inserted) {
+        const unified = fromChatMessage(inserted as ChatMessage);
+        setMessages(prev => prev.find(m => m.id === unified.id) ? prev : [...prev, unified]);
+      }
     }
     await markRead();
   }
 
-  async function handleDelete(id: string) {
-    await supabase.from('chat_messages').delete().eq('id', id);
+  async function handleDelete(id: string, source: 'chat' | 'discussion') {
+    if (source === 'discussion') {
+      await supabase.from('project_comments').delete().eq('id', id);
+    } else {
+      await supabase.from('chat_messages').delete().eq('id', id);
+    }
     setMessages(prev => prev.filter(m => m.id !== id));
   }
 
   const topLevel = messages.filter(m => m.parent_id === null);
   const replyMessages = messages.filter(m => m.parent_id !== null);
-  const threads: Thread[] = topLevel.map(m => ({ ...m, replies: replyMessages.filter(r => r.parent_id === m.id) }));
+  const threads: Thread[] = topLevel.map(m => ({
+    ...m,
+    replies: replyMessages
+      .filter(r => r.parent_id === m.id)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at)),
+  }));
   const filteredThreads = threads.filter(t => {
     const q = searchQuery.toLowerCase();
     if (!q) return true;
@@ -208,9 +308,16 @@ export function ChatMain({
     <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-gray-50">
       {/* Header */}
       <div className="px-6 py-3 border-b border-gray-200 bg-white flex items-center justify-between flex-shrink-0">
-        <h2 className="font-semibold text-gray-800 text-sm">
-          {isChannel ? `# ${title}` : title}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-semibold text-gray-800 text-sm">
+            {isChannel ? `# ${title}` : title}
+          </h2>
+          {projectId && (
+            <span className="text-[10px] text-teal-600 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5 font-medium">
+              Chat + Diskussion
+            </span>
+          )}
+        </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
