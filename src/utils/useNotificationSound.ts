@@ -1,10 +1,29 @@
 import { useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Module-level shared state so all hook instances share the same preference
 let _soundEnabled = true;
 let _audioCtx: AudioContext | null = null;
 let _preferenceLoaded = false;
+
+function playTone(ctx: AudioContext, frequency: number, startTime: number, duration: number, gain: number) {
+  const osc = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+  osc.connect(gainNode);
+  gainNode.connect(ctx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(frequency, startTime);
+  gainNode.gain.setValueAtTime(0, startTime);
+  gainNode.gain.linearRampToValueAtTime(gain, startTime + 0.01);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  osc.start(startTime);
+  osc.stop(startTime + duration);
+}
+
+function scheduleChime(ctx: AudioContext) {
+  const now = ctx.currentTime;
+  playTone(ctx, 880, now, 0.3, 0.15);
+  playTone(ctx, 1108.73, now + 0.15, 0.4, 0.1);
+}
 
 export function useNotificationSound() {
   useEffect(() => {
@@ -28,22 +47,11 @@ export function useNotificationSound() {
     try {
       if (!_audioCtx) _audioCtx = new AudioContext();
       const ctx = _audioCtx;
-      const playTone = (frequency: number, startTime: number, duration: number, gain: number) => {
-        const osc = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        osc.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(frequency, startTime);
-        gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(gain, startTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-        osc.start(startTime);
-        osc.stop(startTime + duration);
-      };
-      const now = ctx.currentTime;
-      playTone(880, now, 0.3, 0.15);
-      playTone(1108.73, now + 0.15, 0.4, 0.1);
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(() => scheduleChime(ctx)).catch(() => {});
+      } else {
+        scheduleChime(ctx);
+      }
     } catch (err) {
       console.warn('Could not play notification sound:', err);
     }
