@@ -44,7 +44,7 @@ interface BubbleProps {
 
 function MessageBubble({ msg, currentUserId, searchQuery, isReply = false, onDelete }: BubbleProps) {
   return (
-    <div className={`group border border-gray-200 rounded-lg p-3 shadow-sm ${isReply ? 'bg-gray-50' : 'bg-white'}`}>
+    <div className={`group w-full border border-gray-200 rounded-lg p-3 shadow-sm ${isReply ? 'bg-gray-50' : 'bg-white'}`}>
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs font-semibold text-gray-700">{msg.author_name}</span>
         <div className="flex items-center gap-2">
