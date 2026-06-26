@@ -11,12 +11,11 @@ import ProjectDiscussionPanel from './components/ProjectDiscussionPanel';
 import ProjectCommentsModal from './components/ProjectCommentsModal';
 import { ChatPage } from './components/chat/ChatPage';
 import { RemindersPanel } from './components/RemindersPanel';
+import { UnreadChatsModal } from './components/chat/UnreadChatsModal';
 import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
 import { getUnreadCountsByProjects } from './utils/unreadComments';
 import { useNotificationSound } from './utils/useNotificationSound';
 import { usePushNotifications } from './utils/usePushNotifications';
-import { isStandalonePWA } from './utils/isPWA';
-import { UnreadChatsModal } from './components/chat/UnreadChatsModal';
 import { supabase } from './lib/supabase';
 import {
   CheckSquare,
@@ -76,7 +75,6 @@ export default function App() {
   const [showUnreadModal, setShowUnreadModal] = useState(false);
   const [pwaSelectedChannelId, setPwaSelectedChannelId] = useState<string | null>(null);
   const [pwaSelectedConversationId, setPwaSelectedConversationId] = useState<string | null>(null);
-  const standalone = isStandalonePWA();
 
   const showDiscussionRef = useRef(showDiscussion);
   const selectedProjectIdRef = useRef(selectedProjectId);
@@ -91,14 +89,12 @@ export default function App() {
   // Handle notification click from service worker
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
-
     const handleSWMessage = (event: MessageEvent) => {
       if (event.data?.type === 'NOTIFICATION_CLICK') {
         setChatMode(true);
         setTotalChatUnread(0);
       }
     };
-
     navigator.serviceWorker.addEventListener('message', handleSWMessage);
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleSWMessage);
@@ -180,7 +176,7 @@ export default function App() {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  // Persistent chat unread listener — active on every page, not just ChatPage
+  // Persistent chat unread listener
   useEffect(() => {
     if (!user) return;
     const ch = supabase
@@ -266,6 +262,21 @@ export default function App() {
     }
   };
 
+  const handleChatButtonClick = () => {
+    if (chatMode) {
+      // Already in chat — go back to task grid
+      setChatMode(false);
+      return;
+    }
+    if (totalChatUnread > 0) {
+      // Has unreads — show modal to pick which chat
+      setShowUnreadModal(true);
+    } else {
+      // No unreads — go directly to chat
+      setChatMode(true);
+    }
+  };
+
   const handleExportTasks = useCallback(async () => {
     if (!selectedProjectId) return;
     setShowExportMenu(false);
@@ -317,7 +328,7 @@ export default function App() {
             </div>
             <span className="inline-flex items-end gap-2 text-base font-semibold text-slate-800">
               <span>Task Flow</span>
-              <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">V 2.2</span>
+              <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">V 2.3</span>
               <span className="pb-[1px] text-[10px] font-normal tracking-wide text-slate-400">Sharpen.Studio</span>
             </span>
           </div>
@@ -394,265 +405,3 @@ export default function App() {
               {noteCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-primary-600 text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none">
                   {noteCount > 99 ? '99+' : noteCount}
-                </span>
-              )}
-            </button>
-
-            {/* Discussion button */}
-            <button
-              onClick={() => setShowDiscussion(true)}
-              className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <MessageSquare className="w-4 h-4" />Discussion
-              {unreadCount > 0 ? (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              ) : totalCommentCount > 0 ? (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-slate-400 text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none">
-                  {totalCommentCount > 999 ? '999+' : totalCommentCount}
-                </span>
-              ) : null}
-            </button>
-
-            {/* Include in chat toggle */}
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none pl-2 border-l border-slate-200">
-              <div
-                onClick={() => handleChatToggle(!includeInChat)}
-                className={`relative w-8 h-4 rounded-full transition-colors cursor-pointer flex-shrink-0 ${
-                  includeInChat ? 'bg-blue-500' : 'bg-slate-300'
-                }`}
-              >
-                <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${
-                  includeInChat ? 'translate-x-4' : 'translate-x-0.5'
-                }`} />
-              </div>
-              <span className="text-xs text-slate-500">Chat</span>
-            </label>
-          </div>
-        )}
-
-        {/* Right side: Chat button + user menu */}
-        <div className="flex items-center gap-2">
-          {/* Chat button — modal on mobile PWA, toggle on desktop */}
-          {standalone ? (
-            <>
-              <button
-                onClick={() => {
-                  if (totalChatUnread > 0) {
-                    setShowUnreadModal(true);
-                  } else {
-                    setChatMode(true);
-                  }
-                }}
-                className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100"
-              >
-                <MessagesSquare className="w-4 h-4" />
-                {totalChatUnread > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
-                    {totalChatUnread > 9 ? '9+' : totalChatUnread}
-                  </span>
-                )}
-              </button>
-              {user && (
-                <UnreadChatsModal
-                  isOpen={showUnreadModal}
-                  onClose={() => setShowUnreadModal(false)}
-                  currentUserId={user.id}
-                  onSelectChannel={(channelId) => {
-                    setPwaSelectedChannelId(channelId);
-                    setPwaSelectedConversationId(null);
-                    setChatMode(true);
-                    setTotalChatUnread(0);
-                  }}
-                  onSelectConversation={(conversationId) => {
-                    setPwaSelectedConversationId(conversationId);
-                    setPwaSelectedChannelId(null);
-                    setChatMode(true);
-                    setTotalChatUnread(0);
-                  }}
-                />
-              )}
-            </>
-          ) : (
-            <button
-              onClick={() => { if (!chatMode) setTotalChatUnread(0); setChatMode(m => !m); }}
-              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                chatMode
-                  ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <MessagesSquare className="w-4 h-4" />
-              Chat
-              {!chatMode && totalChatUnread > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
-                  {totalChatUnread > 9 ? '9+' : totalChatUnread}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* User menu */}
-          <div className="relative">
-            <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 rounded-lg transition-colors"
-            >
-              <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-primary-600" />
-              </div>
-              <span className="text-sm text-slate-600 hidden sm:inline">{user.email}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-            {showUserMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
-                  <div className="px-3 py-2 border-b border-slate-100">
-                    <p className="text-xs text-slate-400">Signed in as</p>
-                    <p className="text-sm text-slate-700 truncate">{user.email}</p>
-                  </div>
-                  {/* Notifications section */}
-                  <div className="px-3 py-2 border-b border-slate-100">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Notifications</p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-medium text-slate-700">Sound</p>
-                        <p className="text-[10px] text-slate-400">Chime on new messages</p>
-                      </div>
-                      <div
-                        onClick={() => handleSoundToggle(!soundEnabled)}
-                        className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer flex-shrink-0 ${soundEnabled ? 'bg-blue-500' : 'bg-slate-300'}`}
-                      >
-                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${soundEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                      </div>
-                    </div>
-                    {'PushManager' in window && (
-                      <div className="flex items-center justify-between mt-2">
-                        <div>
-                          <p className="text-xs font-medium text-slate-700">Push Notifications</p>
-                          <p className="text-[10px] text-slate-400">Alerts when app is closed</p>
-                        </div>
-                        <div
-                          onClick={() => pushSubscribed ? unsubscribePush() : subscribePush()}
-                          className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer flex-shrink-0 ${pushSubscribed ? 'bg-blue-500' : 'bg-slate-300'}`}
-                        >
-                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${pushSubscribed ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => { signOut(); setShowUserMenu(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                  >
-                    <LogOut className="w-4 h-4" />Sign Out
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        {chatMode ? (
-          <ChatPage
-            onTotalUnreadChange={setTotalChatUnread}
-            initialChannelId={pwaSelectedChannelId}
-            initialConversationId={pwaSelectedConversationId}
-            onNavigated={() => {
-              setPwaSelectedChannelId(null);
-              setPwaSelectedConversationId(null);
-            }}
-          />
-        ) : (
-          <>
-            <Sidebar
-              selectedProjectId={selectedProjectId}
-              onSelectProject={setSelectedProjectId}
-              collapsed={sidebarCollapsed}
-              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-              unreadByProject={unreadByProject}
-              onProjectsLoaded={handleProjectsLoaded}
-            />
-
-            <main className="flex-1 overflow-hidden bg-white">
-              {!selectedProjectId ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                  <LayoutGrid className="w-12 h-12 mb-3 text-slate-300" />
-                  <p className="text-lg font-medium text-slate-500">Select a project</p>
-                  <p className="text-sm mt-1">Choose a project from the sidebar to get started</p>
-                </div>
-              ) : lookupLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
-                </div>
-              ) : viewMode === 'grid' ? (
-                <TaskGrid
-                  key={selectedProjectId}
-                  projectId={selectedProjectId}
-                  phases={phases}
-                  statuses={statuses}
-                  responsibles={responsibles}
-                  sortField={sortField}
-                  sortDir={sortDir}
-                  onSort={handleSort}
-                />
-              ) : viewMode === 'kanban' ? (
-                <KanbanBoard
-                  key={selectedProjectId}
-                  projectId={selectedProjectId}
-                  phases={phases}
-                  statuses={statuses}
-                  responsibles={responsibles}
-                />
-              ) : (
-                <GanttChart
-                  key={selectedProjectId}
-                  projectId={selectedProjectId}
-                  phases={phases}
-                  statuses={statuses}
-                  responsibles={responsibles}
-                  sortField={sortField}
-                  sortDir={sortDir}
-                  onSort={handleSort}
-                />
-              )}
-            </main>
-          </>
-        )}
-      </div>
-
-      {!chatMode && selectedProjectId && (
-        <ProjectDiscussionPanel
-          projectId={selectedProjectId}
-          projectName={selectedProjectName}
-          isOpen={showDiscussion}
-          onClose={() => setShowDiscussion(false)}
-          onCommentCountChange={setTotalCommentCount}
-          onMarkRead={(count) => {
-            if (!selectedProjectId) return;
-            setUnreadByProject(prev => ({
-              ...prev,
-              [selectedProjectId]: Math.max(0, (prev[selectedProjectId] ?? 0) - count),
-            }));
-          }}
-        />
-      )}
-
-      {!chatMode && selectedProjectId && showComments && (
-        <ProjectCommentsModal
-          projectId={selectedProjectId}
-          projectName={selectedProjectName}
-          onClose={() => setShowComments(false)}
-          onNoteCountChange={setNoteCount}
-        />
-      )}
-
-      <RemindersPanel />
-    </div>
-  );
-}
