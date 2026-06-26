@@ -13,9 +13,12 @@ const LAST_CONV_KEY = 'taskflow_last_conv_id';
 
 interface Props {
   onTotalUnreadChange: (n: number) => void;
+  initialChannelId?: string | null;
+  initialConversationId?: string | null;
+  onNavigated?: () => void;
 }
 
-export function ChatPage({ onTotalUnreadChange }: Props) {
+export function ChatPage({ onTotalUnreadChange, initialChannelId, initialConversationId, onNavigated }: Props) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [conversations, setConversations] = useState<ChatDirectConversation[]>([]);
@@ -34,6 +37,22 @@ export function ChatPage({ onTotalUnreadChange }: Props) {
   useEffect(() => {
     init();
   }, []);
+
+  useEffect(() => {
+    if (initialChannelId) {
+      setSelectedChannelId(initialChannelId);
+      setSelectedConvId(null);
+      localStorage.setItem(LAST_CHANNEL_KEY, initialChannelId);
+      localStorage.removeItem(LAST_CONV_KEY);
+      onNavigated?.();
+    } else if (initialConversationId) {
+      setSelectedConvId(initialConversationId);
+      setSelectedChannelId(null);
+      localStorage.setItem(LAST_CONV_KEY, initialConversationId);
+      localStorage.removeItem(LAST_CHANNEL_KEY);
+      onNavigated?.();
+    }
+  }, [initialChannelId, initialConversationId]);
 
   // Global chat realtime — update unread badge when new messages arrive
   useEffect(() => {
