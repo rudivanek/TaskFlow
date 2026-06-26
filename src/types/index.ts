@@ -60,6 +60,34 @@ export interface Project {
   workspace_id: string;
   deleted: boolean;
   favorite: boolean;
+  include_in_chat: boolean;
+}
+
+export interface ChatChannel {
+  id: string;
+  name: string;
+  type: 'general' | 'project';
+  project_id: string | null;
+  created_at: string;
+}
+
+export interface ChatDirectConversation {
+  id: string;
+  user_a_id: string;
+  user_b_id: string;
+  created_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  channel_id: string | null;
+  conversation_id: string | null;
+  parent_id: string | null;
+  author_id: string;
+  author_name: string;
+  content: string;
+  image_urls: string[];
+  created_at: string;
 }
 
 export interface ProjectComment {

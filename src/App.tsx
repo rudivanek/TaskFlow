@@ -9,6 +9,7 @@ import * as taskServices from './services/taskServices';
 import GanttChart from './components/GanttChart';
 import ProjectDiscussionPanel from './components/ProjectDiscussionPanel';
 import ProjectCommentsModal from './components/ProjectCommentsModal';
+import { ChatPage } from './components/chat/ChatPage';
 import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
 import { getUnreadCountsByProjects } from './utils/unreadComments';
 import { supabase } from './lib/supabase';
@@ -24,6 +25,7 @@ import {
   Download,
   MessageSquare,
   MessageCircle,
+  MessagesSquare,
 } from 'lucide-react';
 
 type ViewMode = 'grid' | 'kanban' | 'gantt';
@@ -48,7 +50,6 @@ export default function App() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDiscussion, setShowDiscussion] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  // Per-project unread counts (used by both Sidebar badges and header badge)
   const [unreadByProject, setUnreadByProject] = useState<Record<string, number>>({});
   const [totalCommentCount, setTotalCommentCount] = useState(0);
   const [noteCount, setNoteCount] = useState(0);
@@ -56,10 +57,15 @@ export default function App() {
   const [selectedProjectName, setSelectedProjectName] = useState('');
   const [sortField, setSortField] = useState<SortField>('task_sort');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  // Chat
+  const [chatMode, setChatMode] = useState(false);
+  const [totalChatUnread, setTotalChatUnread] = useState(0);
+  const [includeInChat, setIncludeInChat] = useState(false);
+
   const showDiscussionRef = useRef(showDiscussion);
   const selectedProjectIdRef = useRef(selectedProjectId);
 
-  // Derived: unread count for the currently selected project
   const unreadCount = unreadByProject[selectedProjectId ?? ''] ?? 0;
 
   useEffect(() => { showDiscussionRef.current = showDiscussion; }, [showDiscussion]);
@@ -78,11 +84,13 @@ export default function App() {
     if (user) loadLookups();
   }, [user]);
 
-  // When selected project changes, load its name, total comment count, and notes
   useEffect(() => {
     if (selectedProjectId && user) {
-      supabase.from('projects').select('project').eq('id', selectedProjectId).single().then(({ data }) => {
-        if (data) setSelectedProjectName(data.project);
+      supabase.from('projects').select('project, include_in_chat').eq('id', selectedProjectId).single().then(({ data }) => {
+        if (data) {
+          setSelectedProjectName(data.project);
+          setIncludeInChat(data.include_in_chat ?? false);
+        }
       });
       fetchTotalCommentCount(selectedProjectId);
       fetchNoteCount(selectedProjectId);
@@ -94,7 +102,6 @@ export default function App() {
     }
   }, [selectedProjectId, user]);
 
-  // Called by Sidebar once it knows all project IDs — fetch all unread counts in one query
   const handleProjectsLoaded = useCallback((projectIds: string[]) => {
     if (!user || projectIds.length === 0) return;
     getUnreadCountsByProjects(supabase, projectIds).then(counts => {
@@ -102,14 +109,11 @@ export default function App() {
     });
   }, [user]);
 
-  // Global realtime subscription — covers ALL projects so badge shows anywhere
   useEffect(() => {
     if (!user) return;
-
     const channel = supabase
       .channel('global-discussion-comments')
-      .on(
-        'postgres_changes',
+      .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'project_comments' },
         (payload) => {
           const c = payload.new as {
@@ -120,10 +124,8 @@ export default function App() {
           };
           const isOwn = c.user_id === user.id;
           const isForMe = c.notify_all !== false || (c.notified_user_ids ?? []).includes(user.id);
-
           const isCurrent = c.project_id === selectedProjectIdRef.current;
           if (isCurrent) setTotalCommentCount(prev => prev + 1);
-
           if (!isOwn && isForMe) {
             const panelOpen = isCurrent && showDiscussionRef.current;
             if (!panelOpen) {
@@ -136,35 +138,34 @@ export default function App() {
         },
       )
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   useEffect(() => {
     const params = new URLSearchParams();
-    if (selectedProjectId) {
-      params.set('project', selectedProjectId);
-      localStorage.setItem('last-project-id', selectedProjectId);
+    if (chatMode) {
+      params.set('page', 'chat');
     } else {
-      localStorage.removeItem('last-project-id');
+      if (selectedProjectId) {
+        params.set('project', selectedProjectId);
+        localStorage.setItem('last-project-id', selectedProjectId);
+      } else {
+        localStorage.removeItem('last-project-id');
+      }
+      params.set('view', viewMode);
     }
-    params.set('view', viewMode);
     window.history.replaceState({}, '', `?${params.toString()}`);
-  }, [selectedProjectId, viewMode]);
+  }, [selectedProjectId, viewMode, chatMode]);
 
   async function fetchTotalCommentCount(projectId: string) {
     const { count } = await supabase
-      .from('project_comments')
-      .select('id', { count: 'exact', head: true })
-      .eq('project_id', projectId);
+      .from('project_comments').select('id', { count: 'exact', head: true }).eq('project_id', projectId);
     setTotalCommentCount(count ?? 0);
   }
 
   async function fetchNoteCount(projectId: string) {
     const { count } = await supabase
-      .from('project_notes')
-      .select('id', { count: 'exact', head: true })
-      .eq('project_id', projectId);
+      .from('project_notes').select('id', { count: 'exact', head: true }).eq('project_id', projectId);
     setNoteCount(count ?? 0);
   }
 
@@ -182,6 +183,20 @@ export default function App() {
       console.error('Failed to load lookups:', err);
     } finally {
       setLookupLoading(false);
+    }
+  };
+
+  const handleChatToggle = async (checked: boolean) => {
+    if (!selectedProjectId) return;
+    setIncludeInChat(checked);
+    await supabase.from('projects').update({ include_in_chat: checked }).eq('id', selectedProjectId);
+    if (checked) {
+      await supabase.from('chat_channels').upsert(
+        { name: selectedProjectName, type: 'project', project_id: selectedProjectId },
+        { onConflict: 'project_id' }
+      );
+    } else {
+      await supabase.from('chat_channels').delete().eq('project_id', selectedProjectId);
     }
   };
 
@@ -234,22 +249,23 @@ export default function App() {
             <div className="w-7 h-7 bg-primary-600 flex items-center justify-center">
               <CheckSquare className="w-4 h-4 text-white" />
             </div>
-<span className="inline-flex items-end gap-2 text-base font-semibold text-slate-800">
-  <span>Task Flow</span>
-  <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">V 1.2</span>
-  <span className="pb-[1px] text-[10px] font-normal tracking-wide text-slate-400">Sharpen.Studio</span>
-</span>
+            <span className="inline-flex items-end gap-2 text-base font-semibold text-slate-800">
+              <span>Task Flow</span>
+              <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">V 1.2</span>
+              <span className="pb-[1px] text-[10px] font-normal tracking-wide text-slate-400">Sharpen.Studio</span>
+            </span>
           </div>
-          {selectedProjectName && (
+          {!chatMode && selectedProjectName && (
             <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
               <span className="text-[13px] font-semibold text-slate-700 truncate max-w-[220px]">{selectedProjectName}</span>
             </div>
           )}
         </div>
 
-        {/* View toggle + actions */}
-        {selectedProjectId && (
+        {/* Center / project controls */}
+        {!chatMode && selectedProjectId && (
           <div className="flex items-center gap-3">
+            {/* View toggle */}
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode('grid')}
@@ -332,98 +348,140 @@ export default function App() {
                 </span>
               ) : null}
             </button>
+
+            {/* Include in chat toggle */}
+            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none pl-2 border-l border-slate-200">
+              <div
+                onClick={() => handleChatToggle(!includeInChat)}
+                className={`relative w-8 h-4 rounded-full transition-colors cursor-pointer flex-shrink-0 ${
+                  includeInChat ? 'bg-blue-500' : 'bg-slate-300'
+                }`}
+              >
+                <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${
+                  includeInChat ? 'translate-x-4' : 'translate-x-0.5'
+                }`} />
+              </div>
+              <span className="text-xs text-slate-500">Chat</span>
+            </label>
           </div>
         )}
 
-        {/* User menu */}
-        <div className="relative">
+        {/* Right side: Chat button + user menu */}
+        <div className="flex items-center gap-2">
+          {/* Chat nav button */}
           <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 rounded-lg transition-colors"
+            onClick={() => setChatMode(m => !m)}
+            className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              chatMode
+                ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
           >
-            <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center">
-              <User className="w-4 h-4 text-primary-600" />
-            </div>
-            <span className="text-sm text-slate-600 hidden sm:inline">{user.email}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <MessagesSquare className="w-4 h-4" />
+            Chat
+            {!chatMode && totalChatUnread > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
+                {totalChatUnread > 9 ? '9+' : totalChatUnread}
+              </span>
+            )}
           </button>
-          {showUserMenu && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
-                <div className="px-3 py-2 border-b border-slate-100">
-                  <p className="text-xs text-slate-400">Signed in as</p>
-                  <p className="text-sm text-slate-700 truncate">{user.email}</p>
-                </div>
-                <button
-                  onClick={() => { signOut(); setShowUserMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                >
-                  <LogOut className="w-4 h-4" />Sign Out
-                </button>
+
+          {/* User menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 rounded-lg transition-colors"
+            >
+              <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center">
+                <User className="w-4 h-4 text-primary-600" />
               </div>
-            </>
-          )}
+              <span className="text-sm text-slate-600 hidden sm:inline">{user.email}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+            {showUserMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <p className="text-xs text-slate-400">Signed in as</p>
+                    <p className="text-sm text-slate-700 truncate">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { signOut(); setShowUserMenu(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    <LogOut className="w-4 h-4" />Sign Out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Main */}
+      {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          selectedProjectId={selectedProjectId}
-          onSelectProject={setSelectedProjectId}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          unreadByProject={unreadByProject}
-          onProjectsLoaded={handleProjectsLoaded}
-        />
+        {chatMode ? (
+          <ChatPage onTotalUnreadChange={setTotalChatUnread} />
+        ) : (
+          <>
+            <Sidebar
+              selectedProjectId={selectedProjectId}
+              onSelectProject={setSelectedProjectId}
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+              unreadByProject={unreadByProject}
+              onProjectsLoaded={handleProjectsLoaded}
+            />
 
-        <main className="flex-1 overflow-hidden bg-white">
-          {!selectedProjectId ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400">
-              <LayoutGrid className="w-12 h-12 mb-3 text-slate-300" />
-              <p className="text-lg font-medium text-slate-500">Select a project</p>
-              <p className="text-sm mt-1">Choose a project from the sidebar to get started</p>
-            </div>
-          ) : lookupLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
-            </div>
-          ) : viewMode === 'grid' ? (
-            <TaskGrid
-              key={selectedProjectId}
-              projectId={selectedProjectId}
-              phases={phases}
-              statuses={statuses}
-              responsibles={responsibles}
-              sortField={sortField}
-              sortDir={sortDir}
-              onSort={handleSort}
-            />
-          ) : viewMode === 'kanban' ? (
-            <KanbanBoard
-              key={selectedProjectId}
-              projectId={selectedProjectId}
-              phases={phases}
-              statuses={statuses}
-              responsibles={responsibles}
-            />
-          ) : (
-            <GanttChart
-              key={selectedProjectId}
-              projectId={selectedProjectId}
-              phases={phases}
-              statuses={statuses}
-              responsibles={responsibles}
-              sortField={sortField}
-              sortDir={sortDir}
-              onSort={handleSort}
-            />
-          )}
-        </main>
+            <main className="flex-1 overflow-hidden bg-white">
+              {!selectedProjectId ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                  <LayoutGrid className="w-12 h-12 mb-3 text-slate-300" />
+                  <p className="text-lg font-medium text-slate-500">Select a project</p>
+                  <p className="text-sm mt-1">Choose a project from the sidebar to get started</p>
+                </div>
+              ) : lookupLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
+                </div>
+              ) : viewMode === 'grid' ? (
+                <TaskGrid
+                  key={selectedProjectId}
+                  projectId={selectedProjectId}
+                  phases={phases}
+                  statuses={statuses}
+                  responsibles={responsibles}
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+              ) : viewMode === 'kanban' ? (
+                <KanbanBoard
+                  key={selectedProjectId}
+                  projectId={selectedProjectId}
+                  phases={phases}
+                  statuses={statuses}
+                  responsibles={responsibles}
+                />
+              ) : (
+                <GanttChart
+                  key={selectedProjectId}
+                  projectId={selectedProjectId}
+                  phases={phases}
+                  statuses={statuses}
+                  responsibles={responsibles}
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+              )}
+            </main>
+          </>
+        )}
       </div>
 
-      {selectedProjectId && (
+      {!chatMode && selectedProjectId && (
         <ProjectDiscussionPanel
           projectId={selectedProjectId}
           projectName={selectedProjectName}
@@ -440,7 +498,7 @@ export default function App() {
         />
       )}
 
-      {selectedProjectId && showComments && (
+      {!chatMode && selectedProjectId && showComments && (
         <ProjectCommentsModal
           projectId={selectedProjectId}
           projectName={selectedProjectName}
