@@ -10,8 +10,10 @@ import GanttChart from './components/GanttChart';
 import ProjectDiscussionPanel from './components/ProjectDiscussionPanel';
 import ProjectCommentsModal from './components/ProjectCommentsModal';
 import { ChatPage } from './components/chat/ChatPage';
+import { RemindersPanel } from './components/RemindersPanel';
 import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
 import { getUnreadCountsByProjects } from './utils/unreadComments';
+import { useNotificationSound } from './utils/useNotificationSound';
 import { supabase } from './lib/supabase';
 import {
   CheckSquare,
@@ -34,6 +36,8 @@ type SortDir = 'asc' | 'desc';
 
 export default function App() {
   const { user, loading, signOut } = useAuth();
+  const { updateSoundEnabled } = useNotificationSound();
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('project') || localStorage.getItem('last-project-id');
@@ -81,7 +85,12 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (user) loadLookups();
+    if (user) {
+      loadLookups();
+      supabase.from('profiles').select('sound_enabled').eq('id', user.id).single().then(({ data }) => {
+        if (data) { setSoundEnabled(data.sound_enabled); updateSoundEnabled(data.sound_enabled); }
+      });
+    }
   }, [user]);
 
   useEffect(() => {
@@ -186,8 +195,15 @@ export default function App() {
     }
   };
 
-  const handleChatToggle = async (checked: boolean) => {
-    if (!selectedProjectId) return;
+  const handleSoundToggle = async (enabled: boolean) => {
+    setSoundEnabled(enabled);
+    updateSoundEnabled(enabled);
+    if (user) {
+      await supabase.from('profiles').update({ sound_enabled: enabled }).eq('id', user.id);
+    }
+  };
+
+  const handleChatToggle = async (checked: boolean) => {    if (!selectedProjectId) return;
     setIncludeInChat(checked);
     await supabase.from('projects').update({ include_in_chat: checked }).eq('id', selectedProjectId);
     if (checked) {
@@ -401,10 +417,26 @@ export default function App() {
             {showUserMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+                <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
                   <div className="px-3 py-2 border-b border-slate-100">
                     <p className="text-xs text-slate-400">Signed in as</p>
                     <p className="text-sm text-slate-700 truncate">{user.email}</p>
+                  </div>
+                  {/* Notifications section */}
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Notifications</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-slate-700">Sound</p>
+                        <p className="text-[10px] text-slate-400">Chime on new messages</p>
+                      </div>
+                      <div
+                        onClick={() => handleSoundToggle(!soundEnabled)}
+                        className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer flex-shrink-0 ${soundEnabled ? 'bg-blue-500' : 'bg-slate-300'}`}
+                      >
+                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${soundEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      </div>
+                    </div>
                   </div>
                   <button
                     onClick={() => { signOut(); setShowUserMenu(false); }}
@@ -506,6 +538,8 @@ export default function App() {
           onNoteCountChange={setNoteCount}
         />
       )}
+
+      <RemindersPanel />
     </div>
   );
 }

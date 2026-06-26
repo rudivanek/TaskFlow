@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Trash2, ImagePlus, Send, ChevronUp, MessageSquare } from 'lucide-react';
 import { UnifiedMessage } from '../../types';
 import { formatRelativeTime } from '../../utils/formatRelativeTime';
+import { ReminderButton } from '../ReminderButton';
 
 interface Thread extends UnifiedMessage {
   replies: UnifiedMessage[];
@@ -56,15 +57,23 @@ function MessageBubble({ msg, currentUserId, searchQuery, isReply = false, onDel
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">{formatRelativeTime(msg.created_at)}</span>
-          {msg.author_id === currentUserId && (
-            <button
-              onClick={() => onDelete(msg.id, msg.source)}
-              className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-300 hover:text-red-500 transition-all"
-              title="Delete"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+            <ReminderButton
+              messageId={msg.source === 'chat' ? msg.id : undefined}
+              commentId={msg.source === 'discussion' ? msg.id : undefined}
+              messagePreview={msg.content}
+              authorName={msg.author_name}
+            />
+            {msg.author_id === currentUserId && (
+              <button
+                onClick={() => onDelete(msg.id, msg.source)}
+                className="p-0.5 text-gray-300 hover:text-red-500 transition-all"
+                title="Delete"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
       {msg.content && (

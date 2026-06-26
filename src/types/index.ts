@@ -121,6 +121,18 @@ export interface UnifiedMessage {
   created_at: string;
 }
 
+export interface MessageReminder {
+  id: string;
+  user_id: string;
+  message_id: string | null;
+  comment_id: string | null;
+  message_preview: string;
+  message_author: string;
+  remind_at: string;
+  is_dismissed: boolean;
+  created_at: string;
+}
+
 export interface ProjectNote {
   id: string;
   project_id: string;

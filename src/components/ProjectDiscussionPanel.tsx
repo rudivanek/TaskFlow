@@ -15,6 +15,8 @@ import {
 } from '../utils/unreadComments';
 import { uploadDiscussionImage } from '../utils/uploadDiscussionImage';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
+import { useNotificationSound } from '../utils/useNotificationSound';
+import { ReminderButton } from './ReminderButton';
 
 type CommentThread = ProjectComment & { replies: ProjectComment[] };
 
@@ -159,6 +161,7 @@ export default function ProjectDiscussionPanel({
   onMarkRead,
 }: Props) {
   const { user } = useAuth();
+  const { playChime } = useNotificationSound();
   const [threads, setThreads] = useState<CommentThread[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -286,6 +289,10 @@ export default function ProjectDiscussionPanel({
         filter: `project_id=eq.${projectId}`,
       }, (payload) => {
         const c = payload.new as ProjectComment;
+        if (c.user_id !== user?.id) {
+          const isForMe = c.notify_all || (c.notified_user_ids ?? []).includes(user?.id ?? '');
+          if (isForMe) playChime();
+        }
         if (c.parent_id === null) {
           setThreads(prev => [...prev, { ...c, replies: [] }]);
         } else {
@@ -715,11 +722,18 @@ export default function ProjectDiscussionPanel({
                               <Check className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          {isOwn && (
-                            <button onClick={() => handleDelete(thread.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-500 text-slate-300 transition-all" title="Delete">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+                            <ReminderButton
+                              commentId={thread.id}
+                              messagePreview={thread.content}
+                              authorName={thread.author_name || thread.user_id.slice(0, 8)}
+                            />
+                            {isOwn && (
+                              <button onClick={() => handleDelete(thread.id)} className="p-0.5 hover:text-red-500 text-slate-300 transition-all" title="Delete">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -804,11 +818,18 @@ export default function ProjectDiscussionPanel({
                                       <Check className="w-3 h-3" />
                                     </button>
                                   )}
-                                  {replyOwn && (
-                                    <button onClick={() => handleDelete(reply.id, thread.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-500 text-slate-300 transition-all" title="Delete">
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  )}
+                                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+                                    <ReminderButton
+                                      commentId={reply.id}
+                                      messagePreview={reply.content}
+                                      authorName={reply.author_name || reply.user_id.slice(0, 8)}
+                                    />
+                                    {replyOwn && (
+                                      <button onClick={() => handleDelete(reply.id, thread.id)} className="p-0.5 hover:text-red-500 text-slate-300 transition-all" title="Delete">
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                               <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">

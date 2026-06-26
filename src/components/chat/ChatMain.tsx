@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { uploadDiscussionImage } from '../../utils/uploadDiscussionImage';
 import { ChatMessageThread } from './ChatMessageThread';
+import { useNotificationSound } from '../../utils/useNotificationSound';
 
 interface Thread extends UnifiedMessage {
   replies: UnifiedMessage[];
@@ -49,6 +50,7 @@ function fromProjectComment(c: ProjectComment): UnifiedMessage {
 export function ChatMain({
   channelId, conversationId, channels, conversations, allUsers, currentUser, onMarkRead,
 }: Props) {
+  const { playChime } = useNotificationSound();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [content, setContent] = useState('');
   const [pendingImages, setPendingImages] = useState<File[]>([]);
@@ -89,6 +91,7 @@ export function ChatMain({
         event: 'INSERT', schema: 'public', table: 'chat_messages', filter,
       }, (payload) => {
         const msg = fromChatMessage(payload.new as ChatMessage);
+        if (msg.author_id !== currentUser?.id) playChime();
         setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg]);
       })
       .on('postgres_changes', {
@@ -110,6 +113,7 @@ export function ChatMain({
         filter: `project_id=eq.${projectId}`,
       }, (payload) => {
         const msg = fromProjectComment(payload.new as ProjectComment);
+        if (msg.author_id !== currentUser?.id) playChime();
         setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg]);
       })
       .on('postgres_changes', {
