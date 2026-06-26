@@ -29,6 +29,7 @@ export function ChatMain({
   const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -39,6 +40,7 @@ export function ChatMain({
     setMessages([]);
     setSearchQuery('');
     setReplyingToId(null);
+    setCollapsedIds(new Set());
     loadMessages();
   }, [activeId]);
 
@@ -127,18 +129,25 @@ export function ChatMain({
     const uploaded = await Promise.all(pendingImages.map(f => uploadDiscussionImage(supabase, f, currentUser.id)));
     const imageUrls = uploaded.filter(Boolean) as string[];
     setIsUploading(false);
-    await supabase.from('chat_messages').insert({
+
+    const row = {
       channel_id: channelId ?? null,
       conversation_id: conversationId ?? null,
-      parent_id: null,
+      parent_id: null as string | null,
       author_id: currentUser.id,
-      author_name: currentUser.user_metadata?.full_name as string || currentUser.email || '',
+      author_name: (currentUser.user_metadata?.full_name as string) || currentUser.email || '',
       content: content.trim(),
       image_urls: imageUrls,
-    });
+    };
+
     setContent('');
     setPendingImages([]);
     setPendingPreviews([]);
+
+    const { data: inserted } = await supabase.from('chat_messages').insert(row).select().single();
+    if (inserted) {
+      setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted]);
+    }
     await markRead();
   }
 
@@ -146,26 +155,33 @@ export function ChatMain({
     if (!currentUser) return;
     const uploaded = await Promise.all(replyImages.map(f => uploadDiscussionImage(supabase, f, currentUser.id)));
     const imageUrls = uploaded.filter(Boolean) as string[];
-    await supabase.from('chat_messages').insert({
+
+    const row = {
       channel_id: channelId ?? null,
       conversation_id: conversationId ?? null,
       parent_id: parentId,
       author_id: currentUser.id,
-      author_name: currentUser.user_metadata?.full_name as string || currentUser.email || '',
+      author_name: (currentUser.user_metadata?.full_name as string) || currentUser.email || '',
       content: replyContent.trim(),
       image_urls: imageUrls,
-    });
+    };
+
     setReplyingToId(null);
+    const { data: inserted } = await supabase.from('chat_messages').insert(row).select().single();
+    if (inserted) {
+      setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted]);
+    }
     await markRead();
   }
 
   async function handleDelete(id: string) {
     await supabase.from('chat_messages').delete().eq('id', id);
+    setMessages(prev => prev.filter(m => m.id !== id));
   }
 
   const topLevel = messages.filter(m => m.parent_id === null);
-  const replies = messages.filter(m => m.parent_id !== null);
-  const threads: Thread[] = topLevel.map(m => ({ ...m, replies: replies.filter(r => r.parent_id === m.id) }));
+  const replyMessages = messages.filter(m => m.parent_id !== null);
+  const threads: Thread[] = topLevel.map(m => ({ ...m, replies: replyMessages.filter(r => r.parent_id === m.id) }));
   const filteredThreads = threads.filter(t => {
     const q = searchQuery.toLowerCase();
     if (!q) return true;
@@ -189,7 +205,7 @@ export function ChatMain({
   const isChannel = !!channelId;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
+    <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-gray-50">
       {/* Header */}
       <div className="px-6 py-3 border-b border-gray-200 bg-white flex items-center justify-between flex-shrink-0">
         <h2 className="font-semibold text-gray-800 text-sm">
@@ -225,14 +241,20 @@ export function ChatMain({
             </p>
           </div>
         ) : (
-        <div className="w-full space-y-4">
+          <div className="w-full space-y-4">
             {filteredThreads.map(thread => (
               <ChatMessageThread
                 key={thread.id}
                 thread={thread}
                 currentUserId={currentUser?.id}
                 searchQuery={searchQuery}
+                isCollapsed={collapsedIds.has(thread.id)}
                 isReplying={replyingToId === thread.id}
+                onToggleCollapse={() => setCollapsedIds(prev => {
+                  const next = new Set(prev);
+                  next.has(thread.id) ? next.delete(thread.id) : next.add(thread.id);
+                  return next;
+                })}
                 onReply={() => setReplyingToId(replyingToId === thread.id ? null : thread.id)}
                 onPostReply={(c, imgs) => handlePostReply(thread.id, c, imgs)}
                 onDelete={handleDelete}
@@ -260,7 +282,7 @@ export function ChatMain({
         )}
         <div className="flex items-end gap-2">
           <textarea
-            placeholder={`Message ${isChannel ? '#' : ''} ${title}... (Ctrl+V to paste image)`}
+            placeholder={`Message ${isChannel ? '#' : ''}${title}... (Ctrl+V to paste image)`}
             value={content}
             onChange={e => setContent(e.target.value)}
             onPaste={(e) => {

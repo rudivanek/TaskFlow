@@ -128,7 +128,7 @@ export function ChatPage({ onTotalUnreadChange }: Props) {
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex w-full h-full overflow-hidden">
       <ChatSidebar
         channels={channels}
         conversations={conversations}

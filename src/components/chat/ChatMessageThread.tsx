@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Trash2, ImagePlus, Send } from 'lucide-react';
+import { Trash2, ImagePlus, Send, ChevronUp } from 'lucide-react';
 import { ChatMessage } from '../../types';
 import { formatRelativeTime } from '../../utils/formatRelativeTime';
 
@@ -11,7 +11,9 @@ interface Props {
   thread: Thread;
   currentUserId: string | undefined;
   searchQuery: string;
+  isCollapsed: boolean;
   isReplying: boolean;
+  onToggleCollapse: () => void;
   onReply: () => void;
   onPostReply: (content: string, images: File[]) => void;
   onDelete: (id: string) => void;
@@ -82,7 +84,7 @@ function MessageBubble({ msg, currentUserId, searchQuery, isReply = false, onDel
 
 export function ChatMessageThread({
   thread, currentUserId, searchQuery,
-  isReplying, onReply, onPostReply, onDelete,
+  isCollapsed, isReplying, onToggleCollapse, onReply, onPostReply, onDelete,
 }: Props) {
   const [replyContent, setReplyContent] = useState('');
   const [replyImages, setReplyImages] = useState<File[]>([]);
@@ -118,30 +120,45 @@ export function ChatMessageThread({
     <div className="w-full flex flex-col gap-1">
       <MessageBubble msg={thread} currentUserId={currentUserId} searchQuery={searchQuery} onDelete={onDelete} />
 
-      {/* Always-visible replies */}
+      {/* Replies — shown by default, collapsible */}
       {thread.replies.length > 0 && (
-        <div className="ml-4 border-l-2 border-gray-100 pl-3 flex flex-col gap-1">
-          {thread.replies.map(reply => (
-            <MessageBubble
-              key={reply.id}
-              msg={reply}
-              currentUserId={currentUserId}
-              searchQuery={searchQuery}
-              isReply
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
+        <>
+          {!isCollapsed && (
+            <div className="ml-4 border-l-2 border-gray-100 pl-3 flex flex-col gap-1">
+              {thread.replies.map(reply => (
+                <MessageBubble
+                  key={reply.id}
+                  msg={reply}
+                  currentUserId={currentUserId}
+                  searchQuery={searchQuery}
+                  isReply
+                  onDelete={onDelete}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Reply action */}
-      <div className="pl-1">
+      {/* Actions row */}
+      <div className="flex items-center gap-3 pl-1">
         <button
           onClick={onReply}
           className="text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
         >
           Reply
         </button>
+        {thread.replies.length > 0 && (
+          <button
+            onClick={onToggleCollapse}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            {isCollapsed
+              ? <span>{thread.replies.length} {thread.replies.length === 1 ? 'reply' : 'replies'}</span>
+              : <><ChevronUp className="w-3 h-3" /><span>Hide replies</span></>
+            }
+          </button>
+        )}
       </div>
 
       {/* Inline reply compose */}
