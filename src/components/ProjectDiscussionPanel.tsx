@@ -433,6 +433,11 @@ export default function ProjectDiscussionPanel({
         const realtimeNew = prev.filter(t => !loadedIds.has(t.id));
         return [...built, ...realtimeNew].sort((a, b) => a.created_at.localeCompare(b.created_at));
       });
+      // Auto-expand all threads that have replies (match Chat's always-visible behavior)
+      const withReplies = built.filter(t => t.replies.length > 0).map(t => t.id);
+      if (withReplies.length > 0) {
+        setExpandedThreadIds(prev => new Set([...prev, ...withReplies]));
+      }
       onCommentCountChange?.(allComments.length);
       if (user) {
         const ids = await getReadCommentIds(supabase, projectId, user.id);
