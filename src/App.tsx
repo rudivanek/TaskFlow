@@ -16,7 +16,6 @@ import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from '
 import { getUnreadCountsByProjects } from './utils/unreadComments';
 import { useNotificationSound } from './utils/useNotificationSound';
 import { usePushNotifications } from './utils/usePushNotifications';
-import { isStandalonePWA } from './utils/isPWA';
 import { supabase } from './lib/supabase';
 import {
   CheckSquare,
@@ -76,7 +75,6 @@ export default function App() {
   const [showUnreadModal, setShowUnreadModal] = useState(false);
   const [pwaSelectedChannelId, setPwaSelectedChannelId] = useState<string | null>(null);
   const [pwaSelectedConversationId, setPwaSelectedConversationId] = useState<string | null>(null);
-  const standalone = isStandalonePWA();
 
   const showDiscussionRef = useRef(showDiscussion);
   const selectedProjectIdRef = useRef(selectedProjectId);
@@ -330,7 +328,7 @@ export default function App() {
             </div>
             <span className="inline-flex items-end gap-2 text-base font-semibold text-slate-800">
               <span>Task Flow</span>
-              <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">V 2.3</span>
+              <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">V 2.2</span>
               <span className="pb-[1px] text-[10px] font-normal tracking-wide text-slate-400">Sharpen.Studio</span>
             </span>
           </div>
@@ -447,63 +445,47 @@ export default function App() {
 
         {/* Right side: Chat button + user menu */}
         <div className="flex items-center gap-2">
-          {/* Chat button — different behavior for PWA vs desktop */}
-          {standalone ? (
-            <>
-              <button
-                onClick={() => {
-                  if (totalChatUnread > 0) {
-                    setShowUnreadModal(true);
-                  } else {
-                    setChatMode(true);
-                  }
-                }}
-                className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100"
-              >
-                <MessagesSquare className="w-4 h-4" />
-                {totalChatUnread > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
-                    {totalChatUnread > 9 ? '9+' : totalChatUnread}
-                  </span>
-                )}
-              </button>
-              {user && (
-                <UnreadChatsModal
-                  isOpen={showUnreadModal}
-                  onClose={() => setShowUnreadModal(false)}
-                  currentUserId={user.id}
-                  onSelectChannel={(channelId) => {
-                    setPwaSelectedChannelId(channelId);
-                    setPwaSelectedConversationId(null);
-                    setChatMode(true);
-                    setTotalChatUnread(0);
-                  }}
-                  onSelectConversation={(conversationId) => {
-                    setPwaSelectedConversationId(conversationId);
-                    setPwaSelectedChannelId(null);
-                    setChatMode(true);
-                    setTotalChatUnread(0);
-                  }}
-                />
-              )}
-            </>
-          ) : (
-            <button
-              onClick={() => { if (!chatMode) setTotalChatUnread(0); setChatMode(m => !m); }}
-              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                chatMode
-                  ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <MessagesSquare className="w-4 h-4" />
-              Chat
-              {!chatMode && totalChatUnread > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
-                  {totalChatUnread > 9 ? '9+' : totalChatUnread}
-                </span>
-              )}
-            </button>
+
+          {/* Unified Chat button — modal when unreads, direct when none, toggle when in chat */}
+          <button
+            onClick={handleChatButtonClick}
+            className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              chatMode
+                ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <MessagesSquare className="w-4 h-4" />
+            {/* Hide text label on mobile PWA to save space */}
+            <span className="hidden sm:inline">Chat</span>
+            {!chatMode && totalChatUnread > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
+                {totalChatUnread > 9 ? '9+' : totalChatUnread}
+              </span>
+            )}
+          </button>
+
+          {/* Unread chats modal */}
+          {user && (
+            <UnreadChatsModal
+              isOpen={showUnreadModal}
+              onClose={() => setShowUnreadModal(false)}
+              currentUserId={user.id}
+              onSelectChannel={(channelId) => {
+                setPwaSelectedChannelId(channelId);
+                setPwaSelectedConversationId(null);
+                setChatMode(true);
+                setTotalChatUnread(0);
+                setShowUnreadModal(false);
+              }}
+              onSelectConversation={(conversationId) => {
+                setPwaSelectedConversationId(conversationId);
+                setPwaSelectedChannelId(null);
+                setChatMode(true);
+                setTotalChatUnread(0);
+                setShowUnreadModal(false);
+              }}
+            />
           )}
 
           {/* User menu */}
