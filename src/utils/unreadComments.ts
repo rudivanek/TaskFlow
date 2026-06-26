@@ -106,7 +106,7 @@ export async function markCommentAsRead(
 ): Promise<void> {
   await supabase
     .from('project_comment_reads')
-    .upsert({ user_id: userId, comment_id: commentId }, { onConflict: 'user_id,comment_id' });
+    .upsert({ user_id: userId, comment_id: commentId }, { onConflict: 'user_id,comment_id', ignoreDuplicates: true });
 }
 
 /**
@@ -130,5 +130,5 @@ export async function markAllRelevantCommentsAsRead(
   const rows = relevant.map((c: { id: string }) => ({ user_id: userId, comment_id: c.id }));
   await supabase
     .from('project_comment_reads')
-    .upsert(rows, { onConflict: 'user_id,comment_id' });
+    .upsert(rows, { onConflict: 'user_id,comment_id', ignoreDuplicates: true });
 }
