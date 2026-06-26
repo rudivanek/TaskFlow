@@ -30,6 +30,7 @@ interface SidebarProps {
 export default function Sidebar({ selectedProjectId, onSelectProject, collapsed, onToggleCollapse, unreadByProject = {}, onProjectsLoaded }: SidebarProps) {
   const { user } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [deletedWorkspaces, setDeletedWorkspaces] = useState<Workspace[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set());
   const [showTrash, setShowTrash] = useState(false);
@@ -81,6 +82,8 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
     try {
       const ws = await workspaceServices.fetchWorkspaces(user.id);
       setWorkspaces(ws);
+      const deletedWs = await workspaceServices.fetchDeletedWorkspaces();
+      setDeletedWorkspaces(deletedWs);
       if (ws.length > 0) {
         setExpandedWorkspaces(new Set(ws.map(w => w.id)));
         const prjs = await projectServices.fetchProjects(ws.map(w => w.id), true);
@@ -125,6 +128,25 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
       await loadData();
     } catch (err: any) {
       alert(err.message || 'Failed to delete workspace');
+    }
+  };
+
+  const handleRestoreWorkspace = async (id: string) => {
+    try {
+      await workspaceServices.restoreWorkspace(id);
+      await loadData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handlePermanentDeleteWorkspace = async (id: string) => {
+    if (!confirm('Permanently delete this workspace and all its projects? This cannot be undone.')) return;
+    try {
+      await workspaceServices.permanentlyDeleteWorkspace(id);
+      await loadData();
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -222,6 +244,7 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
 
   const favoriteProjects = projects.filter(p => p.favorite && !p.deleted);
   const trashedProjects = projects.filter(p => p.deleted);
+  const totalTrashed = trashedProjects.length + deletedWorkspaces.length;
 
   if (collapsed) {
     return (
@@ -474,15 +497,38 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
           >
             <Archive className="w-4 h-4" />
             <span>Trash</span>
-            {trashedProjects.length > 0 && (
+            {totalTrashed > 0 && (
               <span className="ml-auto text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">
-                {trashedProjects.length}
+                {totalTrashed}
               </span>
             )}
           </button>
 
-          {showTrash && trashedProjects.length > 0 && (
-            <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+          {showTrash && (deletedWorkspaces.length > 0 || trashedProjects.length > 0) && (
+            <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+              {deletedWorkspaces.map(ws => (
+                <div key={ws.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-500">
+                  <FolderOpen className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                  <div className="flex-1 min-w-0">
+                    <span className="truncate block font-medium">{ws.workspace}</span>
+                    <span className="text-xs text-slate-400">Workspace</span>
+                  </div>
+                  <button
+                    onClick={() => handleRestoreWorkspace(ws.id)}
+                    className="p-1 hover:bg-green-50 hover:text-green-600 rounded"
+                    title="Restore workspace"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handlePermanentDeleteWorkspace(ws.id)}
+                    className="p-1 hover:bg-red-50 hover:text-red-600 rounded"
+                    title="Delete permanently"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
               {trashedProjects.map(p => (
                 <div key={p.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-500">
                   <span className="truncate flex-1">{p.project}</span>

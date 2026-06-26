@@ -52,6 +52,7 @@ export interface Workspace {
   user_id: string;
   sort_order: number;
   private: boolean;
+  deleted: boolean;
 }
 
 export interface Project {

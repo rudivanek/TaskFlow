@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-25T19:30:00Z
+**Last Updated:** 2026-06-26T00:00:00Z
 
 ---
 
@@ -37,9 +37,9 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Projects listed alphabetically within each workspace
 - **Drag & Drop project between workspaces**: drag a project row and drop it onto any workspace header to move it; the dragged item becomes semi-transparent, the target workspace header highlights in blue, and the target workspace auto-expands after the move
 - Favorites section at top showing starred projects
-- Trash/Recycle bin section for soft-deleted projects with restore/permanent delete
+- Trash/Recycle bin section for soft-deleted projects AND soft-deleted workspaces, with restore/permanent delete for each
 - Context menus on right-click:
-  - Workspaces: Rename, Delete (blocks if has projects)
+  - Workspaces: Rename, Delete (soft-deletes workspace + all its projects to Trash)
   - Projects: Rename, Duplicate, Add to Favorites, Move to Trash
 - Inline renaming on double-click
 - Create workspace/project via inline input fields
