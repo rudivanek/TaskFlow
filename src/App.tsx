@@ -63,7 +63,10 @@ export default function App() {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   // Chat
-  const [chatMode, setChatMode] = useState(false);
+  const [chatMode, setChatMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('page') === 'chat';
+  });
   const [totalChatUnread, setTotalChatUnread] = useState(0);
   const [includeInChat, setIncludeInChat] = useState(false);
 
