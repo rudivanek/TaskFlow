@@ -36,7 +36,7 @@ type SortDir = 'asc' | 'desc';
 
 export default function App() {
   const { user, loading, signOut } = useAuth();
-  const { updateSoundEnabled } = useNotificationSound();
+  const { updateSoundEnabled, playChime } = useNotificationSound();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -69,11 +69,13 @@ export default function App() {
 
   const showDiscussionRef = useRef(showDiscussion);
   const selectedProjectIdRef = useRef(selectedProjectId);
+  const chatModeRef = useRef(chatMode);
 
   const unreadCount = unreadByProject[selectedProjectId ?? ''] ?? 0;
 
   useEffect(() => { showDiscussionRef.current = showDiscussion; }, [showDiscussion]);
   useEffect(() => { selectedProjectIdRef.current = selectedProjectId; }, [selectedProjectId]);
+  useEffect(() => { chatModeRef.current = chatMode; }, [chatMode]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -148,6 +150,25 @@ export default function App() {
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+  // Persistent chat unread listener — active on every page, not just ChatPage
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel('app-global-chat-unread')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'chat_messages',
+      }, (payload) => {
+        const msg = payload.new as { author_id: string };
+        if (msg.author_id === user.id) return;
+        if (!chatModeRef.current) {
+          setTotalChatUnread(prev => prev + 1);
+          playChime();
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [user]);
 
   useEffect(() => {
@@ -386,7 +407,7 @@ export default function App() {
         <div className="flex items-center gap-2">
           {/* Chat nav button */}
           <button
-            onClick={() => setChatMode(m => !m)}
+            onClick={() => { if (!chatMode) setTotalChatUnread(0); setChatMode(m => !m); }}
             className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               chatMode
                 ? 'bg-blue-50 text-blue-600 border border-blue-200'
