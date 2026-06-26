@@ -21,19 +21,19 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = self.location.origin + (event.notification.data?.url ?? "/chat");
 
   event.waitUntil(
     clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clientList) => {
-        for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && "focus" in client) {
-            return client.focus().then(() => client.navigate(targetUrl));
-          }
+        if (clientList.length > 0) {
+          // App is open — post message to switch to chat mode
+          clientList[0].postMessage({ type: "NOTIFICATION_CLICK" });
+          return clientList[0].focus();
         }
+        // App is closed — open directly at /chat
         if (clients.openWindow) {
-          return clients.openWindow(targetUrl);
+          return clients.openWindow(self.location.origin + "/chat");
         }
       })
   );
