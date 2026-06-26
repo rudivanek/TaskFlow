@@ -66,9 +66,9 @@ export default function App() {
 
   // Chat
   const [chatMode, setChatMode] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('page') === 'chat';
-  });
+  const params = new URLSearchParams(window.location.search);
+  return params.get('page') === 'chat' || window.location.pathname === '/chat';
+});
   const [totalChatUnread, setTotalChatUnread] = useState(0);
   const [includeInChat, setIncludeInChat] = useState(false);
 
