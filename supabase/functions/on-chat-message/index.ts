@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
       if (channel) channelLabel = `#${channel.name}`;
     }
 
-    await fetch(`${SUPABASE_URL}/functions/v1/send-push-notification`, {
+    const pushPromise = fetch(`${SUPABASE_URL}/functions/v1/send-push-notification`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -74,11 +74,14 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
+    (globalThis as any).EdgeRuntime?.waitUntil(pushPromise);
+    await pushPromise;
+
     return new Response("ok", { headers: corsHeaders });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
+    const errMessage = err instanceof Error ? err.message : String(err);
     console.error("on-chat-message error:", err);
-    return new Response(JSON.stringify({ error: message }), {
+    return new Response(JSON.stringify({ error: errMessage }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
