@@ -4,6 +4,26 @@ import { supabase } from '../lib/supabase';
 let _soundEnabled = true;
 let _audioCtx: AudioContext | null = null;
 let _preferenceLoaded = false;
+let _unlockListenersAdded = false;
+
+function getOrCreateCtx(): AudioContext {
+  if (!_audioCtx) _audioCtx = new AudioContext();
+  return _audioCtx;
+}
+
+// Eagerly unlock the AudioContext on first user interaction so that
+// subsequent calls from realtime events (no gesture) can play audio.
+function ensureUnlockListeners() {
+  if (_unlockListenersAdded) return;
+  _unlockListenersAdded = true;
+  const unlock = () => {
+    const ctx = getOrCreateCtx();
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  };
+  document.addEventListener('click', unlock, { passive: true });
+  document.addEventListener('keydown', unlock, { passive: true });
+  document.addEventListener('touchstart', unlock, { passive: true });
+}
 
 function playTone(ctx: AudioContext, frequency: number, startTime: number, duration: number, gain: number) {
   const osc = ctx.createOscillator();
@@ -27,6 +47,8 @@ function scheduleChime(ctx: AudioContext) {
 
 export function useNotificationSound() {
   useEffect(() => {
+    ensureUnlockListeners();
+
     if (_preferenceLoaded) return;
     _preferenceLoaded = true;
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -45,12 +67,11 @@ export function useNotificationSound() {
   const playChime = useCallback(() => {
     if (!_soundEnabled) return;
     try {
-      if (!_audioCtx) _audioCtx = new AudioContext();
-      const ctx = _audioCtx;
-      if (ctx.state === 'suspended') {
-        ctx.resume().then(() => scheduleChime(ctx)).catch(() => {});
-      } else {
+      const ctx = getOrCreateCtx();
+      if (ctx.state === 'running') {
         scheduleChime(ctx);
+      } else {
+        ctx.resume().then(() => scheduleChime(ctx)).catch(() => {});
       }
     } catch (err) {
       console.warn('Could not play notification sound:', err);
