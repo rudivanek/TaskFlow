@@ -1,15 +1,12 @@
 // Service worker for TaskFlow — handles web push notifications
-
 self.addEventListener("push", (event) => {
   if (!event.data) return;
-
   let data;
   try {
     data = event.data.json();
   } catch {
     data = { title: "TaskFlow", body: event.data.text() };
   }
-
   event.waitUntil(
     self.registration.showNotification(data.title ?? "TaskFlow", {
       body: data.body ?? "",
@@ -24,7 +21,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url ?? "/chat";
+  const targetUrl = self.location.origin + (event.notification.data?.url ?? "/chat");
 
   event.waitUntil(
     clients
@@ -32,9 +29,7 @@ self.addEventListener("notificationclick", (event) => {
       .then((clientList) => {
         for (const client of clientList) {
           if (client.url.includes(self.location.origin) && "focus" in client) {
-            client.focus();
-            client.navigate(targetUrl);
-            return;
+            return client.focus().then(() => client.navigate(targetUrl));
           }
         }
         if (clients.openWindow) {
