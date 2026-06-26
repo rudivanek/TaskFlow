@@ -148,7 +148,12 @@ export function ChatMain({
     }
 
     results.sort((a, b) => a.created_at.localeCompare(b.created_at));
-    setMessages(results);
+    // Merge: preserve realtime-arrived messages that landed during this async load
+    setMessages(prev => {
+      const loadedIds = new Set(results.map(m => m.id));
+      const realtimeNew = prev.filter(m => !loadedIds.has(m.id));
+      return [...results, ...realtimeNew].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    });
     await markRead();
   }
 

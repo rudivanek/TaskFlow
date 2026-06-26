@@ -298,8 +298,17 @@ export default function ProjectDiscussionPanel({
     }
   }, [searchQuery, threads]);
 
+  // Pre-fetch channelId as soon as projectId is known (before panel opens)
+  // so the chat_messages subscription is ready immediately on first open
   useEffect(() => {
-    if (!isOpen || !projectId) return;
+    if (!projectId) { setChannelId(null); return; }
+    supabase.from('chat_channels').select('id').eq('project_id', projectId).maybeSingle()
+      .then(({ data }) => setChannelId(data?.id ?? null));
+  }, [projectId]);
+
+  // Realtime: project_comments — always active (not gated on isOpen)
+  useEffect(() => {
+    if (!projectId) return;
     const channel = supabase
       .channel(`panel-${projectId}`)
       .on('postgres_changes', {
@@ -327,11 +336,11 @@ export default function ProjectDiscussionPanel({
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [isOpen, projectId]);
+  }, [projectId]);
 
-  // Realtime: chat_messages for the linked channel
+  // Realtime: chat_messages — always active once channelId is known
   useEffect(() => {
-    if (!isOpen || !channelId) return;
+    if (!channelId) return;
     const sub = supabase
       .channel(`panel-chat-${channelId}`)
       .on('postgres_changes', {
@@ -355,7 +364,6 @@ export default function ProjectDiscussionPanel({
                   : t
               );
             }
-            // Parent not yet in threads (race condition) — add as top-level
             return prev.find(t => t.id === unified.id) ? prev : [...prev, { ...unified, replies: [] }];
           });
           setExpandedThreadIds(prev => new Set([...prev, m.parent_id!]));
@@ -375,7 +383,7 @@ export default function ProjectDiscussionPanel({
       })
       .subscribe();
     return () => { supabase.removeChannel(sub); };
-  }, [isOpen, channelId]);
+  }, [channelId]);
 
   // ── data loading ─────────────────────────────────────────────────────────
 
@@ -418,7 +426,13 @@ export default function ProjectDiscussionPanel({
         ...c,
         replies: replies.filter(r => r.parent_id === c.id),
       }));
-      setThreads(built);
+
+      // Merge: preserve any realtime-arrived threads that landed during this async load
+      setThreads(prev => {
+        const loadedIds = new Set(built.map(t => t.id));
+        const realtimeNew = prev.filter(t => !loadedIds.has(t.id));
+        return [...built, ...realtimeNew].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      });
       onCommentCountChange?.(allComments.length);
       if (user) {
         const ids = await getReadCommentIds(supabase, projectId, user.id);
