@@ -5,6 +5,9 @@ import { supabase } from '../../lib/supabase';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatMain } from './ChatMain';
 
+const LAST_CHANNEL_KEY = 'taskflow_last_channel_id';
+const LAST_CONV_KEY = 'taskflow_last_conv_id';
+
 interface Props {
   onTotalUnreadChange: (n: number) => void;
 }
@@ -73,9 +76,17 @@ export function ChatPage({ onTotalUnreadChange }: Props) {
     // Fetch unread counts
     await fetchUnreadCounts(user.id, loadedChannels, loadedConvs);
 
-    // Auto-select General
-    const general = loadedChannels.find(c => c.type === 'general');
-    if (general) setSelectedChannelId(general.id);
+    // Restore last selection, or fall back to General
+    const savedConvId = localStorage.getItem(LAST_CONV_KEY);
+    const savedChannelId = localStorage.getItem(LAST_CHANNEL_KEY);
+    if (savedConvId && loadedConvs.find(c => c.id === savedConvId)) {
+      setSelectedConvId(savedConvId);
+    } else if (savedChannelId && loadedChannels.find(c => c.id === savedChannelId)) {
+      setSelectedChannelId(savedChannelId);
+    } else {
+      const general = loadedChannels.find(c => c.type === 'general');
+      if (general) setSelectedChannelId(general.id);
+    }
   }
 
   async function fetchUnreadCounts(userId: string, chans: ChatChannel[], convs: ChatDirectConversation[]) {
@@ -124,6 +135,8 @@ export function ChatPage({ onTotalUnreadChange }: Props) {
       setConversations(prev => prev.find(c => c.id === data.id) ? prev : [...prev, data]);
       setSelectedConvId(data.id);
       setSelectedChannelId(null);
+      localStorage.setItem(LAST_CONV_KEY, data.id);
+      localStorage.removeItem(LAST_CHANNEL_KEY);
     }
   }
 
@@ -138,8 +151,18 @@ export function ChatPage({ onTotalUnreadChange }: Props) {
         selectedConversationId={selectedConvId}
         unreadByChannel={unreadByChannel}
         unreadByConv={unreadByConv}
-        onSelectChannel={(id) => { setSelectedChannelId(id); setSelectedConvId(null); }}
-        onSelectConversation={(id) => { setSelectedConvId(id); setSelectedChannelId(null); }}
+        onSelectChannel={(id) => {
+          setSelectedChannelId(id);
+          setSelectedConvId(null);
+          localStorage.setItem(LAST_CHANNEL_KEY, id);
+          localStorage.removeItem(LAST_CONV_KEY);
+        }}
+        onSelectConversation={(id) => {
+          setSelectedConvId(id);
+          setSelectedChannelId(null);
+          localStorage.setItem(LAST_CONV_KEY, id);
+          localStorage.removeItem(LAST_CHANNEL_KEY);
+        }}
         onStartDM={handleStartDM}
       />
       <ChatMain

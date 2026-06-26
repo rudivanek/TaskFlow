@@ -279,10 +279,11 @@ export default function ProjectDiscussionPanel({
   }, [user]);
 
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-    }
-  }, [threads.length, isOpen]);
+    if (!isOpen) return;
+    // Wait for the 300ms slide-in CSS transition before scrolling
+    const t = setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 320);
+    return () => clearTimeout(t);
+  }, [isOpen, threads.length]);
 
   useEffect(() => {
     if (!searchQuery) return;
