@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 // This must match VAPID_PUBLIC_KEY stored in Supabase Edge Function secrets
-const VAPID_PUBLIC_KEY = 'BO9mz1R59E_L7iFQrJ_2HXEHgLf2txgKaEhWIzBCrBjw12gp7EPmpnMmNKlwY1IZhJz6XeE_-m5MGDqHYqjZvXE';
+const VAPID_PUBLIC_KEY = 'BOGVfjMzYNDAAkurYsj8Z0BuyIr6RBpS2-Hs9z9YpjEte6Gtm9fkh4DqqbEBsfC5zYTpjugO9o9edz7W-Xke668';
 
 function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
