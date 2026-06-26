@@ -21,6 +21,11 @@ body {
   @apply bg-slate-50 text-slate-900 font-sans;
 }
 
+/* Safe area inset for iPhone notch/home bar in PWA mode */
+.safe-area-bottom {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
 input, select, textarea {
   @apply outline-none;
 }

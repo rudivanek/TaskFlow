@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Menu } from 'lucide-react';
 import { ChatChannel, ChatDirectConversation, Profile } from '../../types';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatMain } from './ChatMain';
+import { PWAInstallPrompt } from './PWAInstallPrompt';
 
 const LAST_CHANNEL_KEY = 'taskflow_last_channel_id';
 const LAST_CONV_KEY = 'taskflow_last_conv_id';
@@ -21,6 +23,7 @@ export function ChatPage({ onTotalUnreadChange }: Props) {
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
   const [unreadByChannel, setUnreadByChannel] = useState<Record<string, number>>({});
   const [unreadByConv, setUnreadByConv] = useState<Record<string, number>>({});
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     init();
@@ -73,10 +76,8 @@ export function ChatPage({ onTotalUnreadChange }: Props) {
     setAllUsers(loadedUsers);
     setConversations(loadedConvs);
 
-    // Fetch unread counts
     await fetchUnreadCounts(user.id, loadedChannels, loadedConvs);
 
-    // Restore last selection, or fall back to General
     const savedConvId = localStorage.getItem(LAST_CONV_KEY);
     const savedChannelId = localStorage.getItem(LAST_CHANNEL_KEY);
     if (savedConvId && loadedConvs.find(c => c.id === savedConvId)) {
@@ -137,43 +138,97 @@ export function ChatPage({ onTotalUnreadChange }: Props) {
       setSelectedChannelId(null);
       localStorage.setItem(LAST_CONV_KEY, data.id);
       localStorage.removeItem(LAST_CHANNEL_KEY);
+      setSidebarOpen(false);
     }
   }
 
+  function getActiveTitle(): string {
+    if (selectedChannelId) {
+      const ch = channels.find(c => c.id === selectedChannelId);
+      return ch?.type === 'general' ? '# general' : `# ${ch?.name ?? ''}`;
+    }
+    if (selectedConvId) {
+      const conv = conversations.find(c => c.id === selectedConvId);
+      if (!conv) return 'Direct Message';
+      const partnerId = conv.user_a_id === currentUser?.id ? conv.user_b_id : conv.user_a_id;
+      return allUsers.find(u => u.id === partnerId)?.email ?? 'Direct Message';
+    }
+    return 'Chat';
+  }
+
   return (
-    <div className="flex w-full h-full overflow-hidden">
-      <ChatSidebar
-        channels={channels}
-        conversations={conversations}
-        allUsers={allUsers}
-        currentUser={currentUser}
-        selectedChannelId={selectedChannelId}
-        selectedConversationId={selectedConvId}
-        unreadByChannel={unreadByChannel}
-        unreadByConv={unreadByConv}
-        onSelectChannel={(id) => {
-          setSelectedChannelId(id);
-          setSelectedConvId(null);
-          localStorage.setItem(LAST_CHANNEL_KEY, id);
-          localStorage.removeItem(LAST_CONV_KEY);
-        }}
-        onSelectConversation={(id) => {
-          setSelectedConvId(id);
-          setSelectedChannelId(null);
-          localStorage.setItem(LAST_CONV_KEY, id);
-          localStorage.removeItem(LAST_CHANNEL_KEY);
-        }}
-        onStartDM={handleStartDM}
-      />
-      <ChatMain
-        channelId={selectedChannelId}
-        conversationId={selectedConvId}
-        channels={channels}
-        conversations={conversations}
-        allUsers={allUsers}
-        currentUser={currentUser}
-        onMarkRead={handleMarkRead}
-      />
+    <div className="flex flex-col w-full h-full overflow-hidden">
+      <PWAInstallPrompt />
+
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Mobile backdrop */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar — drawer on mobile, always visible on md+ */}
+        <div className={`
+          fixed inset-y-0 left-0 z-40 flex flex-col
+          transition-transform duration-200 ease-in-out
+          md:relative md:translate-x-0 md:flex
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}>
+          <ChatSidebar
+            channels={channels}
+            conversations={conversations}
+            allUsers={allUsers}
+            currentUser={currentUser}
+            selectedChannelId={selectedChannelId}
+            selectedConversationId={selectedConvId}
+            unreadByChannel={unreadByChannel}
+            unreadByConv={unreadByConv}
+            onSelectChannel={(id) => {
+              setSelectedChannelId(id);
+              setSelectedConvId(null);
+              localStorage.setItem(LAST_CHANNEL_KEY, id);
+              localStorage.removeItem(LAST_CONV_KEY);
+              setSidebarOpen(false);
+            }}
+            onSelectConversation={(id) => {
+              setSelectedConvId(id);
+              setSelectedChannelId(null);
+              localStorage.setItem(LAST_CONV_KEY, id);
+              localStorage.removeItem(LAST_CHANNEL_KEY);
+              setSidebarOpen(false);
+            }}
+            onStartDM={handleStartDM}
+          />
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Mobile-only top bar with hamburger */}
+          <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 flex-shrink-0">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="font-semibold text-gray-800 text-sm truncate">{getActiveTitle()}</span>
+          </div>
+
+          <ChatMain
+            channelId={selectedChannelId}
+            conversationId={selectedConvId}
+            channels={channels}
+            conversations={conversations}
+            allUsers={allUsers}
+            currentUser={currentUser}
+            onMarkRead={handleMarkRead}
+            hideMobileHeader
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -19,6 +19,7 @@ interface Props {
   allUsers: Profile[];
   currentUser: User | null;
   onMarkRead: (channelId: string | null, convId: string | null) => void;
+  hideMobileHeader?: boolean;
 }
 
 function fromChatMessage(m: ChatMessage): UnifiedMessage {
@@ -48,7 +49,7 @@ function fromProjectComment(c: ProjectComment): UnifiedMessage {
 }
 
 export function ChatMain({
-  channelId, conversationId, channels, conversations, allUsers, currentUser, onMarkRead,
+  channelId, conversationId, channels, conversations, allUsers, currentUser, onMarkRead, hideMobileHeader = false,
 }: Props) {
   const { playChime } = useNotificationSound();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
@@ -315,8 +316,8 @@ export function ChatMain({
 
   return (
     <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-gray-50">
-      {/* Header */}
-      <div className="px-6 py-3 border-b border-gray-200 bg-white flex items-center justify-between flex-shrink-0">
+      {/* Header — hidden on mobile when parent supplies its own title bar */}
+      <div className={`px-6 py-3 border-b border-gray-200 bg-white flex items-center justify-between flex-shrink-0 ${hideMobileHeader ? 'hidden md:flex' : 'flex'}`}>
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-gray-800 text-sm">
             {isChannel ? `# ${title}` : title}
@@ -382,7 +383,7 @@ export function ChatMain({
       </div>
 
       {/* Compose */}
-      <div className="px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
+      <div className="px-4 md:px-6 py-3 md:py-4 border-t border-gray-200 bg-white flex-shrink-0 safe-area-bottom">
         {pendingPreviews.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {pendingPreviews.map((src, i) => (
@@ -415,7 +416,7 @@ export function ChatMain({
               }
             }}
             rows={2}
-            className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
+            className="flex-1 text-base md:text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
           />
           <div className="flex flex-col gap-1 flex-shrink-0">
             <input
