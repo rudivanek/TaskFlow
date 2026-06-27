@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T16:30:00Z
+**Last Updated:** 2026-06-27T17:00:00Z
 
 ---
 
@@ -268,6 +268,27 @@ Both the Chat compose area (ChatMain) and the Discussion Panel compose area (Pro
 **Storage bucket:**
 - `voice-messages` (public) — path: `{userId}/{timestamp}-voice.{ext}`
 - RLS policies: authenticated users can upload and view; owners can delete their own files
+
+### 1.13c Speech-to-Text Dictation in Chat & Discussion
+
+Both the Chat compose area (ChatMain) and the Discussion Panel compose area (ProjectDiscussionPanel) have a microphone dictation button. Clicking it starts speech recognition using the browser's built-in Web Speech API — no external service or API key required. Transcribed text is appended to the compose box for review and editing before sending. Same button applies to inline reply composers in both views.
+
+**Behavior:**
+- Click the dictation mic button to start; click again to stop (toggle)
+- While listening: button turns blue, a pulsing red dot appears in the top-right corner, and a "Listening... speak now" indicator appears below the textarea
+- Interim transcript (words being recognized in real-time) shown in a dark tooltip above the button — disappears when finalized
+- Final transcript is appended to the compose box with a space separator; existing content is preserved
+- Dictation and voice message recording are mutually exclusive — each disables the other while active
+- Dictation auto-stops when the browser's speech engine detects silence or the user clicks stop
+- Language is auto-detected from `navigator.language` — supports Spanish, English, French, Portuguese, etc.
+
+**Browser compatibility:**
+- Supported: Chrome (desktop + Android), Edge, Safari (iOS 14.5+, macOS)
+- Not supported: Firefox — button is hidden (`null` rendered), no broken UI or error shown
+
+**Files:**
+- `src/hooks/useSpeechDictation.ts` — hook wrapping the Web Speech API; exposes `isListening`, `isSupported`, `interimTranscript`, `toggleListening`, `stopListening`; calls `onListeningChange`, `onTranscript`, `onError` callbacks; cleans up via `recognition.abort()` on unmount
+- `src/components/chat/DictationButton.tsx` — UI button component; renders `null` on unsupported browsers; shows blue active state, red pulse indicator, interim transcript tooltip, and error tooltip
 
 ### 1.11 Design System
 - Color palette: Slate/Blue tones (no purple)

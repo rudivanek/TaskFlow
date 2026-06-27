@@ -22,6 +22,7 @@ import { FileAttachmentList } from './chat/FileAttachmentList';
 import { FileAttachmentPreview, PendingFile } from './chat/FileAttachmentPreview';
 import { VoiceMessagePlayer } from './chat/VoiceMessagePlayer';
 import { VoiceRecordButton } from './chat/VoiceRecordButton';
+import { DictationButton } from './chat/DictationButton';
 
 type UnifiedComment = ProjectComment & { _source: 'discussion' | 'chat' };
 type CommentThread = UnifiedComment & { replies: UnifiedComment[] };
@@ -155,6 +156,10 @@ export default function ProjectDiscussionPanel({
   // Voice state
   const [pendingVoice, setPendingVoice] = useState<{ blob: Blob; duration: number; previewUrl: string } | null>(null);
   const [pendingReplyVoice, setPendingReplyVoice] = useState<{ blob: Blob; duration: number; previewUrl: string } | null>(null);
+
+  // Dictation state
+  const [isDictating, setIsDictating] = useState(false);
+  const [isReplyDictating, setIsReplyDictating] = useState(false);
 
   const [markingAll, setMarkingAll] = useState(false);
 
@@ -441,6 +446,20 @@ export default function ProjectDiscussionPanel({
       .map(item => item.getAsFile())
       .filter(Boolean) as File[];
     if (files.length > 0) addFilesToState(files, setPendingReplyFiles);
+  }
+
+  function handleDictationTranscript(text: string) {
+    setText(prev => {
+      const separator = prev.trim() ? ' ' : '';
+      return prev + separator + text;
+    });
+  }
+
+  function handleReplyDictationTranscript(text: string) {
+    setReplyText(prev => {
+      const separator = prev.trim() ? ' ' : '';
+      return prev + separator + text;
+    });
   }
 
   // ── @mention: top-level ──────────────────────────────────────────────────
@@ -1036,12 +1055,17 @@ export default function ProjectDiscussionPanel({
                                 <Paperclip className="w-3 h-3" />
                                 File
                               </button>
+                              <DictationButton
+                                onTranscript={handleReplyDictationTranscript}
+                                onListeningChange={setIsReplyDictating}
+                                disabled={!!pendingReplyVoice}
+                              />
                               <VoiceRecordButton
                                 onRecordingComplete={(blob, dur) => {
                                   const previewUrl = URL.createObjectURL(blob);
                                   setPendingReplyVoice({ blob, duration: dur, previewUrl });
                                 }}
-                                disabled={!!pendingReplyVoice}
+                                disabled={!!pendingReplyVoice || isReplyDictating}
                               />
                             </div>
                             <div className="flex gap-2">
@@ -1172,12 +1196,17 @@ export default function ProjectDiscussionPanel({
                 <Paperclip className="w-3 h-3" />
                 File
               </button>
+              <DictationButton
+                onTranscript={handleDictationTranscript}
+                onListeningChange={setIsDictating}
+                disabled={!!pendingVoice || submitting}
+              />
               <VoiceRecordButton
                 onRecordingComplete={(blob, dur) => {
                   const previewUrl = URL.createObjectURL(blob);
                   setPendingVoice({ blob, duration: dur, previewUrl });
                 }}
-                disabled={!!pendingVoice}
+                disabled={!!pendingVoice || isDictating}
               />
             </div>
             <button
@@ -1191,6 +1220,12 @@ export default function ProjectDiscussionPanel({
               }
             </button>
           </div>
+          {isDictating && (
+            <p className="text-[10px] text-blue-500 mt-1 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+              Listening... speak now
+            </p>
+          )}
         </div>
       </div>
     </>

@@ -7,6 +7,7 @@ import { ChatMessageThread } from './ChatMessageThread';
 import { FileAttachmentPreview, PendingFile } from './FileAttachmentPreview';
 import { VoiceRecordButton } from './VoiceRecordButton';
 import { VoiceMessagePlayer } from './VoiceMessagePlayer';
+import { DictationButton } from './DictationButton';
 import { uploadChatFile, isImageFile, ALLOWED_FILE_TYPES, MAX_FILE_SIZE } from '../../utils/uploadChatFile';
 import { uploadVoiceMessage } from '../../utils/uploadVoiceMessage';
 import { useNotificationSound } from '../../utils/useNotificationSound';
@@ -65,6 +66,7 @@ export function ChatMain({
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [pendingVoice, setPendingVoice] = useState<{ blob: Blob; duration: number; previewUrl: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDictating, setIsDictating] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
@@ -320,6 +322,13 @@ export function ChatMain({
     setMessages(prev => prev.filter(m => m.id !== id));
   }
 
+  function handleDictationTranscript(text: string) {
+    setContent(prev => {
+      const separator = prev.trim() ? ' ' : '';
+      return prev + separator + text;
+    });
+  }
+
   const topLevel = messages.filter(m => m.parent_id === null);
   const replyMessages = messages.filter(m => m.parent_id !== null);
   const threads: Thread[] = topLevel.map(m => ({
@@ -443,23 +452,31 @@ export function ChatMain({
           </div>
         )}
         <div className="flex items-end gap-2">
-          <textarea
-            placeholder={`Message ${isChannel ? '#' : ''}${title}... (Ctrl+V or drag & drop files)`}
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            onPaste={(e) => {
-              const files = Array.from(e.clipboardData.items)
-                .filter(item => item.kind === 'file')
-                .map(item => item.getAsFile())
-                .filter(Boolean) as File[];
-              if (files.length > 0) addFiles(files);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePost(); }
-            }}
-            rows={2}
-            className="flex-1 text-base md:text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
-          />
+          <div className="flex-1 flex flex-col">
+            <textarea
+              placeholder={`Message ${isChannel ? '#' : ''}${title}... (Ctrl+V or drag & drop files)`}
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              onPaste={(e) => {
+                const files = Array.from(e.clipboardData.items)
+                  .filter(item => item.kind === 'file')
+                  .map(item => item.getAsFile())
+                  .filter(Boolean) as File[];
+                if (files.length > 0) addFiles(files);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePost(); }
+              }}
+              rows={2}
+              className="flex-1 text-base md:text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
+            />
+            {isDictating && (
+              <p className="text-[10px] text-blue-500 mt-0.5 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                Listening... speak now
+              </p>
+            )}
+          </div>
           <div className="flex flex-col gap-1 flex-shrink-0">
             <input
               ref={fileInputRef}
@@ -476,12 +493,17 @@ export function ChatMain({
             >
               <Paperclip className="w-4 h-4" />
             </button>
+            <DictationButton
+              onTranscript={handleDictationTranscript}
+              onListeningChange={setIsDictating}
+              disabled={isUploading || !!pendingVoice}
+            />
             <VoiceRecordButton
               onRecordingComplete={(blob, dur) => {
                 const previewUrl = URL.createObjectURL(blob);
                 setPendingVoice({ blob, duration: dur, previewUrl });
               }}
-              disabled={isUploading || !!pendingVoice}
+              disabled={isUploading || !!pendingVoice || isDictating}
             />
             <button
               onClick={handlePost}
