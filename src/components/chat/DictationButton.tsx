@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mic, MicOff } from 'lucide-react';
+import { AudioLines, MicOff } from 'lucide-react';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 
 interface Props {
@@ -35,7 +35,7 @@ export function DictationButton({ onTranscript, onListeningChange, disabled }: P
             : 'border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-500'
         } disabled:opacity-40`}
       >
-        {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+        {isListening ? <MicOff className="w-3.5 h-3.5" /> : <AudioLines className="w-3.5 h-3.5" />}
       </button>
 
       {isListening && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />}
