@@ -16,6 +16,7 @@ import {
   X,
   PanelLeftClose,
   PanelLeftOpen,
+  Lock,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -228,6 +229,17 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
     }
   };
 
+  const handleTogglePrivate = async (workspaceId: string, currentIsPrivate: boolean) => {
+    const newIsPrivate = !currentIsPrivate;
+    setWorkspaces(prev => prev.map(w => w.id === workspaceId ? { ...w, private: newIsPrivate } : w));
+    try {
+      await workspaceServices.toggleWorkspacePrivate(workspaceId, newIsPrivate);
+    } catch (err) {
+      console.error(err);
+      setWorkspaces(prev => prev.map(w => w.id === workspaceId ? { ...w, private: currentIsPrivate } : w));
+    }
+  };
+
   const handleContextMenu = (e: React.MouseEvent, type: 'workspace' | 'project', id: string) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, type, id });
@@ -376,10 +388,11 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
                     />
                   ) : (
                     <span
-                      className="flex-1 text-sm font-medium text-slate-700 truncate"
+                      className="flex-1 text-sm font-medium text-slate-700 truncate flex items-center gap-1"
                       onDoubleClick={() => { setEditingWorkspaceId(ws.id); setEditName(ws.workspace); }}
                     >
                       {ws.workspace}
+                      {ws.private && <Lock className="w-3 h-3 text-slate-400 flex-shrink-0" />}
                     </span>
                   )}
 
@@ -578,6 +591,19 @@ export default function Sidebar({ selectedProjectId, onSelectProject, collapsed,
               >
                 Rename
               </button>
+              {(() => {
+                const ws = workspaces.find(w => w.id === contextMenu.id);
+                const isOwner = !ws || ws.user_id === user?.id;
+                return isOwner && ws ? (
+                  <button
+                    onClick={() => { handleTogglePrivate(ws.id, ws.private); setContextMenu(null); }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 text-slate-700 flex items-center gap-2"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                    {ws.private ? 'Make Public' : 'Make Private'}
+                  </button>
+                ) : null;
+              })()}
               <button
                 onClick={() => { handleDeleteWorkspace(contextMenu.id); setContextMenu(null); }}
                 className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600"

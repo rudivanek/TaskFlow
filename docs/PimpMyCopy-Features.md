@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-26T00:00:00Z
+**Last Updated:** 2026-06-27T00:00:00Z
 
 ---
 
@@ -39,8 +39,9 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Favorites section at top showing starred projects
 - Trash/Recycle bin section for soft-deleted projects AND soft-deleted workspaces, with restore/permanent delete for each
 - Context menus on right-click:
-  - Workspaces: Rename, Delete (soft-deletes workspace + all its projects to Trash)
+  - Workspaces: Rename, **Make Private / Make Public**, Delete (soft-deletes workspace + all its projects to Trash)
   - Projects: Rename, Duplicate, Add to Favorites, Move to Trash
+- **Private Workspaces**: any workspace owner can toggle their workspace between public and private via the right-click context menu. When private, the workspace and all its projects are hidden from other users at the database level (RLS policy: `private = false OR user_id = auth.uid()`). A small lock icon appears inline with the workspace name when it is private. The "Make Private / Make Public" option is only shown in the menu when the current user is the workspace owner (`user_id = auth.uid()`); other users see no toggle option for workspaces they do not own. Toggling is optimistic — the UI updates immediately and reverts on error.
 - Inline renaming on double-click
 - Create workspace/project via inline input fields
 

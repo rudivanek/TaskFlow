@@ -80,3 +80,11 @@ export async function updateWorkspacesOrder(workspaces: { id: string; sort_order
     await supabase.from('workspaces').update({ sort_order: ws.sort_order }).eq('id', ws.id);
   }
 }
+
+export async function toggleWorkspacePrivate(id: string, isPrivate: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('workspaces')
+    .update({ private: isPrivate })
+    .eq('id', id);
+  if (error) throw error;
+}
