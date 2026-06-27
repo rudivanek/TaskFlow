@@ -1,3 +1,10 @@
+export interface FileAttachment {
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+}
+
 export interface Task {
   id: string;
   task_id: number;
@@ -88,6 +95,7 @@ export interface ChatMessage {
   author_name: string;
   content: string;
   image_urls: string[];
+  file_attachments: FileAttachment[];
   created_at: string;
 }
 
@@ -104,6 +112,7 @@ export interface ProjectComment {
   notify_all: boolean;
   notified_user_ids: string[];
   image_urls: string[];
+  file_attachments: FileAttachment[];
 }
 
 export interface Profile {
@@ -119,6 +128,7 @@ export interface UnifiedMessage {
   author_name: string;
   content: string;
   image_urls: string[];
+  file_attachments: FileAttachment[];
   created_at: string;
 }
 

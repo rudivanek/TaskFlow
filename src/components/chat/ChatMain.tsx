@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, X, Send, ImagePlus } from 'lucide-react';
-import { ChatChannel, ChatDirectConversation, ChatMessage, ProjectComment, Profile, UnifiedMessage } from '../../types';
+import { Search, X, Send, Paperclip } from 'lucide-react';
+import { ChatChannel, ChatDirectConversation, ChatMessage, ProjectComment, Profile, UnifiedMessage, FileAttachment } from '../../types';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
-import { uploadDiscussionImage } from '../../utils/uploadDiscussionImage';
 import { ChatMessageThread } from './ChatMessageThread';
+import { FileAttachmentPreview, PendingFile } from './FileAttachmentPreview';
+import { uploadChatFile, isImageFile, ALLOWED_FILE_TYPES, MAX_FILE_SIZE } from '../../utils/uploadChatFile';
 import { useNotificationSound } from '../../utils/useNotificationSound';
 
 interface Thread extends UnifiedMessage {
@@ -31,6 +32,7 @@ function fromChatMessage(m: ChatMessage): UnifiedMessage {
     author_name: m.author_name,
     content: m.content,
     image_urls: m.image_urls ?? [],
+    file_attachments: (m.file_attachments as FileAttachment[]) ?? [],
     created_at: m.created_at,
   };
 }
@@ -44,6 +46,7 @@ function fromProjectComment(c: ProjectComment): UnifiedMessage {
     author_name: c.author_name,
     content: c.content,
     image_urls: c.image_urls ?? [],
+    file_attachments: (c.file_attachments as FileAttachment[]) ?? [],
     created_at: c.created_at,
   };
 }
@@ -54,9 +57,9 @@ export function ChatMain({
   const { playChime } = useNotificationSound();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [content, setContent] = useState('');
-  const [pendingImages, setPendingImages] = useState<File[]>([]);
-  const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
@@ -131,14 +134,12 @@ export function ChatMain({
     if (!activeId) return;
     const results: UnifiedMessage[] = [];
 
-    // Load chat_messages
     let chatQuery = supabase.from('chat_messages').select('*').order('created_at', { ascending: true });
     if (channelId) chatQuery = chatQuery.eq('channel_id', channelId);
     else if (conversationId) chatQuery = chatQuery.eq('conversation_id', conversationId);
     const { data: chatData } = await chatQuery;
     if (chatData) results.push(...chatData.map(fromChatMessage));
 
-    // Load project_comments for project channels
     if (projectId) {
       const { data: commentData } = await supabase
         .from('project_comments')
@@ -149,7 +150,6 @@ export function ChatMain({
     }
 
     results.sort((a, b) => a.created_at.localeCompare(b.created_at));
-    // Merge: preserve realtime-arrived messages that landed during this async load
     setMessages(prev => {
       const loadedIds = new Set(results.map(m => m.id));
       const realtimeNew = prev.filter(m => !loadedIds.has(m.id));
@@ -184,25 +184,38 @@ export function ChatMain({
     return '';
   }
 
-  function addImages(files: File[]) {
+  function addFiles(files: File[]) {
     const valid = files.filter(f => {
-      if (!f.type.startsWith('image/')) return false;
-      if (f.size > 5 * 1024 * 1024) { alert(`"${f.name}" exceeds 5 MB and was skipped.`); return false; }
+      if (!ALLOWED_FILE_TYPES.includes(f.type)) {
+        alert(`"${f.name}" is not a supported file type.`);
+        return false;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        alert(`"${f.name}" exceeds the 10MB limit.`);
+        return false;
+      }
       return true;
     });
-    valid.forEach(f => {
-      const reader = new FileReader();
-      reader.onload = e => setPendingPreviews(p => [...p, e.target?.result as string]);
-      reader.readAsDataURL(f);
+    valid.forEach(file => {
+      if (isImageFile(file.type)) {
+        const reader = new FileReader();
+        reader.onload = e => setPendingFiles(prev => [...prev, { file, preview: e.target?.result as string }]);
+        reader.readAsDataURL(file);
+      } else {
+        setPendingFiles(prev => [...prev, { file }]);
+      }
     });
-    setPendingImages(p => [...p, ...valid]);
   }
 
   async function handlePost() {
-    if ((!content.trim() && pendingImages.length === 0) || !currentUser) return;
+    if ((!content.trim() && pendingFiles.length === 0) || !currentUser) return;
     setIsUploading(true);
-    const uploaded = await Promise.all(pendingImages.map(f => uploadDiscussionImage(supabase, f, currentUser.id)));
-    const imageUrls = uploaded.filter(Boolean) as string[];
+
+    const uploaded = await Promise.all(pendingFiles.map(pf => uploadChatFile(supabase, pf.file, currentUser.id)));
+    const valid = uploaded.filter(Boolean) as { url: string; name: string; type: string; size: number }[];
+    const imageUrls = valid.filter(a => isImageFile(a.type)).map(a => a.url);
+    const fileAttachments = valid.filter(a => !isImageFile(a.type));
+
     setIsUploading(false);
 
     const row = {
@@ -213,11 +226,11 @@ export function ChatMain({
       author_name: (currentUser.user_metadata?.full_name as string) || currentUser.email || '',
       content: content.trim(),
       image_urls: imageUrls,
+      file_attachments: fileAttachments,
     };
 
     setContent('');
-    setPendingImages([]);
-    setPendingPreviews([]);
+    setPendingFiles([]);
 
     const { data: inserted } = await supabase.from('chat_messages').insert(row).select().single();
     if (inserted) {
@@ -227,10 +240,12 @@ export function ChatMain({
     await markRead();
   }
 
-  async function handlePostReply(parentId: string, replyContent: string, replyImages: File[]) {
+  async function handlePostReply(parentId: string, replyContent: string, replyFiles: File[]) {
     if (!currentUser) return;
-    const uploaded = await Promise.all(replyImages.map(f => uploadDiscussionImage(supabase, f, currentUser.id)));
-    const imageUrls = uploaded.filter(Boolean) as string[];
+    const uploaded = await Promise.all(replyFiles.map(f => uploadChatFile(supabase, f, currentUser.id)));
+    const valid = uploaded.filter(Boolean) as { url: string; name: string; type: string; size: number }[];
+    const imageUrls = valid.filter(a => isImageFile(a.type)).map(a => a.url);
+    const fileAttachments = valid.filter(a => !isImageFile(a.type));
 
     const parentMsg = messages.find(m => m.id === parentId);
     const authorName = (currentUser.user_metadata?.full_name as string) || currentUser.email || '';
@@ -238,7 +253,6 @@ export function ChatMain({
     setReplyingToId(null);
 
     if (parentMsg?.source === 'discussion' && projectId) {
-      // Reply goes to project_comments to keep the Diskussion thread intact
       const row = {
         project_id: projectId,
         parent_id: parentId,
@@ -246,6 +260,7 @@ export function ChatMain({
         author_name: authorName,
         content: replyContent.trim(),
         image_urls: imageUrls,
+        file_attachments: fileAttachments,
         task_id: null as string | null,
         notify_all: false,
         notified_user_ids: [] as string[],
@@ -256,7 +271,6 @@ export function ChatMain({
         setMessages(prev => prev.find(m => m.id === unified.id) ? prev : [...prev, unified]);
       }
     } else {
-      // Reply goes to chat_messages
       const row = {
         channel_id: channelId ?? null,
         conversation_id: conversationId ?? null,
@@ -265,6 +279,7 @@ export function ChatMain({
         author_name: authorName,
         content: replyContent.trim(),
         image_urls: imageUrls,
+        file_attachments: fileAttachments,
       };
       const { data: inserted } = await supabase.from('chat_messages').insert(row).select().single();
       if (inserted) {
@@ -316,7 +331,7 @@ export function ChatMain({
 
   return (
     <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-gray-50">
-      {/* Header — hidden on mobile when parent supplies its own title bar */}
+      {/* Header */}
       <div className={`px-6 py-3 border-b border-gray-200 bg-white flex items-center justify-between flex-shrink-0 ${hideMobileHeader ? 'hidden md:flex' : 'flex'}`}>
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-gray-800 text-sm">
@@ -373,7 +388,7 @@ export function ChatMain({
                   return next;
                 })}
                 onReply={() => setReplyingToId(replyingToId === thread.id ? null : thread.id)}
-                onPostReply={(c, imgs) => handlePostReply(thread.id, c, imgs)}
+                onPostReply={(c, files) => handlePostReply(thread.id, c, files)}
                 onDelete={handleDelete}
               />
             ))}
@@ -383,37 +398,32 @@ export function ChatMain({
       </div>
 
       {/* Compose */}
-      <div className="px-4 md:px-6 py-3 md:py-4 border-t border-gray-200 bg-white flex-shrink-0 safe-area-bottom">
-        {pendingPreviews.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {pendingPreviews.map((src, i) => (
-              <div key={i} className="relative group w-16 h-16 flex-shrink-0">
-                <img src={src} className="w-16 h-16 object-cover rounded-md border border-gray-200" />
-                <button
-                  onClick={() => { setPendingImages(p => p.filter((_, j) => j !== i)); setPendingPreviews(p => p.filter((_, j) => j !== i)); }}
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100"
-                >✕</button>
-              </div>
-            ))}
-          </div>
-        )}
+      <div
+        className={`px-4 md:px-6 py-3 md:py-4 border-t bg-white flex-shrink-0 safe-area-bottom transition-colors ${
+          isDragging ? 'bg-blue-50 border-blue-300' : 'border-gray-200'
+        }`}
+        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={e => { e.preventDefault(); setIsDragging(false); addFiles(Array.from(e.dataTransfer.files)); }}
+      >
+        <FileAttachmentPreview
+          pendingFiles={pendingFiles}
+          onRemove={i => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
+        />
         <div className="flex items-end gap-2">
           <textarea
-            placeholder={`Message ${isChannel ? '#' : ''}${title}... (Ctrl+V to paste image)`}
+            placeholder={`Message ${isChannel ? '#' : ''}${title}... (Ctrl+V or drag & drop files)`}
             value={content}
             onChange={e => setContent(e.target.value)}
             onPaste={(e) => {
               const files = Array.from(e.clipboardData.items)
-                .filter(item => item.type.startsWith('image/'))
+                .filter(item => item.kind === 'file')
                 .map(item => item.getAsFile())
                 .filter(Boolean) as File[];
-              if (files.length > 0) addImages(files);
+              if (files.length > 0) addFiles(files);
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handlePost();
-              }
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePost(); }
             }}
             rows={2}
             className="flex-1 text-base md:text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
@@ -422,21 +432,21 @@ export function ChatMain({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
               multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/*"
               className="hidden"
-              onChange={e => { addImages(Array.from(e.target.files ?? [])); e.target.value = ''; }}
+              onChange={e => { addFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }}
             />
             <button
               onClick={() => fileInputRef.current?.click()}
               className="p-2 text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              title="Add image"
+              title="Attach file or image"
             >
-              <ImagePlus className="w-4 h-4" />
+              <Paperclip className="w-4 h-4" />
             </button>
             <button
               onClick={handlePost}
-              disabled={isUploading || (!content.trim() && pendingImages.length === 0)}
+              disabled={isUploading || (!content.trim() && pendingFiles.length === 0)}
               className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {isUploading
@@ -446,7 +456,7 @@ export function ChatMain({
             </button>
           </div>
         </div>
-        <p className="text-[10px] text-gray-400 mt-1">Enter to send · Shift+Enter for new line</p>
+        <p className="text-[10px] text-gray-400 mt-1">Enter to send · Shift+Enter for new line · Drag & drop or paste files</p>
       </div>
     </div>
   );

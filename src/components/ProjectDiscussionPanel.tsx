@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   MessageSquare, X, Send, Trash2, Link2, CheckCheck, Check,
-  Users, User, Search, ChevronDown, ChevronUp, CornerDownRight, ImagePlus,
+  Users, User, Search, ChevronDown, ChevronUp, CornerDownRight, Paperclip,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
-import { ProjectComment, Task, Profile, ChatMessage } from '../types';
+import { ProjectComment, Task, Profile, ChatMessage, FileAttachment } from '../types';
 import * as projectServices from '../services/projectServices';
 import * as taskServices from '../services/taskServices';
 import { supabase } from '../lib/supabase';
@@ -13,10 +13,12 @@ import {
   markCommentAsRead,
   markAllRelevantCommentsAsRead,
 } from '../utils/unreadComments';
-import { uploadDiscussionImage } from '../utils/uploadDiscussionImage';
+import { uploadChatFile, ALLOWED_FILE_TYPES, MAX_FILE_SIZE, isImageFile } from '../utils/uploadChatFile';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 import { useNotificationSound } from '../utils/useNotificationSound';
 import { ReminderButton } from './ReminderButton';
+import { FileAttachmentList } from './chat/FileAttachmentList';
+import { FileAttachmentPreview, PendingFile } from './chat/FileAttachmentPreview';
 
 type UnifiedComment = ProjectComment & { _source: 'discussion' | 'chat' };
 type CommentThread = UnifiedComment & { replies: UnifiedComment[] };
@@ -30,6 +32,7 @@ function chatMsgToComment(m: ChatMessage, projectId: string): UnifiedComment {
     author_name: m.author_name,
     content: m.content,
     image_urls: m.image_urls ?? [],
+    file_attachments: (m.file_attachments as FileAttachment[]) ?? [],
     created_at: m.created_at,
     updated_at: m.created_at,
     task_id: null,
@@ -92,83 +95,6 @@ function highlightText(text: string, query: string): React.ReactNode {
   );
 }
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-
-function filterImageFiles(files: File[]): File[] {
-  return files.filter(f => {
-    if (!f.type.startsWith('image/')) return false;
-    if (f.size > MAX_FILE_SIZE) {
-      alert(`"${f.name}" exceeds the 5 MB limit and was skipped.`);
-      return false;
-    }
-    return true;
-  });
-}
-
-function buildPreviews(files: File[], onPreviews: (previews: string[]) => void) {
-  const results: string[] = new Array(files.length).fill('');
-  let done = 0;
-  files.forEach((file, i) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      results[i] = e.target?.result as string;
-      done++;
-      if (done === files.length) onPreviews(results);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// ─── image attachment strip (reused for both compose areas) ──────────────────
-
-interface ImageStripProps {
-  previews: string[];
-  onRemove: (i: number) => void;
-}
-
-function ImageStrip({ previews, onRemove }: ImageStripProps) {
-  if (previews.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2 mt-1.5">
-      {previews.map((src, i) => (
-        <div key={i} className="relative group w-20 h-20 flex-shrink-0">
-          <img
-            src={src}
-            alt={`attachment-${i}`}
-            className="w-20 h-20 object-cover rounded-md border border-slate-200"
-          />
-          <button
-            type="button"
-            onClick={() => onRemove(i)}
-            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
-          >
-            ✕
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── posted thumbnails ───────────────────────────────────────────────────────
-
-function CommentImages({ urls }: { urls: string[] }) {
-  if (!urls || urls.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2 mt-2">
-      {urls.map((url, i) => (
-        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block flex-shrink-0">
-          <img
-            src={url}
-            alt={`attachment-${i}`}
-            className="w-24 h-24 object-cover rounded-md border border-slate-200 hover:opacity-90 transition-opacity cursor-zoom-in"
-          />
-        </a>
-      ))}
-    </div>
-  );
-}
-
 // ─── component ───────────────────────────────────────────────────────────────
 
 export default function ProjectDiscussionPanel({
@@ -205,10 +131,10 @@ export default function ProjectDiscussionPanel({
   const [mentionStart, setMentionStart] = useState(0);
   const [mentionIndex, setMentionIndex] = useState(0);
 
-  // Top-level image state
-  const [pendingImages, setPendingImages] = useState<File[]>([]);
-  const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
+  // Top-level file state
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Reply compose
   const [replyText, setReplyText] = useState('');
@@ -217,9 +143,9 @@ export default function ProjectDiscussionPanel({
   const [replyMentionStart, setReplyMentionStart] = useState(0);
   const [replyMentionIndex, setReplyMentionIndex] = useState(0);
 
-  // Reply image state
-  const [pendingReplyImages, setPendingReplyImages] = useState<File[]>([]);
-  const [pendingReplyPreviews, setPendingReplyPreviews] = useState<string[]>([]);
+  // Reply file state
+  const [pendingReplyFiles, setPendingReplyFiles] = useState<PendingFile[]>([]);
+  const [isReplyDragging, setIsReplyDragging] = useState(false);
   const replyFileInputRef = useRef<HTMLInputElement>(null);
 
   const [markingAll, setMarkingAll] = useState(false);
@@ -474,50 +400,39 @@ export default function ProjectDiscussionPanel({
     }
   }
 
-  // ── image helpers ─────────────────────────────────────────────────────────
+  // ── file helpers ─────────────────────────────────────────────────────────
 
-  function addTopImages(files: File[]) {
-    const valid = filterImageFiles(files);
-    if (valid.length === 0) return;
-    buildPreviews(valid, (previews) => {
-      setPendingPreviews(prev => [...prev, ...previews]);
+  function addFilesToState(files: File[], setter: React.Dispatch<React.SetStateAction<PendingFile[]>>) {
+    const valid = files.filter(f => {
+      if (!ALLOWED_FILE_TYPES.includes(f.type)) { alert(`"${f.name}" is not a supported file type.`); return false; }
+      if (f.size > MAX_FILE_SIZE) { alert(`"${f.name}" exceeds the 10MB limit.`); return false; }
+      return true;
     });
-    setPendingImages(prev => [...prev, ...valid]);
-  }
-
-  function removeTopImage(index: number) {
-    setPendingImages(prev => prev.filter((_, i) => i !== index));
-    setPendingPreviews(prev => prev.filter((_, i) => i !== index));
-  }
-
-  function addReplyImages(files: File[]) {
-    const valid = filterImageFiles(files);
-    if (valid.length === 0) return;
-    buildPreviews(valid, (previews) => {
-      setPendingReplyPreviews(prev => [...prev, ...previews]);
+    valid.forEach(file => {
+      if (isImageFile(file.type)) {
+        const reader = new FileReader();
+        reader.onload = e => setter(prev => [...prev, { file, preview: e.target?.result as string }]);
+        reader.readAsDataURL(file);
+      } else {
+        setter(prev => [...prev, { file }]);
+      }
     });
-    setPendingReplyImages(prev => [...prev, ...valid]);
-  }
-
-  function removeReplyImage(index: number) {
-    setPendingReplyImages(prev => prev.filter((_, i) => i !== index));
-    setPendingReplyPreviews(prev => prev.filter((_, i) => i !== index));
   }
 
   function handleTopPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const imageFiles = Array.from(e.clipboardData.items)
-      .filter(item => item.type.startsWith('image/'))
+    const files = Array.from(e.clipboardData.items)
+      .filter(item => item.kind === 'file')
       .map(item => item.getAsFile())
       .filter(Boolean) as File[];
-    if (imageFiles.length > 0) addTopImages(imageFiles);
+    if (files.length > 0) addFilesToState(files, setPendingFiles);
   }
 
   function handleReplyPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const imageFiles = Array.from(e.clipboardData.items)
-      .filter(item => item.type.startsWith('image/'))
+    const files = Array.from(e.clipboardData.items)
+      .filter(item => item.kind === 'file')
       .map(item => item.getAsFile())
       .filter(Boolean) as File[];
-    if (imageFiles.length > 0) addReplyImages(imageFiles);
+    if (files.length > 0) addFilesToState(files, setPendingReplyFiles);
   }
 
   // ── @mention: top-level ──────────────────────────────────────────────────
@@ -597,21 +512,21 @@ export default function ProjectDiscussionPanel({
   // ── post handlers ────────────────────────────────────────────────────────
 
   async function handlePost() {
-    const hasContent = text.trim().length > 0 || pendingImages.length > 0;
+    const hasContent = text.trim().length > 0 || pendingFiles.length > 0;
     if (!hasContent || !user) return;
     setSubmitting(true);
     try {
       const authorName = (user.user_metadata?.full_name as string | undefined) || user.email || '';
       const { notifyAll, notifiedUserIds } = parseMentionsFromText(text.trim(), profiles);
 
-      const uploadedUrls = await Promise.all(
-        pendingImages.map(file => uploadDiscussionImage(supabase, file, user.id))
-      );
-      const imageUrls = uploadedUrls.filter(Boolean) as string[];
+      const uploaded = await Promise.all(pendingFiles.map(pf => uploadChatFile(supabase, pf.file, user.id)));
+      const valid = uploaded.filter(Boolean) as { url: string; name: string; type: string; size: number }[];
+      const imageUrls = valid.filter(a => isImageFile(a.type)).map(a => a.url);
+      const fileAttachments = valid.filter(a => !isImageFile(a.type));
 
       const comment = await projectServices.addProjectDiscussionComment(
         projectId, user.id, authorName, text.trim(),
-        selectedTaskId || null, notifyAll, notifiedUserIds, null, imageUrls,
+        selectedTaskId || null, notifyAll, notifiedUserIds, null, imageUrls, fileAttachments,
       );
       await markCommentAsRead(supabase, comment.id, user.id);
       setThreads(prev => {
@@ -623,8 +538,7 @@ export default function ProjectDiscussionPanel({
       setText('');
       setSelectedTaskId('');
       setMentionQuery(null);
-      setPendingImages([]);
-      setPendingPreviews([]);
+      setPendingFiles([]);
     } catch (err) {
       console.error('Failed to post comment:', err);
     } finally {
@@ -633,15 +547,15 @@ export default function ProjectDiscussionPanel({
   }
 
   async function handlePostReply(parentId: string) {
-    const hasContent = replyText.trim().length > 0 || pendingReplyImages.length > 0;
+    const hasContent = replyText.trim().length > 0 || pendingReplyFiles.length > 0;
     if (!hasContent || !user) return;
     setReplySubmitting(true);
     try {
       const authorName = (user.user_metadata?.full_name as string | undefined) || user.email || '';
-      const uploadedUrls = await Promise.all(
-        pendingReplyImages.map(file => uploadDiscussionImage(supabase, file, user.id))
-      );
-      const imageUrls = uploadedUrls.filter(Boolean) as string[];
+      const uploaded = await Promise.all(pendingReplyFiles.map(pf => uploadChatFile(supabase, pf.file, user.id)));
+      const valid = uploaded.filter(Boolean) as { url: string; name: string; type: string; size: number }[];
+      const imageUrls = valid.filter(a => isImageFile(a.type)).map(a => a.url);
+      const fileAttachments = valid.filter(a => !isImageFile(a.type));
 
       const parentThread = threads.find(t => t.id === parentId);
       const parentSource = parentThread?._source;
@@ -649,7 +563,6 @@ export default function ProjectDiscussionPanel({
       let replyUnified: UnifiedComment;
 
       if (parentSource === 'chat' && channelId) {
-        // Parent is a chat message — reply must go to chat_messages (FK constraint)
         const { data: inserted } = await supabase
           .from('chat_messages')
           .insert({
@@ -660,6 +573,7 @@ export default function ProjectDiscussionPanel({
             author_name: authorName,
             content: replyText.trim(),
             image_urls: imageUrls,
+            file_attachments: fileAttachments,
           })
           .select()
           .single();
@@ -669,7 +583,7 @@ export default function ProjectDiscussionPanel({
         const { notifyAll, notifiedUserIds } = parseMentionsFromText(replyText.trim(), profiles);
         const reply = await projectServices.addProjectDiscussionComment(
           projectId, user.id, authorName, replyText.trim(),
-          null, notifyAll, notifiedUserIds, parentId, imageUrls,
+          null, notifyAll, notifiedUserIds, parentId, imageUrls, fileAttachments,
         );
         await markCommentAsRead(supabase, reply.id, user.id);
         setReadIds(prev => new Set([...prev, reply.id]));
@@ -685,8 +599,7 @@ export default function ProjectDiscussionPanel({
       setReplyText('');
       setReplyingToId(null);
       setReplyMentionQuery(null);
-      setPendingReplyImages([]);
-      setPendingReplyPreviews([]);
+      setPendingReplyFiles([]);
     } catch (err) {
       console.error('Failed to post reply:', err);
     } finally {
@@ -906,7 +819,10 @@ export default function ProjectDiscussionPanel({
                         {highlightText(thread.content, searchQuery)}
                       </p>
 
-                      <CommentImages urls={thread.image_urls} />
+                      <FileAttachmentList attachments={[
+                        ...(thread.image_urls ?? []).map(url => ({ url, name: 'Image', type: 'image/jpeg', size: 0 })),
+                        ...(thread.file_attachments ?? []),
+                      ]} />
 
                       {/* Action row */}
                       <div className="flex items-center gap-3 mt-2">
@@ -915,8 +831,7 @@ export default function ProjectDiscussionPanel({
                             setReplyingToId(replyingToId === thread.id ? null : thread.id);
                             setReplyText('');
                             setReplyMentionQuery(null);
-                            setPendingReplyImages([]);
-                            setPendingReplyPreviews([]);
+                            setPendingReplyFiles([]);
                           }}
                           className="flex items-center gap-1 text-xs text-primary-500 hover:text-primary-700 font-medium transition-colors"
                         >
@@ -998,7 +913,10 @@ export default function ProjectDiscussionPanel({
                               <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
                                 {highlightText(reply.content, searchQuery)}
                               </p>
-                              <CommentImages urls={reply.image_urls} />
+                              <FileAttachmentList attachments={[
+                                ...(reply.image_urls ?? []).map(url => ({ url, name: 'Image', type: 'image/jpeg', size: 0 })),
+                                ...(reply.file_attachments ?? []),
+                              ]} />
                             </div>
                           );
                         })}
@@ -1038,7 +956,7 @@ export default function ProjectDiscussionPanel({
                               ref={replyTextareaRef}
                               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary-300 focus:border-primary-300 bg-white"
                               style={{ minHeight: '60px' }}
-                              placeholder="Write a reply... @ to mention, paste images with Ctrl+V"
+                              placeholder="Write a reply... @ to mention, paste or drag files"
                               value={replyText}
                               onChange={handleReplyTextChange}
                               onKeyDown={handleReplyKeyDown}
@@ -1048,7 +966,10 @@ export default function ProjectDiscussionPanel({
                             />
                           </div>
 
-                          <ImageStrip previews={pendingReplyPreviews} onRemove={removeReplyImage} />
+                          <FileAttachmentPreview
+                            pendingFiles={pendingReplyFiles}
+                            onRemove={i => setPendingReplyFiles(prev => prev.filter((_, j) => j !== i))}
+                          />
 
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -1056,18 +977,18 @@ export default function ProjectDiscussionPanel({
                               <input
                                 ref={replyFileInputRef}
                                 type="file"
-                                accept="image/*"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/*"
                                 multiple
                                 className="hidden"
-                                onChange={e => { addReplyImages(Array.from(e.target.files ?? [])); e.target.value = ''; }}
+                                onChange={e => { addFilesToState(Array.from(e.target.files ?? []), setPendingReplyFiles); e.target.value = ''; }}
                               />
                               <button
                                 type="button"
                                 onClick={() => replyFileInputRef.current?.click()}
                                 className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
                               >
-                                <ImagePlus className="w-3 h-3" />
-                                Image
+                                <Paperclip className="w-3 h-3" />
+                                File
                               </button>
                             </div>
                             <div className="flex gap-2">
@@ -1076,8 +997,7 @@ export default function ProjectDiscussionPanel({
                                   setReplyingToId(null);
                                   setReplyText('');
                                   setReplyMentionQuery(null);
-                                  setPendingReplyImages([]);
-                                  setPendingReplyPreviews([]);
+                                  setPendingReplyFiles([]);
                                 }}
                                 className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                               >
@@ -1085,7 +1005,7 @@ export default function ProjectDiscussionPanel({
                               </button>
                               <button
                                 onClick={() => handlePostReply(thread.id)}
-                                disabled={(!replyText.trim() && pendingReplyImages.length === 0) || replySubmitting}
+                                disabled={(!replyText.trim() && pendingReplyFiles.length === 0) || replySubmitting}
                                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                               >
                                 {replySubmitting
@@ -1107,7 +1027,12 @@ export default function ProjectDiscussionPanel({
         </div>
 
         {/* Top-level compose */}
-        <div className="px-5 py-4 border-t border-slate-100 flex-shrink-0 space-y-2 bg-white">
+        <div
+          className={`px-5 py-4 border-t flex-shrink-0 space-y-2 bg-white transition-colors ${isDragging ? 'bg-blue-50 border-blue-300' : 'border-slate-100'}`}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={e => { e.preventDefault(); setIsDragging(false); addFilesToState(Array.from(e.dataTransfer.files), setPendingFiles); }}
+        >
           <select
             value={selectedTaskId}
             onChange={e => setSelectedTaskId(e.target.value)}
@@ -1148,7 +1073,7 @@ export default function ProjectDiscussionPanel({
               ref={textareaRef}
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary-300 focus:border-primary-300"
               style={{ minHeight: '72px' }}
-              placeholder="Write a comment... @ to mention, paste images with Ctrl+V"
+              placeholder="Write a comment... @ to mention, paste or drag files"
               value={text}
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
@@ -1157,7 +1082,10 @@ export default function ProjectDiscussionPanel({
             />
           </div>
 
-          <ImageStrip previews={pendingPreviews} onRemove={removeTopImage} />
+          <FileAttachmentPreview
+            pendingFiles={pendingFiles}
+            onRemove={i => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
+          />
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1165,23 +1093,23 @@ export default function ProjectDiscussionPanel({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/*"
                 multiple
                 className="hidden"
-                onChange={e => { addTopImages(Array.from(e.target.files ?? [])); e.target.value = ''; }}
+                onChange={e => { addFilesToState(Array.from(e.target.files ?? []), setPendingFiles); e.target.value = ''; }}
               />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
               >
-                <ImagePlus className="w-3 h-3" />
-                Image
+                <Paperclip className="w-3 h-3" />
+                File
               </button>
             </div>
             <button
               onClick={handlePost}
-              disabled={(!text.trim() && pendingImages.length === 0) || submitting}
+              disabled={(!text.trim() && pendingFiles.length === 0) || submitting}
               className="flex items-center gap-1.5 p-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {submitting

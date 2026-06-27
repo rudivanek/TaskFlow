@@ -1,8 +1,11 @@
 import { useState, useRef } from 'react';
-import { Trash2, ImagePlus, Send, ChevronUp, MessageSquare } from 'lucide-react';
+import { Trash2, Paperclip, Send, ChevronUp, MessageSquare } from 'lucide-react';
 import { UnifiedMessage } from '../../types';
 import { formatRelativeTime } from '../../utils/formatRelativeTime';
 import { ReminderButton } from '../ReminderButton';
+import { FileAttachmentList } from './FileAttachmentList';
+import { FileAttachmentPreview, PendingFile } from './FileAttachmentPreview';
+import { ALLOWED_FILE_TYPES, MAX_FILE_SIZE, isImageFile } from '../../utils/uploadChatFile';
 
 interface Thread extends UnifiedMessage {
   replies: UnifiedMessage[];
@@ -16,7 +19,7 @@ interface Props {
   isReplying: boolean;
   onToggleCollapse: () => void;
   onReply: () => void;
-  onPostReply: (content: string, images: File[]) => void;
+  onPostReply: (content: string, files: File[]) => void;
   onDelete: (id: string, source: 'chat' | 'discussion') => void;
 }
 
@@ -44,6 +47,11 @@ interface BubbleProps {
 }
 
 function MessageBubble({ msg, currentUserId, searchQuery, isReply = false, onDelete }: BubbleProps) {
+  const allAttachments = [
+    ...(msg.image_urls ?? []).map(url => ({ url, name: 'Image', type: 'image/jpeg', size: 0 })),
+    ...(msg.file_attachments ?? []),
+  ];
+
   return (
     <div className={`group w-full border rounded-lg p-3 shadow-sm ${isReply ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200'}`}>
       <div className="flex items-center justify-between mb-1">
@@ -81,19 +89,7 @@ function MessageBubble({ msg, currentUserId, searchQuery, isReply = false, onDel
           {highlightText(msg.content, searchQuery)}
         </p>
       )}
-      {msg.image_urls?.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-1">
-          {msg.image_urls.map((url, i) => (
-            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block flex-shrink-0">
-              <img
-                src={url}
-                alt={`attachment-${i}`}
-                className="w-24 h-24 object-cover rounded-md border border-gray-200 hover:opacity-90 cursor-zoom-in transition-opacity"
-              />
-            </a>
-          ))}
-        </div>
-      )}
+      <FileAttachmentList attachments={allAttachments} />
     </div>
   );
 }
@@ -103,33 +99,35 @@ export function ChatMessageThread({
   isCollapsed, isReplying, onToggleCollapse, onReply, onPostReply, onDelete,
 }: Props) {
   const [replyContent, setReplyContent] = useState('');
-  const [replyImages, setReplyImages] = useState<File[]>([]);
-  const [replyPreviews, setReplyPreviews] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const replyFileRef = useRef<HTMLInputElement>(null);
 
-  function addReplyImages(files: File[]) {
+  function addFiles(files: File[]) {
     const valid = files.filter(f => {
-      if (!f.type.startsWith('image/')) return false;
-      if (f.size > 5 * 1024 * 1024) { alert(`"${f.name}" exceeds 5 MB and was skipped.`); return false; }
+      if (!ALLOWED_FILE_TYPES.includes(f.type)) { alert(`"${f.name}" is not a supported file type.`); return false; }
+      if (f.size > MAX_FILE_SIZE) { alert(`"${f.name}" exceeds 10MB.`); return false; }
       return true;
     });
-    valid.forEach(f => {
-      const reader = new FileReader();
-      reader.onload = e => setReplyPreviews(p => [...p, e.target?.result as string]);
-      reader.readAsDataURL(f);
+    valid.forEach(file => {
+      if (isImageFile(file.type)) {
+        const reader = new FileReader();
+        reader.onload = e => setPendingFiles(prev => [...prev, { file, preview: e.target?.result as string }]);
+        reader.readAsDataURL(file);
+      } else {
+        setPendingFiles(prev => [...prev, { file }]);
+      }
     });
-    setReplyImages(p => [...p, ...valid]);
-  }
-
-  function removeReplyImage(i: number) {
-    setReplyImages(p => p.filter((_, j) => j !== i));
-    setReplyPreviews(p => p.filter((_, j) => j !== i));
   }
 
   function resetReply() {
     setReplyContent('');
-    setReplyImages([]);
-    setReplyPreviews([]);
+    setPendingFiles([]);
+  }
+
+  function submitReply() {
+    if (!replyContent.trim() && pendingFiles.length === 0) return;
+    onPostReply(replyContent, pendingFiles.map(pf => pf.file));
+    resetReply();
   }
 
   return (
@@ -153,10 +151,7 @@ export function ChatMessageThread({
 
       {/* Actions row */}
       <div className="flex items-center gap-3 pl-1">
-        <button
-          onClick={onReply}
-          className="text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
-        >
+        <button onClick={onReply} className="text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors">
           Reply
         </button>
         {thread.replies.length > 0 && (
@@ -176,38 +171,23 @@ export function ChatMessageThread({
       {isReplying && (
         <div className="ml-4 border-l-2 border-blue-200 pl-3">
           <div className="bg-blue-50/60 border border-blue-100 rounded-lg p-3 flex flex-col gap-2">
-            {replyPreviews.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {replyPreviews.map((src, i) => (
-                  <div key={i} className="relative group w-14 h-14 flex-shrink-0">
-                    <img src={src} className="w-14 h-14 object-cover rounded border border-gray-200" />
-                    <button
-                      onClick={() => removeReplyImage(i)}
-                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100"
-                    >✕</button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <FileAttachmentPreview
+              pendingFiles={pendingFiles}
+              onRemove={i => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
+            />
             <textarea
-              placeholder="Write a reply... (Ctrl+V to paste image)"
+              placeholder="Write a reply... (Ctrl+V or drag & drop files)"
               value={replyContent}
               onChange={e => setReplyContent(e.target.value)}
               onPaste={(e) => {
                 const files = Array.from(e.clipboardData.items)
-                  .filter(item => item.type.startsWith('image/'))
+                  .filter(item => item.kind === 'file')
                   .map(item => item.getAsFile())
                   .filter(Boolean) as File[];
-                if (files.length > 0) addReplyImages(files);
+                if (files.length > 0) addFiles(files);
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (replyContent.trim() || replyImages.length > 0) {
-                    onPostReply(replyContent, replyImages);
-                    resetReply();
-                  }
-                }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitReply(); }
               }}
               rows={2}
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300 bg-white"
@@ -219,17 +199,17 @@ export function ChatMessageThread({
                 <input
                   ref={replyFileRef}
                   type="file"
-                  accept="image/*"
                   multiple
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/*"
                   className="hidden"
-                  onChange={e => { addReplyImages(Array.from(e.target.files ?? [])); e.target.value = ''; }}
+                  onChange={e => { addFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }}
                 />
                 <button
                   type="button"
                   onClick={() => replyFileRef.current?.click()}
                   className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
                 >
-                  <ImagePlus className="w-3 h-3" />Image
+                  <Paperclip className="w-3 h-3" />File
                 </button>
               </div>
               <div className="flex gap-2">
@@ -240,13 +220,8 @@ export function ChatMessageThread({
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    if (replyContent.trim() || replyImages.length > 0) {
-                      onPostReply(replyContent, replyImages);
-                      resetReply();
-                    }
-                  }}
-                  disabled={!replyContent.trim() && replyImages.length === 0}
+                  onClick={submitReply}
+                  disabled={!replyContent.trim() && pendingFiles.length === 0}
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 transition-colors"
                 >
                   <Send className="w-3 h-3" />Reply

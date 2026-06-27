@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T00:00:00Z
+**Last Updated:** 2026-06-27T12:00:00Z
 
 ---
 
@@ -166,12 +166,16 @@ All tables have Row Level Security enabled. All authenticated users share full a
 - If the comment is linked to a task, a pill badge shows the task name prefixed with a link icon
 - Delete button (trash icon) appears on hover, visible only to the comment's author
 - Empty state when no comments exist
+- File attachments (images + documents) displayed below comment text using `FileAttachmentList`
 
 **Compose area (pinned at bottom):**
 - Optional "Link to task" dropdown populated with all tasks for the current project (task ID + name); first option is blank/none
-- Plain textarea for the comment body (Ctrl+Enter submits)
-- Post button (send icon); disabled while submitting or when text is empty
-- After posting, new comment is appended to the feed and the form is cleared
+- Plain textarea for the comment body (Ctrl+Enter submits); paste or drag & drop files directly onto the compose area
+- Paperclip (📎) button opens a file picker accepting PDF, Word, Excel, TXT, CSV, and all image types (max 10MB each)
+- Pending files shown as thumbnail previews (images) or filename+size cards (documents) above the textarea, with individual remove buttons
+- Compose area highlights blue when files are dragged over it
+- Post button (send icon); disabled while submitting or when text + files are both empty
+- After posting, new comment (with any attachments) is appended to the feed and the form is cleared
 
 **Comment count badge:**
 - The "Discussion" header button shows a blue circular badge with the total comment count
@@ -179,10 +183,47 @@ All tables have Row Level Security enabled. All authenticated users share full a
 - Badge is hidden when count is 0
 
 **Database:**
-- Table: `project_comments` with columns: id, project_id, user_id, author_name, content, created_at, updated_at, task_id (FK → tasks_main)
+- Table: `project_comments` with columns: id, project_id, user_id, author_name, content, created_at, updated_at, task_id (FK → tasks_main), image_urls (text[]), file_attachments (jsonb, default `[]`)
+- `file_attachments` stores an array of `{ name, url, type, size }` objects for non-image files; images continue to use `image_urls`
+- Storage: images go to the `discussion-images` bucket; non-image files go to the `chat-attachments` bucket (public, path: `{userId}/{timestamp}-{random}.{ext}`)
 - author_name is stored at post time from user metadata or email
 - task_id is nullable; links a comment to a specific task
 - RLS: all authenticated users can read, insert, and delete any comment (shared workspace model)
+
+### 1.13a File Attachments in Chat & Discussion
+
+Both the Chat compose area (ChatMain) and the Discussion Panel compose area (ProjectDiscussionPanel) support unified file attachment handling. The same logic applies to inline reply composers in both views.
+
+**Supported file types:**
+- Images: PNG, JPEG, GIF, WebP (stored in `discussion-images` bucket, rendered as thumbnails)
+- Documents: PDF, Word (.doc/.docx), Excel (.xls/.xlsx), plain text (.txt), CSV (stored in `chat-attachments` bucket, rendered as download cards)
+
+**Upload utility (`src/utils/uploadChatFile.ts`):**
+- `uploadChatFile(supabase, file, userId)` — validates type + size, uploads to the correct bucket, returns `{ url, name, type, size }` or `null`
+- `ALLOWED_FILE_TYPES` — array of accepted MIME types
+- `MAX_FILE_SIZE` — 10MB limit
+- `isImageFile(type)` — true if MIME starts with `image/`
+- `getFileIcon(type)` — returns emoji icon based on MIME (📄 PDF, 📝 Word, 📊 Excel/CSV, 📃 TXT, 🖼 image, 📎 other)
+- `formatFileSize(bytes)` — human-readable size string
+
+**Components:**
+- `FileAttachmentPreview` (`src/components/chat/FileAttachmentPreview.tsx`) — shows pending files before posting; images show as 64×64 thumbnails, documents show as filename+size card; each has a hover-reveal red X remove button
+- `FileAttachmentList` (`src/components/chat/FileAttachmentList.tsx`) — renders posted attachments; images as 96×96 thumbnails linking to full URL; documents as download cards with icon, filename, size, and download arrow icon
+
+**Interaction patterns:**
+- Click paperclip button to open file picker (multi-select, all supported types)
+- Paste from clipboard (`Ctrl+V`) to attach pasted files or images
+- Drag & drop files onto the compose area (highlighted blue with `bg-blue-50 border-blue-300` while dragging)
+- Multiple files per message supported
+- Files over 10MB or unsupported types show an alert and are skipped
+
+**Database columns added:**
+- `chat_messages.file_attachments` — JSONB, default `[]`
+- `project_comments.file_attachments` — JSONB, default `[]`
+
+**Storage bucket:**
+- `chat-attachments` (public) — for non-image file types; path: `{userId}/{timestamp}-{random}.{ext}`
+- RLS policies: authenticated users can upload and view; owners can delete their own files
 
 ### 1.11 Design System
 - Color palette: Slate/Blue tones (no purple)
