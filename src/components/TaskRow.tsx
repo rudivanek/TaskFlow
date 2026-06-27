@@ -3,6 +3,8 @@ import { Task, Phase, Status, Responsible } from '../types';
 import { ChevronRight, ChevronDown, MessageSquare, Trash2, GripVertical } from 'lucide-react';
 import SubtaskList from './SubtaskList';
 import { ColumnKey, DATA_COLUMN_KEYS } from '../hooks/useColumnPreferences';
+import { Tag } from '../hooks/useTags';
+import { TagSelector } from './TagSelector';
 
 interface TaskRowProps {
   task: Task;
@@ -11,6 +13,10 @@ interface TaskRowProps {
   responsibles: Responsible[];
   allTasks: Task[];
   rowIndex: number;
+  projectId: string;
+  availableTags: Tag[];
+  onCreateTag: (name: string, color: string, isGlobal: boolean) => Promise<Tag | null>;
+  initialTags: Tag[];
   onUpdate: (taskId: string, updates: Partial<Task>) => void;
   onUpdateDate: (taskId: string, field: 'start_date' | 'end_date', value: string) => void;
   onUpdateDays: (taskId: string, days: number) => void;
@@ -61,6 +67,10 @@ export default function TaskRow({
   responsibles,
   allTasks,
   rowIndex,
+  projectId,
+  availableTags,
+  onCreateTag,
+  initialTags,
   onUpdate,
   onUpdateDate,
   onUpdateDays,
@@ -195,6 +205,19 @@ export default function TaskRow({
             placeholder="Task name..."
           />
         </td>
+
+        {/* Tags */}
+        {isColumnVisible('tags') && (
+          <td className="px-2 py-1" onClick={e => e.stopPropagation()}>
+            <TagSelector
+              taskId={task.id}
+              projectId={projectId}
+              availableTags={availableTags}
+              onCreateTag={onCreateTag}
+              initialTags={initialTags}
+            />
+          </td>
+        )}
 
         {/* Phase */}
         {isColumnVisible('phase') && (

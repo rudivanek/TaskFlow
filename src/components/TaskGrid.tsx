@@ -5,6 +5,7 @@ import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
 import SubtaskStatusModal from './SubtaskStatusModal';
 import { ColumnKey } from '../hooks/useColumnPreferences';
+import { useTags, fetchTaskTagsForTasks, Tag } from '../hooks/useTags';
 import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X, CalendarRange, RefreshCw, ChevronsDownUp, Rows3 } from 'lucide-react';
 import { parseISO, differenceInCalendarDays, format } from 'date-fns';
 
@@ -35,6 +36,7 @@ const MIN_COL_W = 50;
 
 const DEFAULT_COL_WIDTHS: Record<string, number> = {
   task_name: 280,
+  tags: 160,
   phase: 120,
   status: 120,
   responsible: 140,
@@ -58,6 +60,8 @@ function loadSavedWidths(): Record<string, number> {
 
 export default function TaskGrid({ projectId, phases, statuses, responsibles, sortField, sortDir, onSort, isColumnVisible = () => true }: TaskGridProps) {
   const { user } = useAuth();
+  const { tags: availableTags, createTag } = useTags(projectId);
+  const [allTaskTags, setAllTaskTags] = useState<Record<string, Tag[]>>({});
   const [tasks, setTasks] = useState<Task[]>([]);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,6 +115,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
   const totalTableWidth =
     FIXED_COL_WIDTHS.expand + FIXED_COL_WIDTHS.id + FIXED_COL_WIDTHS.sort +
     colWidths.task_name +
+    (isColumnVisible('tags') ? colWidths.tags : 0) +
     (isColumnVisible('phase') ? colWidths.phase : 0) +
     (isColumnVisible('status') ? colWidths.status : 0) +
     (isColumnVisible('responsible') ? colWidths.responsible : 0) +
@@ -138,7 +143,9 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
     try {
       setLoading(true);
       const data = await taskServices.fetchTasks(projectId);
+      const tagsByTask = await fetchTaskTagsForTasks(data.map(t => t.id));
       setTasks(data);
+      setAllTaskTags(tagsByTask);
     } catch (err) {
       console.error(err);
     } finally {
@@ -469,6 +476,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
             <col style={{ width: FIXED_COL_WIDTHS.id }} />
             <col style={{ width: FIXED_COL_WIDTHS.sort }} />
             <col style={{ width: colWidths.task_name }} />
+            {isColumnVisible('tags') && <col style={{ width: colWidths.tags }} />}
             {isColumnVisible('phase') && <col style={{ width: colWidths.phase }} />}
             {isColumnVisible('status') && <col style={{ width: colWidths.status }} />}
             {isColumnVisible('responsible') && <col style={{ width: colWidths.responsible }} />}
@@ -493,6 +501,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
                 </button>
               </th>
               <RTh colKey="task_name">Task Name</RTh>
+              {isColumnVisible('tags') && <RTh colKey="tags">Tags</RTh>}
               {isColumnVisible('phase') && <RTh colKey="phase">Phase</RTh>}
               {isColumnVisible('status') && <RTh colKey="status">Status</RTh>}
               {isColumnVisible('responsible') && <RTh colKey="responsible">Responsible</RTh>}
@@ -514,6 +523,10 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
                 responsibles={responsibles}
                 allTasks={tasks}
                 rowIndex={idx}
+                projectId={projectId}
+                availableTags={availableTags}
+                onCreateTag={createTag}
+                initialTags={allTaskTags[task.id] ?? []}
                 onUpdate={handleUpdate}
                 onUpdateDate={handleUpdateDate}
                 onUpdateDays={handleUpdateDays}

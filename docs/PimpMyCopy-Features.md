@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T20:00:00Z
+**Last Updated:** 2026-06-27T21:00:00Z
 
 ---
 
@@ -374,6 +374,40 @@ Users can show or hide individual columns in the task grid via a "Columns" butto
 - `src/App.tsx` — hooks, state, dropdown in header, passes `isColumnVisible` to TaskGrid.
 - `src/components/TaskGrid.tsx` — `isColumnVisible` prop, conditional `<colgroup>` cols, conditional `<thead>` RTh headers, `totalTableWidth` respects hidden columns.
 - `src/components/TaskRow.tsx` — each toggleable `<td>` wrapped in `isColumnVisible()` guard; `colSpan` on comment/subtask rows computed dynamically as `5 + count(visible data columns)`.
+
+### 1.16 Task Tags
+
+Users can assign multiple colored tag pills to each task. Tags appear immediately after the Task Name column as small colored pills, styled like GitHub labels.
+
+**Tag scopes:**
+- Global tags (no project_id) — visible in all projects. E.g. Urgent, Blocked, Design.
+- Project tags — only appear in the project they were created in.
+
+**8 default global tags seeded:** Urgent, Review, Approved, Blocked, In Progress, Design, Dev, Client.
+
+**Creating a tag:** Click the dashed-circle + button in any task row → type a name → pick from 14-color palette (red, orange, amber, yellow, green, teal, cyan, blue, indigo, purple, pink, rose, gray, dark) → live preview shown → toggle global/project scope → Create.
+
+**Assigning tags:** Click the + button → search the tag list → click a tag to assign. Already-assigned tags are hidden from the list. Global tags show a globe icon to distinguish them.
+
+**Removing tags:** Click the X on the pill inside the cell.
+
+**Performance:** Tags for all tasks in the project are batch-fetched in a single query (`task_tags + tags`) when the project loads — no N+1. The `useTags` hook (global/project tag list) is called once at the TaskGrid level and passed down to all rows as `availableTags`.
+
+**Visibility toggle:** Tags column is included in the Columns dropdown (appears first in the list). Can be hidden per user per project like all other columns.
+
+**Data model:**
+- `tags` table: `id`, `name`, `color`, `project_id` (null = global), `created_by`, `created_at`. RLS: authenticated SELECT + INSERT; only creator can DELETE.
+- `task_tags` junction table: composite PK `(task_id, tag_id)`, both cascade on delete. RLS: any authenticated user can SELECT, INSERT, DELETE (shared project data).
+
+**Files changed:**
+- `supabase/migrations/..._add_tags_and_task_tags.sql`
+- `src/utils/tagColors.ts` — 14-color palette + `getTagTextColor()` for white/dark text contrast.
+- `src/hooks/useTags.ts` — `useTags(projectId)` for project-level tag list + create, `useTaskTags(taskId, initialTags)` for per-task assignment, `fetchTaskTagsForTasks(taskIds)` for batch fetch.
+- `src/components/TagPill.tsx` — colored pill with optional remove button.
+- `src/components/TagSelector.tsx` — dropdown with search, tag list, and create-tag form.
+- `src/hooks/useColumnPreferences.ts` — added `tags` to `ALL_COLUMNS`, `DEFAULT_VISIBLE_COLUMNS`, and `DATA_COLUMN_KEYS`.
+- `src/components/TaskGrid.tsx` — added `tags: 160` default col width, calls `useTags` + `fetchTaskTagsForTasks` in `loadTasks`, tags col in `colgroup`/`thead`/`totalTableWidth`, passes `availableTags`/`onCreateTag`/`initialTags` to TaskRow.
+- `src/components/TaskRow.tsx` — added `projectId`, `availableTags`, `onCreateTag`, `initialTags` props; tags td renders `<TagSelector>` after Task Name td.
 
 ### 1.11 Design System
 - Color palette: Slate/Blue tones (no purple)

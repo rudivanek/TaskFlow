@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
 export const ALL_COLUMNS = [
+  { key: 'tags', label: 'Tags' },
   { key: 'phase', label: 'Phase' },
   { key: 'status', label: 'Status' },
   { key: 'responsible', label: 'Responsible' },
@@ -15,12 +16,12 @@ export const ALL_COLUMNS = [
 export type ColumnKey = typeof ALL_COLUMNS[number]['key'];
 
 export const DEFAULT_VISIBLE_COLUMNS: ColumnKey[] = [
-  'phase', 'status', 'responsible', 'start', 'days', 'end', 'depends_on', 'comments',
+  'tags', 'phase', 'status', 'responsible', 'start', 'days', 'end', 'depends_on', 'comments',
 ];
 
 // Keys that correspond to actual table columns (not just button visibility)
 export const DATA_COLUMN_KEYS: ColumnKey[] = [
-  'phase', 'status', 'responsible', 'start', 'days', 'end', 'depends_on',
+  'tags', 'phase', 'status', 'responsible', 'start', 'days', 'end', 'depends_on',
 ];
 
 export function useColumnPreferences(
