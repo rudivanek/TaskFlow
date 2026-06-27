@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T18:00:00Z
+**Last Updated:** 2026-06-27T19:00:00Z
 
 ---
 
@@ -329,6 +329,24 @@ Users can select a preferred language for speech dictation from the user menu (t
 - `App.tsx` calls `useDictationLanguage(user?.id)` and passes `dictationLanguage` as a prop down to `ChatPage` → `ChatMain` and directly to `ProjectDiscussionPanel`
 - `DictationButton` receives `language` prop and passes it to `useSpeechDictation`
 - `useSpeechDictation` sets `recognition.lang = language` (replaces the old `navigator.language` auto-detect)
+
+### 1.14 Push Notifications — Android PWA Standalone Fix
+
+Android Chrome blocks `Notification.requestPermission()` inside a standalone PWA (installed to home screen). Fixed by detecting standalone mode and routing the permission flow through a regular browser tab.
+
+**How it works:**
+1. User taps Enable in the PWA (banner in Chat or toggle in user menu)
+2. App detects `window.matchMedia('(display-mode: standalone)').matches`
+3. Opens `/enable-notifications.html` in a new Chrome tab via `window.open`
+4. The page requests permission, registers the service worker, subscribes to push, saves the subscription to `push_subscriptions` via the Supabase REST API using the stored auth token
+5. Tab auto-closes after 2 seconds and the user returns to the PWA
+6. Next push message is delivered normally
+
+**Files changed:**
+- `public/enable-notifications.html` — self-contained page that handles permission + subscription + save, no React required
+- `src/utils/usePushNotifications.ts` — detects standalone mode at module level; `subscribe()` opens the HTML page instead of calling `requestPermission()` inline; exports `isStandalone`
+- `src/components/chat/ChatPage.tsx` — banner text updated: standalone shows "Tap Enable — a browser tab will open to set up notifications"
+- `src/App.tsx` — destructures `isStandalone` from hook; push toggle `onClick` opens the HTML page when in standalone mode instead of calling `subscribePush()`
 
 ### 1.11 Design System
 - Color palette: Slate/Blue tones (no purple)

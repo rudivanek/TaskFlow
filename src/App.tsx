@@ -40,7 +40,7 @@ type SortDir = 'asc' | 'desc';
 export default function App() {
   const { user, loading, signOut } = useAuth();
   const { updateSoundEnabled, playChime } = useNotificationSound();
-  const { isSubscribed: pushSubscribed, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications();
+  const { isSubscribed: pushSubscribed, subscribe: subscribePush, unsubscribe: unsubscribePush, isStandalone } = usePushNotifications();
   const { language: dictationLanguage, updateLanguage: updateDictationLanguage } = useDictationLanguage(user?.id);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
@@ -532,7 +532,12 @@ export default function App() {
                           <p className="text-[10px] text-slate-400">Alerts when app is closed</p>
                         </div>
                         <div
-                          onClick={() => pushSubscribed ? unsubscribePush() : subscribePush()}
+                          onClick={() => pushSubscribed
+                            ? unsubscribePush()
+                            : isStandalone
+                              ? window.open('/enable-notifications.html', '_blank')
+                              : subscribePush()
+                          }
                           className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer flex-shrink-0 ${pushSubscribed ? 'bg-blue-500' : 'bg-slate-300'}`}
                         >
                           <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${pushSubscribed ? 'translate-x-4' : 'translate-x-0.5'}`} />

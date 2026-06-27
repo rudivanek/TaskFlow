@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-// This must match VAPID_PUBLIC_KEY stored in Supabase Edge Function secrets
 const VAPID_PUBLIC_KEY = 'BILsZ7e6gEnqF0GRcFg05nEGAVYXzKYMr_hdiphpztg6saZYrvbkE5SfHB8vpdKhVw1AP2GjWKXDMfM3ShSXZxY';
+
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
 function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -38,6 +39,12 @@ export function usePushNotifications() {
   }
 
   async function subscribe(): Promise<boolean> {
+    // In standalone PWA mode the browser blocks permission prompts; open a normal tab instead
+    if (isStandalone) {
+      window.open('/enable-notifications.html', '_blank');
+      return false;
+    }
+
     try {
       const perm = await Notification.requestPermission();
       setPermission(perm);
@@ -93,5 +100,6 @@ export function usePushNotifications() {
     }
   }
 
-  return { permission, isSubscribed, subscribe, unsubscribe };
+  return { permission, isSubscribed, isStandalone, subscribe, unsubscribe };
 }
+

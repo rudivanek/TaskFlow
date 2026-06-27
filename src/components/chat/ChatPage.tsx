@@ -189,9 +189,12 @@ export function ChatPage({ onTotalUnreadChange, initialChannelId, initialConvers
       {showPushBanner && (
         <div className="bg-blue-600 text-white px-4 py-2.5 flex items-center justify-between flex-shrink-0">
           <p className="text-xs font-medium">
-            {isIOS && !isStandalone
-              ? 'To get notifications on iPhone, install via Share \u2191 \u2192 Add to Home Screen'
-              : 'Enable notifications to get alerted when new messages arrive'}
+            {isStandalone
+              ? 'Tap Enable — a browser tab will open to set up notifications'
+              : isIOS && !isStandalone
+                ? 'To get notifications on iPhone, install via Share \u2191 \u2192 Add to Home Screen'
+                : 'Enable notifications to get alerted when new messages arrive'
+            }
           </p>
           {!(isIOS && !isStandalone) && (
             <button
