@@ -166,7 +166,8 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
   const handleCreateTask = async () => {
     if (!user) return;
     try {
-      const newTask = await taskServices.createTask(projectId, user.id, '', tasks.length);
+      const notStartedStatus = statuses.find(s => s.status.toLowerCase() === 'not started');
+      const newTask = await taskServices.createTask(projectId, user.id, '', tasks.length, notStartedStatus?.id);
       setTasks([...tasks, newTask]);
     } catch (err: any) {
       setError(err.message || 'Failed to create task');

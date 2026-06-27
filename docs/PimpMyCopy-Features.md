@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T21:00:00Z
+**Last Updated:** 2026-06-27T21:30:00Z
 
 ---
 
@@ -408,6 +408,12 @@ Users can assign multiple colored tag pills to each task. Tags appear immediatel
 - `src/hooks/useColumnPreferences.ts` — added `tags` to `ALL_COLUMNS`, `DEFAULT_VISIBLE_COLUMNS`, and `DATA_COLUMN_KEYS`.
 - `src/components/TaskGrid.tsx` — added `tags: 160` default col width, calls `useTags` + `fetchTaskTagsForTasks` in `loadTasks`, tags col in `colgroup`/`thead`/`totalTableWidth`, passes `availableTags`/`onCreateTag`/`initialTags` to TaskRow.
 - `src/components/TaskRow.tsx` — added `projectId`, `availableTags`, `onCreateTag`, `initialTags` props; tags td renders `<TagSelector>` after Task Name td.
+
+### 1.17 Default Status on New Task
+
+New tasks are automatically assigned the "Not Started" status when created via the Add Task button or Alt+N shortcut.
+
+**Implementation:** `handleCreateTask` in `TaskGrid.tsx` looks up the status with name "Not Started" (case-insensitive) from the already-loaded `statuses` prop and passes its ID to `createTask`. The `createTask` function in `taskServices.ts` accepts an optional `statusId` parameter and includes it in the insert payload when provided. If no matching status exists, the task is created with no status (previous behaviour).
 
 ### 1.11 Design System
 - Color palette: Slate/Blue tones (no purple)

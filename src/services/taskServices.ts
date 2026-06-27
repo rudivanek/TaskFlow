@@ -16,7 +16,8 @@ export async function createTask(
   projectId: string,
   userId: string,
   taskName: string,
-  currentTaskCount: number
+  currentTaskCount: number,
+  statusId?: string
 ): Promise<Task> {
   const { data: nextId, error: rpcError } = await supabase.rpc('get_next_task_id_for_project', {
     project_id_param: projectId,
@@ -35,6 +36,7 @@ export async function createTask(
       end_date: today,
       project_id: projectId,
       user_id: userId,
+      ...(statusId ? { status_id: statusId } : {}),
     })
     .select()
     .single();
