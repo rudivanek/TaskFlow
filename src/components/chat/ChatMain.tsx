@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X, Send, Paperclip } from 'lucide-react';
-import { ChatChannel, ChatDirectConversation, ChatMessage, ProjectComment, Profile, UnifiedMessage, FileAttachment } from '../../types';
+import { ChatChannel, ChatDirectConversation, ChatMessage, ProjectComment, Profile, UnifiedMessage, FileAttachment, VoiceMessage } from '../../types';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { ChatMessageThread } from './ChatMessageThread';
 import { FileAttachmentPreview, PendingFile } from './FileAttachmentPreview';
+import { VoiceRecordButton } from './VoiceRecordButton';
+import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { uploadChatFile, isImageFile, ALLOWED_FILE_TYPES, MAX_FILE_SIZE } from '../../utils/uploadChatFile';
+import { uploadVoiceMessage } from '../../utils/uploadVoiceMessage';
 import { useNotificationSound } from '../../utils/useNotificationSound';
 
 interface Thread extends UnifiedMessage {
@@ -33,6 +36,7 @@ function fromChatMessage(m: ChatMessage): UnifiedMessage {
     content: m.content,
     image_urls: m.image_urls ?? [],
     file_attachments: (m.file_attachments as FileAttachment[]) ?? [],
+    voice_message: (m.voice_message as VoiceMessage) ?? null,
     created_at: m.created_at,
   };
 }
@@ -47,6 +51,7 @@ function fromProjectComment(c: ProjectComment): UnifiedMessage {
     content: c.content,
     image_urls: c.image_urls ?? [],
     file_attachments: (c.file_attachments as FileAttachment[]) ?? [],
+    voice_message: (c.voice_message as VoiceMessage) ?? null,
     created_at: c.created_at,
   };
 }
@@ -58,6 +63,7 @@ export function ChatMain({
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [content, setContent] = useState('');
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [pendingVoice, setPendingVoice] = useState<{ blob: Blob; duration: number; previewUrl: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -208,13 +214,19 @@ export function ChatMain({
   }
 
   async function handlePost() {
-    if ((!content.trim() && pendingFiles.length === 0) || !currentUser) return;
+    if ((!content.trim() && pendingFiles.length === 0 && !pendingVoice) || !currentUser) return;
     setIsUploading(true);
 
     const uploaded = await Promise.all(pendingFiles.map(pf => uploadChatFile(supabase, pf.file, currentUser.id)));
     const valid = uploaded.filter(Boolean) as { url: string; name: string; type: string; size: number }[];
     const imageUrls = valid.filter(a => isImageFile(a.type)).map(a => a.url);
     const fileAttachments = valid.filter(a => !isImageFile(a.type));
+
+    let voiceMessage = null;
+    if (pendingVoice) {
+      voiceMessage = await uploadVoiceMessage(supabase, pendingVoice.blob, currentUser.id, pendingVoice.duration);
+      URL.revokeObjectURL(pendingVoice.previewUrl);
+    }
 
     setIsUploading(false);
 
@@ -227,10 +239,12 @@ export function ChatMain({
       content: content.trim(),
       image_urls: imageUrls,
       file_attachments: fileAttachments,
+      voice_message: voiceMessage,
     };
 
     setContent('');
     setPendingFiles([]);
+    setPendingVoice(null);
 
     const { data: inserted } = await supabase.from('chat_messages').insert(row).select().single();
     if (inserted) {
@@ -240,12 +254,17 @@ export function ChatMain({
     await markRead();
   }
 
-  async function handlePostReply(parentId: string, replyContent: string, replyFiles: File[]) {
+  async function handlePostReply(parentId: string, replyContent: string, replyFiles: File[], voiceBlob?: Blob, voiceDuration?: number) {
     if (!currentUser) return;
     const uploaded = await Promise.all(replyFiles.map(f => uploadChatFile(supabase, f, currentUser.id)));
     const valid = uploaded.filter(Boolean) as { url: string; name: string; type: string; size: number }[];
     const imageUrls = valid.filter(a => isImageFile(a.type)).map(a => a.url);
     const fileAttachments = valid.filter(a => !isImageFile(a.type));
+
+    let voiceMessage = null;
+    if (voiceBlob && voiceDuration) {
+      voiceMessage = await uploadVoiceMessage(supabase, voiceBlob, currentUser.id, voiceDuration);
+    }
 
     const parentMsg = messages.find(m => m.id === parentId);
     const authorName = (currentUser.user_metadata?.full_name as string) || currentUser.email || '';
@@ -261,6 +280,7 @@ export function ChatMain({
         content: replyContent.trim(),
         image_urls: imageUrls,
         file_attachments: fileAttachments,
+        voice_message: voiceMessage,
         task_id: null as string | null,
         notify_all: false,
         notified_user_ids: [] as string[],
@@ -280,6 +300,7 @@ export function ChatMain({
         content: replyContent.trim(),
         image_urls: imageUrls,
         file_attachments: fileAttachments,
+        voice_message: voiceMessage,
       };
       const { data: inserted } = await supabase.from('chat_messages').insert(row).select().single();
       if (inserted) {
@@ -410,6 +431,17 @@ export function ChatMain({
           pendingFiles={pendingFiles}
           onRemove={i => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
         />
+        {pendingVoice && (
+          <div className="flex items-center gap-2 mb-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+            <VoiceMessagePlayer url={pendingVoice.previewUrl} duration={pendingVoice.duration} />
+            <button
+              onClick={() => { URL.revokeObjectURL(pendingVoice.previewUrl); setPendingVoice(null); }}
+              className="text-gray-400 hover:text-red-500 ml-1 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <textarea
             placeholder={`Message ${isChannel ? '#' : ''}${title}... (Ctrl+V or drag & drop files)`}
@@ -444,9 +476,16 @@ export function ChatMain({
             >
               <Paperclip className="w-4 h-4" />
             </button>
+            <VoiceRecordButton
+              onRecordingComplete={(blob, dur) => {
+                const previewUrl = URL.createObjectURL(blob);
+                setPendingVoice({ blob, duration: dur, previewUrl });
+              }}
+              disabled={isUploading || !!pendingVoice}
+            />
             <button
               onClick={handlePost}
-              disabled={isUploading || (!content.trim() && pendingFiles.length === 0)}
+              disabled={isUploading || (!content.trim() && pendingFiles.length === 0 && !pendingVoice)}
               className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {isUploading

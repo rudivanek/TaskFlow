@@ -5,6 +5,8 @@ import { formatRelativeTime } from '../../utils/formatRelativeTime';
 import { ReminderButton } from '../ReminderButton';
 import { FileAttachmentList } from './FileAttachmentList';
 import { FileAttachmentPreview, PendingFile } from './FileAttachmentPreview';
+import { VoiceMessagePlayer } from './VoiceMessagePlayer';
+import { VoiceRecordButton } from './VoiceRecordButton';
 import { ALLOWED_FILE_TYPES, MAX_FILE_SIZE, isImageFile } from '../../utils/uploadChatFile';
 
 interface Thread extends UnifiedMessage {
@@ -19,7 +21,7 @@ interface Props {
   isReplying: boolean;
   onToggleCollapse: () => void;
   onReply: () => void;
-  onPostReply: (content: string, files: File[]) => void;
+  onPostReply: (content: string, files: File[], voiceBlob?: Blob, voiceDuration?: number) => void;
   onDelete: (id: string, source: 'chat' | 'discussion') => void;
 }
 
@@ -89,6 +91,11 @@ function MessageBubble({ msg, currentUserId, searchQuery, isReply = false, onDel
           {highlightText(msg.content, searchQuery)}
         </p>
       )}
+      {msg.voice_message && (
+        <div className="mt-1 mb-1">
+          <VoiceMessagePlayer url={msg.voice_message.url} duration={msg.voice_message.duration} />
+        </div>
+      )}
       <FileAttachmentList attachments={allAttachments} />
     </div>
   );
@@ -100,6 +107,7 @@ export function ChatMessageThread({
 }: Props) {
   const [replyContent, setReplyContent] = useState('');
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [pendingVoice, setPendingVoice] = useState<{ blob: Blob; duration: number; previewUrl: string } | null>(null);
   const replyFileRef = useRef<HTMLInputElement>(null);
 
   function addFiles(files: File[]) {
@@ -122,11 +130,17 @@ export function ChatMessageThread({
   function resetReply() {
     setReplyContent('');
     setPendingFiles([]);
+    if (pendingVoice) { URL.revokeObjectURL(pendingVoice.previewUrl); setPendingVoice(null); }
   }
 
   function submitReply() {
-    if (!replyContent.trim() && pendingFiles.length === 0) return;
-    onPostReply(replyContent, pendingFiles.map(pf => pf.file));
+    if (!replyContent.trim() && pendingFiles.length === 0 && !pendingVoice) return;
+    onPostReply(
+      replyContent,
+      pendingFiles.map(pf => pf.file),
+      pendingVoice?.blob,
+      pendingVoice?.duration,
+    );
     resetReply();
   }
 
@@ -175,6 +189,17 @@ export function ChatMessageThread({
               pendingFiles={pendingFiles}
               onRemove={i => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
             />
+            {pendingVoice && (
+              <div className="flex items-center gap-2 bg-white border border-blue-100 rounded-lg px-2 py-1.5">
+                <VoiceMessagePlayer url={pendingVoice.previewUrl} duration={pendingVoice.duration} />
+                <button
+                  onClick={() => { URL.revokeObjectURL(pendingVoice.previewUrl); setPendingVoice(null); }}
+                  className="text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  <span className="text-xs">✕</span>
+                </button>
+              </div>
+            )}
             <textarea
               placeholder="Write a reply... (Ctrl+V or drag & drop files)"
               value={replyContent}
@@ -211,6 +236,13 @@ export function ChatMessageThread({
                 >
                   <Paperclip className="w-3 h-3" />File
                 </button>
+                <VoiceRecordButton
+                  onRecordingComplete={(blob, dur) => {
+                    const previewUrl = URL.createObjectURL(blob);
+                    setPendingVoice({ blob, duration: dur, previewUrl });
+                  }}
+                  disabled={!!pendingVoice}
+                />
               </div>
               <div className="flex gap-2">
                 <button
@@ -221,7 +253,7 @@ export function ChatMessageThread({
                 </button>
                 <button
                   onClick={submitReply}
-                  disabled={!replyContent.trim() && pendingFiles.length === 0}
+                  disabled={!replyContent.trim() && pendingFiles.length === 0 && !pendingVoice}
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 transition-colors"
                 >
                   <Send className="w-3 h-3" />Reply

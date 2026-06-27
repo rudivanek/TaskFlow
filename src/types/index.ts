@@ -5,6 +5,12 @@ export interface FileAttachment {
   size: number;
 }
 
+export interface VoiceMessage {
+  url: string;
+  duration: number;
+  size: number;
+}
+
 export interface Task {
   id: string;
   task_id: number;
@@ -96,6 +102,7 @@ export interface ChatMessage {
   content: string;
   image_urls: string[];
   file_attachments: FileAttachment[];
+  voice_message: VoiceMessage | null;
   created_at: string;
 }
 
@@ -113,6 +120,7 @@ export interface ProjectComment {
   notified_user_ids: string[];
   image_urls: string[];
   file_attachments: FileAttachment[];
+  voice_message: VoiceMessage | null;
 }
 
 export interface Profile {
@@ -129,6 +137,7 @@ export interface UnifiedMessage {
   content: string;
   image_urls: string[];
   file_attachments: FileAttachment[];
+  voice_message: VoiceMessage | null;
   created_at: string;
 }
 

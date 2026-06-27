@@ -95,6 +95,7 @@ export async function addProjectDiscussionComment(
   parentId?: string | null,
   imageUrls: string[] = [],
   fileAttachments: { name: string; url: string; type: string; size: number }[] = [],
+  voiceMessage: { url: string; duration: number; size: number } | null = null,
 ): Promise<ProjectComment> {
   const { data, error } = await supabase
     .from('project_comments')
@@ -109,6 +110,7 @@ export async function addProjectDiscussionComment(
       parent_id: parentId ?? null,
       image_urls: imageUrls,
       file_attachments: fileAttachments,
+      voice_message: voiceMessage,
     })
     .select()
     .single();

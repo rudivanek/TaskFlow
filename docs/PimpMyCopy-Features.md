@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T12:00:00Z
+**Last Updated:** 2026-06-27T16:30:00Z
 
 ---
 
@@ -223,6 +223,50 @@ Both the Chat compose area (ChatMain) and the Discussion Panel compose area (Pro
 
 **Storage bucket:**
 - `chat-attachments` (public) — for non-image file types; path: `{userId}/{timestamp}-{random}.{ext}`
+- RLS policies: authenticated users can upload and view; owners can delete their own files
+
+### 1.13b Voice Messages in Chat & Discussion
+
+Both the Chat compose area (ChatMain) and the Discussion Panel compose area (ProjectDiscussionPanel) support hold-to-record voice messages. The same logic applies to inline reply composers in both views.
+
+**Recording behavior:**
+- Hold the microphone button to start recording (`onMouseDown` / `onTouchStart`); release to stop and attach (`onMouseUp` / `onTouchEnd`)
+- While recording: shows a cancel X button, a red pulsing timer badge, and a pulsing red mic button to release
+- Recordings under 1 second are discarded silently
+- Maximum recording length: 5 minutes (auto-stops at 300 seconds)
+- Prefers `audio/webm;codecs=opus`, falls back to `audio/webm`, then `audio/mp4`
+- Mic access denied shows a small error message below the button
+
+**Pending voice preview:**
+- After recording, a `VoiceMessagePlayer` preview appears above the compose textarea
+- An X button revokes the object URL and clears the pending voice state
+- Only one pending voice message allowed at a time (microphone button is disabled while one is pending)
+
+**Playback:**
+- `VoiceMessagePlayer` (`src/components/chat/VoiceMessagePlayer.tsx`) — blue play/pause circle button + horizontal progress bar + elapsed/total time display
+- Shows microphone emoji when paused at start; shows elapsed time while playing
+- Plays back using `new Audio(url)` with `ontimeupdate` / `onended` event listeners
+- Resets to 0 when playback ends
+
+**Upload utility (`src/utils/uploadVoiceMessage.ts`):**
+- `uploadVoiceMessage(supabase, blob, userId, duration)` — uploads to `voice-messages` bucket at path `{userId}/{timestamp}-voice.{ext}`, returns `{ url, duration, size }` or `null`
+- File extension: `.m4a` for `audio/mp4`, `.webm` for everything else
+
+**Hook (`src/hooks/useVoiceRecorder.ts`):**
+- Exports `useVoiceRecorder()` with state `isRecording`, `duration`, `error` and methods `startRecording()`, `stopRecording()`, `cancelRecording()`
+- Uses `resolveRef` pattern to bridge the async `MediaRecorder.onstop` callback with a returned Promise from `stopRecording()`
+- Automatically cleans up MediaStream tracks on stop and cancel
+
+**Components:**
+- `VoiceRecordButton` (`src/components/chat/VoiceRecordButton.tsx`) — hold-to-record button; uses `useVoiceRecorder` hook; shows recording UI while active
+- `VoiceMessagePlayer` (`src/components/chat/VoiceMessagePlayer.tsx`) — play/pause player with progress bar for recorded or received voice messages
+
+**Database columns added:**
+- `chat_messages.voice_message` — JSONB nullable, stores `{ url, duration, size }`
+- `project_comments.voice_message` — JSONB nullable, stores `{ url, duration, size }`
+
+**Storage bucket:**
+- `voice-messages` (public) — path: `{userId}/{timestamp}-voice.{ext}`
 - RLS policies: authenticated users can upload and view; owners can delete their own files
 
 ### 1.11 Design System

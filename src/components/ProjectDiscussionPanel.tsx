@@ -14,11 +14,14 @@ import {
   markAllRelevantCommentsAsRead,
 } from '../utils/unreadComments';
 import { uploadChatFile, ALLOWED_FILE_TYPES, MAX_FILE_SIZE, isImageFile } from '../utils/uploadChatFile';
+import { uploadVoiceMessage } from '../utils/uploadVoiceMessage';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 import { useNotificationSound } from '../utils/useNotificationSound';
 import { ReminderButton } from './ReminderButton';
 import { FileAttachmentList } from './chat/FileAttachmentList';
 import { FileAttachmentPreview, PendingFile } from './chat/FileAttachmentPreview';
+import { VoiceMessagePlayer } from './chat/VoiceMessagePlayer';
+import { VoiceRecordButton } from './chat/VoiceRecordButton';
 
 type UnifiedComment = ProjectComment & { _source: 'discussion' | 'chat' };
 type CommentThread = UnifiedComment & { replies: UnifiedComment[] };
@@ -33,6 +36,7 @@ function chatMsgToComment(m: ChatMessage, projectId: string): UnifiedComment {
     content: m.content,
     image_urls: m.image_urls ?? [],
     file_attachments: (m.file_attachments as FileAttachment[]) ?? [],
+    voice_message: m.voice_message ?? null,
     created_at: m.created_at,
     updated_at: m.created_at,
     task_id: null,
@@ -147,6 +151,10 @@ export default function ProjectDiscussionPanel({
   const [pendingReplyFiles, setPendingReplyFiles] = useState<PendingFile[]>([]);
   const [isReplyDragging, setIsReplyDragging] = useState(false);
   const replyFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Voice state
+  const [pendingVoice, setPendingVoice] = useState<{ blob: Blob; duration: number; previewUrl: string } | null>(null);
+  const [pendingReplyVoice, setPendingReplyVoice] = useState<{ blob: Blob; duration: number; previewUrl: string } | null>(null);
 
   const [markingAll, setMarkingAll] = useState(false);
 
@@ -512,7 +520,7 @@ export default function ProjectDiscussionPanel({
   // ── post handlers ────────────────────────────────────────────────────────
 
   async function handlePost() {
-    const hasContent = text.trim().length > 0 || pendingFiles.length > 0;
+    const hasContent = text.trim().length > 0 || pendingFiles.length > 0 || !!pendingVoice;
     if (!hasContent || !user) return;
     setSubmitting(true);
     try {
@@ -524,9 +532,15 @@ export default function ProjectDiscussionPanel({
       const imageUrls = valid.filter(a => isImageFile(a.type)).map(a => a.url);
       const fileAttachments = valid.filter(a => !isImageFile(a.type));
 
+      let voiceMessage = null;
+      if (pendingVoice) {
+        voiceMessage = await uploadVoiceMessage(supabase, pendingVoice.blob, user.id, pendingVoice.duration);
+        URL.revokeObjectURL(pendingVoice.previewUrl);
+      }
+
       const comment = await projectServices.addProjectDiscussionComment(
         projectId, user.id, authorName, text.trim(),
-        selectedTaskId || null, notifyAll, notifiedUserIds, null, imageUrls, fileAttachments,
+        selectedTaskId || null, notifyAll, notifiedUserIds, null, imageUrls, fileAttachments, voiceMessage,
       );
       await markCommentAsRead(supabase, comment.id, user.id);
       setThreads(prev => {
@@ -539,6 +553,7 @@ export default function ProjectDiscussionPanel({
       setSelectedTaskId('');
       setMentionQuery(null);
       setPendingFiles([]);
+      setPendingVoice(null);
     } catch (err) {
       console.error('Failed to post comment:', err);
     } finally {
@@ -547,7 +562,7 @@ export default function ProjectDiscussionPanel({
   }
 
   async function handlePostReply(parentId: string) {
-    const hasContent = replyText.trim().length > 0 || pendingReplyFiles.length > 0;
+    const hasContent = replyText.trim().length > 0 || pendingReplyFiles.length > 0 || !!pendingReplyVoice;
     if (!hasContent || !user) return;
     setReplySubmitting(true);
     try {
@@ -556,6 +571,12 @@ export default function ProjectDiscussionPanel({
       const valid = uploaded.filter(Boolean) as { url: string; name: string; type: string; size: number }[];
       const imageUrls = valid.filter(a => isImageFile(a.type)).map(a => a.url);
       const fileAttachments = valid.filter(a => !isImageFile(a.type));
+
+      let voiceMessage = null;
+      if (pendingReplyVoice) {
+        voiceMessage = await uploadVoiceMessage(supabase, pendingReplyVoice.blob, user.id, pendingReplyVoice.duration);
+        URL.revokeObjectURL(pendingReplyVoice.previewUrl);
+      }
 
       const parentThread = threads.find(t => t.id === parentId);
       const parentSource = parentThread?._source;
@@ -574,6 +595,7 @@ export default function ProjectDiscussionPanel({
             content: replyText.trim(),
             image_urls: imageUrls,
             file_attachments: fileAttachments,
+            voice_message: voiceMessage,
           })
           .select()
           .single();
@@ -583,7 +605,7 @@ export default function ProjectDiscussionPanel({
         const { notifyAll, notifiedUserIds } = parseMentionsFromText(replyText.trim(), profiles);
         const reply = await projectServices.addProjectDiscussionComment(
           projectId, user.id, authorName, replyText.trim(),
-          null, notifyAll, notifiedUserIds, parentId, imageUrls, fileAttachments,
+          null, notifyAll, notifiedUserIds, parentId, imageUrls, fileAttachments, voiceMessage,
         );
         await markCommentAsRead(supabase, reply.id, user.id);
         setReadIds(prev => new Set([...prev, reply.id]));
@@ -600,6 +622,7 @@ export default function ProjectDiscussionPanel({
       setReplyingToId(null);
       setReplyMentionQuery(null);
       setPendingReplyFiles([]);
+      setPendingReplyVoice(null);
     } catch (err) {
       console.error('Failed to post reply:', err);
     } finally {
@@ -824,6 +847,12 @@ export default function ProjectDiscussionPanel({
                         ...(thread.file_attachments ?? []),
                       ]} />
 
+                      {thread.voice_message && (
+                        <div className="mt-1 mb-1">
+                          <VoiceMessagePlayer url={thread.voice_message.url} duration={thread.voice_message.duration} />
+                        </div>
+                      )}
+
                       {/* Action row */}
                       <div className="flex items-center gap-3 mt-2">
                         <button
@@ -917,6 +946,11 @@ export default function ProjectDiscussionPanel({
                                 ...(reply.image_urls ?? []).map(url => ({ url, name: 'Image', type: 'image/jpeg', size: 0 })),
                                 ...(reply.file_attachments ?? []),
                               ]} />
+                              {reply.voice_message && (
+                                <div className="mt-1">
+                                  <VoiceMessagePlayer url={reply.voice_message.url} duration={reply.voice_message.duration} />
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -971,6 +1005,18 @@ export default function ProjectDiscussionPanel({
                             onRemove={i => setPendingReplyFiles(prev => prev.filter((_, j) => j !== i))}
                           />
 
+                          {pendingReplyVoice && (
+                            <div className="flex items-center gap-2 bg-white border border-primary-100 rounded-lg px-2 py-1.5">
+                              <VoiceMessagePlayer url={pendingReplyVoice.previewUrl} duration={pendingReplyVoice.duration} />
+                              <button
+                                onClick={() => { URL.revokeObjectURL(pendingReplyVoice.previewUrl); setPendingReplyVoice(null); }}
+                                className="text-slate-400 hover:text-red-500 transition-colors ml-auto"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <p className="text-[10px] text-slate-400">@ mention · Ctrl+Enter</p>
@@ -990,6 +1036,13 @@ export default function ProjectDiscussionPanel({
                                 <Paperclip className="w-3 h-3" />
                                 File
                               </button>
+                              <VoiceRecordButton
+                                onRecordingComplete={(blob, dur) => {
+                                  const previewUrl = URL.createObjectURL(blob);
+                                  setPendingReplyVoice({ blob, duration: dur, previewUrl });
+                                }}
+                                disabled={!!pendingReplyVoice}
+                              />
                             </div>
                             <div className="flex gap-2">
                               <button
@@ -998,6 +1051,7 @@ export default function ProjectDiscussionPanel({
                                   setReplyText('');
                                   setReplyMentionQuery(null);
                                   setPendingReplyFiles([]);
+                                  if (pendingReplyVoice) { URL.revokeObjectURL(pendingReplyVoice.previewUrl); setPendingReplyVoice(null); }
                                 }}
                                 className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                               >
@@ -1005,7 +1059,7 @@ export default function ProjectDiscussionPanel({
                               </button>
                               <button
                                 onClick={() => handlePostReply(thread.id)}
-                                disabled={(!replyText.trim() && pendingReplyFiles.length === 0) || replySubmitting}
+                                disabled={(!replyText.trim() && pendingReplyFiles.length === 0 && !pendingReplyVoice) || replySubmitting}
                                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                               >
                                 {replySubmitting
@@ -1087,6 +1141,18 @@ export default function ProjectDiscussionPanel({
             onRemove={i => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
           />
 
+          {pendingVoice && (
+            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2 py-1.5">
+              <VoiceMessagePlayer url={pendingVoice.previewUrl} duration={pendingVoice.duration} />
+              <button
+                onClick={() => { URL.revokeObjectURL(pendingVoice.previewUrl); setPendingVoice(null); }}
+                className="text-slate-400 hover:text-red-500 transition-colors ml-auto"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <p className="text-[10px] text-slate-400">@ to mention · Ctrl+Enter to post</p>
@@ -1106,10 +1172,17 @@ export default function ProjectDiscussionPanel({
                 <Paperclip className="w-3 h-3" />
                 File
               </button>
+              <VoiceRecordButton
+                onRecordingComplete={(blob, dur) => {
+                  const previewUrl = URL.createObjectURL(blob);
+                  setPendingVoice({ blob, duration: dur, previewUrl });
+                }}
+                disabled={!!pendingVoice}
+              />
             </div>
             <button
               onClick={handlePost}
-              disabled={(!text.trim() && pendingFiles.length === 0) || submitting}
+              disabled={(!text.trim() && pendingFiles.length === 0 && !pendingVoice) || submitting}
               className="flex items-center gap-1.5 p-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {submitting
