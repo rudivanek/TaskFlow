@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enable Notifications — TaskFlow</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      padding: 24px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 32px 24px;
+      max-width: 360px;
+      width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    .icon { font-size: 48px; margin-bottom: 16px; }
+    h1 { font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+    p { font-size: 14px; color: #64748b; line-height: 1.5; margin-bottom: 24px; }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #2563eb; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    .status {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #64748b;
+      min-height: 20px;
+    }
+    .success { color: #16a34a; font-weight: 600; }
+    .error { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🔔</div>
+    <h1>Enable Notifications</h1>
+    <p>Allow TaskFlow to send you push notifications so you never miss a message, even when the app is closed.</p>
+    <button id="enableBtn" onclick="enableNotifications()">
+      Enable Notifications
+    </button>
+    <p class="status" id="status"></p>
+  </div>
+
+  <script>
+    const VAPID_PUBLIC_KEY = 'BILsZ7e6gEnqF0GRcFg05nEGAVYXzKYMr_hdiphpztg6saZYrvbkE5SfHB8vpdKhVw1AP2GjWKXDMfM3ShSXZxY';
+    const SUPABASE_URL = 'https://tikbxhfxvjnhtnenxufd.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpa2J4aGZ4dmpuaHRuZW54dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNjg0NjQsImV4cCI6MjA5Nzc0NDQ2NH0.Ub1_UWqax-heFN0YaT6FzJfotptovkDf3KaEWgOjHk4';
+    const STORAGE_KEY = 'sb-tikbxhfxvjnhtnenxufd-auth-token';
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; i++) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    function setStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status' + (type ? ' ' + type : '');
+    }
+
+    function getAccessToken() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw).access_token || null;
+      } catch {
+        return null;
+      }
+    }
+
+    async function enableNotifications() {
+      const btn = document.getElementById('enableBtn');
+      btn.disabled = true;
+      setStatus('Requesting permission...');
+
+      try {
+        const permission = await Notification.requestPermission();
+
+        if (permission !== 'granted') {
+          setStatus('Permission denied. Please allow notifications in your browser settings.', 'error');
+          btn.disabled = false;
+          return;
+        }
+
+        setStatus('Registering service worker...');
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+
+        setStatus('Subscribing to push...');
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+
+        const subJson = subscription.toJSON();
+        const token = getAccessToken();
+
+        if (!token) {
+          setStatus('Please log in to TaskFlow first, then try again.', 'error');
+          btn.disabled = false;
+          return;
+        }
+
+        setStatus('Saving subscription...');
+
+        const userRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!userRes.ok) {
+          setStatus('Session expired. Please log in to TaskFlow again.', 'error');
+          btn.disabled = false;
+          return;
+        }
+
+        const userData = await userRes.json();
+
+        await fetch(SUPABASE_URL + '/rest/v1/push_subscriptions', {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({
+            user_id: userData.id,
+            endpoint: subJson.endpoint,
+            p256dh: subJson.keys.p256dh,
+            auth: subJson.keys.auth
+          })
+        });
+
+        setStatus('Notifications enabled! You can close this tab.', 'success');
+        btn.textContent = 'Done!';
+
+        setTimeout(() => { try { window.close(); } catch(e) {} }, 2000);
+
+      } catch (err) {
+        console.error(err);
+        setStatus('Error: ' + err.message, 'error');
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
