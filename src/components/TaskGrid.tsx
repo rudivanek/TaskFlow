@@ -21,6 +21,7 @@ interface TaskGridProps {
   sortDir: SortDir;
   onSort: (field: SortField) => void;
   isColumnVisible?: (key: ColumnKey) => boolean;
+  isMobile?: boolean;
 }
 
 interface PendingDelete {
@@ -58,7 +59,7 @@ function loadSavedWidths(): Record<string, number> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function TaskGrid({ projectId, phases, statuses, responsibles, sortField, sortDir, onSort, isColumnVisible = () => true }: TaskGridProps) {
+export default function TaskGrid({ projectId, phases, statuses, responsibles, sortField, sortDir, onSort, isColumnVisible = () => true, isMobile = false }: TaskGridProps) {
   const { user } = useAuth();
   const { tags: availableTags, createTag } = useTags(projectId);
   const [allTaskTags, setAllTaskTags] = useState<Record<string, Tag[]>>({});
@@ -473,7 +474,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
       <div ref={tableRef} className="flex-1 overflow-auto" onKeyDown={handleTableKeyDown}>
         <table
           className="text-left"
-          style={{ width: totalTableWidth, tableLayout: 'fixed', borderCollapse: 'collapse' }}
+          style={{ width: isMobile ? undefined : totalTableWidth, minWidth: isMobile ? 620 : totalTableWidth, tableLayout: 'fixed', borderCollapse: 'collapse' }}
         >
           <colgroup>
             <col style={{ width: FIXED_COL_WIDTHS.expand }} />

@@ -12,6 +12,7 @@ import ProjectCommentsModal from './components/ProjectCommentsModal';
 import { ChatPage } from './components/chat/ChatPage';
 import { RemindersPanel } from './components/RemindersPanel';
 import { UnreadChatsModal } from './components/chat/UnreadChatsModal';
+import { MobileDrawer } from './components/MobileDrawer';
 import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from './utils/csvExport';
 import { getUnreadCountsByProjects } from './utils/unreadComments';
 import { useNotificationSound } from './utils/useNotificationSound';
@@ -19,6 +20,7 @@ import { usePushNotifications } from './utils/usePushNotifications';
 import { useDictationLanguage, DICTATION_LANGUAGES } from './hooks/useDictationLanguage';
 import { useColumnPreferences } from './hooks/useColumnPreferences';
 import { ColumnVisibilityDropdown } from './components/ColumnVisibilityDropdown';
+import { useIsMobile } from './utils/isMobile';
 import { supabase } from './lib/supabase';
 import {
   CheckSquare,
@@ -33,6 +35,7 @@ import {
   MessageSquare,
   MessageCircle,
   MessagesSquare,
+  Menu,
 } from 'lucide-react';
 
 type ViewMode = 'grid' | 'kanban' | 'gantt';
@@ -44,6 +47,8 @@ export default function App() {
   const { updateSoundEnabled, playChime } = useNotificationSound();
   const { isSubscribed: pushSubscribed, subscribe: subscribePush, unsubscribe: unsubscribePush, isStandalone } = usePushNotifications();
   const { language: dictationLanguage, updateLanguage: updateDictationLanguage } = useDictationLanguage(user?.id);
+  const isMobile = useIsMobile();
+  const [showMobileDrawer, setShowMobileDrawer] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
@@ -68,6 +73,7 @@ export default function App() {
   const [noteCount, setNoteCount] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(true);
   const [selectedProjectName, setSelectedProjectName] = useState('');
+  const [selectedWorkspaceName, setSelectedWorkspaceName] = useState('');
   const [sortField, setSortField] = useState<SortField>('task_sort');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
@@ -127,12 +133,18 @@ export default function App() {
 
   useEffect(() => {
     if (selectedProjectId && user) {
-      supabase.from('projects').select('project, include_in_chat').eq('id', selectedProjectId).single().then(({ data }) => {
-        if (data) {
-          setSelectedProjectName(data.project);
-          setIncludeInChat(data.include_in_chat ?? false);
-        }
-      });
+      supabase
+        .from('projects')
+        .select('project, include_in_chat, workspace_id, workspaces(workspace)')
+        .eq('id', selectedProjectId)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setSelectedProjectName(data.project);
+            setIncludeInChat(data.include_in_chat ?? false);
+            setSelectedWorkspaceName((data.workspaces as any)?.workspace ?? '');
+          }
+        });
       fetchTotalCommentCount(selectedProjectId);
       fetchNoteCount(selectedProjectId);
       setShowDiscussion(false);
@@ -325,7 +337,9 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      {/* Header */}
+
+      {/* ── DESKTOP HEADER ─────────────────────────────────────────────── */}
+      {!isMobile && (
       <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -460,8 +474,6 @@ export default function App() {
 
         {/* Right side: Chat button + user menu */}
         <div className="flex items-center gap-2">
-
-          {/* Unified Chat button — modal when unreads, direct when none, toggle when in chat */}
           <button
             onClick={handleChatButtonClick}
             className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -471,7 +483,6 @@ export default function App() {
             }`}
           >
             <MessagesSquare className="w-4 h-4" />
-            {/* Hide text label on mobile PWA to save space */}
             <span className="hidden sm:inline">Chat</span>
             {!chatMode && totalChatUnread > 0 && (
               <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center leading-none">
@@ -480,7 +491,6 @@ export default function App() {
             )}
           </button>
 
-          {/* Unread chats modal */}
           {user && (
             <UnreadChatsModal
               isOpen={showUnreadModal}
@@ -523,7 +533,6 @@ export default function App() {
                     <p className="text-xs text-slate-400">Signed in as</p>
                     <p className="text-sm text-slate-700 truncate">{user.email}</p>
                   </div>
-                  {/* Notifications section */}
                   <div className="px-3 py-2 border-b border-slate-100">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Notifications</p>
                     <div className="flex items-center justify-between">
@@ -558,7 +567,6 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                  {/* Dictation Language */}
                   <div className="px-3 py-2 border-b border-slate-100">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Dictation</p>
                     <div className="flex items-center justify-between">
@@ -589,6 +597,150 @@ export default function App() {
           </div>
         </div>
       </header>
+      )}
+
+      {/* ── MOBILE HEADER ──────────────────────────────────────────────── */}
+      {isMobile && (
+      <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-3 flex-shrink-0 relative">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowMobileDrawer(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          {!chatMode && selectedProjectId ? (
+            <div className="min-w-0">
+              {selectedWorkspaceName && (
+                <p className="text-[10px] text-slate-400 leading-none mb-0.5 truncate">{selectedWorkspaceName}</p>
+              )}
+              <p className="text-sm font-semibold text-slate-800 leading-none truncate max-w-[160px]">{selectedProjectName}</p>
+            </div>
+          ) : (
+            <span className="text-sm font-semibold text-slate-800">Task Flow</span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {!chatMode && selectedProjectId && (
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm' : ''}`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-slate-600" />
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white shadow-sm' : ''}`}
+              >
+                <Kanban className="w-3.5 h-3.5 text-slate-600" />
+              </button>
+              <button
+                onClick={() => setViewMode('gantt')}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'gantt' ? 'bg-white shadow-sm' : ''}`}
+              >
+                <GanttChartSquare className="w-3.5 h-3.5 text-slate-600" />
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={handleChatButtonClick}
+            className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100"
+          >
+            <MessagesSquare className={`w-5 h-5 ${chatMode ? 'text-blue-500' : 'text-slate-600'}`} />
+            {!chatMode && totalChatUnread > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {totalChatUnread > 9 ? '9+' : totalChatUnread}
+              </span>
+            )}
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100"
+            >
+              <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center">
+                <User className="w-4 h-4 text-primary-600" />
+              </div>
+            </button>
+            {showUserMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <p className="text-xs text-slate-400">Signed in as</p>
+                    <p className="text-sm text-slate-700 truncate">{user.email}</p>
+                  </div>
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Notifications</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-slate-700">Sound</p>
+                        <p className="text-[10px] text-slate-400">Chime on new messages</p>
+                      </div>
+                      <div
+                        onClick={() => handleSoundToggle(!soundEnabled)}
+                        className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer flex-shrink-0 ${soundEnabled ? 'bg-blue-500' : 'bg-slate-300'}`}
+                      >
+                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${soundEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Dictation</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-slate-700">Language</p>
+                      </div>
+                      <select
+                        value={dictationLanguage}
+                        onChange={e => updateDictationLanguage(e.target.value)}
+                        className="text-xs border border-slate-200 rounded-md px-1.5 py-1 text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 ml-2"
+                      >
+                        {DICTATION_LANGUAGES.map(lang => (
+                          <option key={lang.code} value={lang.code}>{lang.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { signOut(); setShowUserMenu(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    <LogOut className="w-4 h-4" />Sign Out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {user && (
+          <UnreadChatsModal
+            isOpen={showUnreadModal}
+            onClose={() => setShowUnreadModal(false)}
+            currentUserId={user.id}
+            onSelectChannel={(channelId) => {
+              setPwaSelectedChannelId(channelId);
+              setPwaSelectedConversationId(null);
+              setChatMode(true);
+              setTotalChatUnread(0);
+              setShowUnreadModal(false);
+            }}
+            onSelectConversation={(conversationId) => {
+              setPwaSelectedConversationId(conversationId);
+              setPwaSelectedChannelId(null);
+              setChatMode(true);
+              setTotalChatUnread(0);
+              setShowUnreadModal(false);
+            }}
+          />
+        )}
+      </header>
+      )}
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
@@ -605,6 +757,7 @@ export default function App() {
           />
         ) : (
           <>
+            {!isMobile && (
             <Sidebar
               selectedProjectId={selectedProjectId}
               onSelectProject={setSelectedProjectId}
@@ -613,14 +766,30 @@ export default function App() {
               unreadByProject={unreadByProject}
               onProjectsLoaded={handleProjectsLoaded}
             />
+            )}
 
             <main className="flex-1 overflow-hidden bg-white">
               {!selectedProjectId ? (
+                isMobile ? (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3 px-6">
+                    <LayoutGrid className="w-10 h-10 text-slate-300" />
+                    <p className="text-base font-medium text-slate-500">No project selected</p>
+                    <p className="text-sm text-center">Open the menu to browse your projects</p>
+                    <button
+                      onClick={() => setShowMobileDrawer(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium mt-1"
+                    >
+                      <Menu className="w-4 h-4" />
+                      Browse projects
+                    </button>
+                  </div>
+                ) : (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400">
                   <LayoutGrid className="w-12 h-12 mb-3 text-slate-300" />
                   <p className="text-lg font-medium text-slate-500">Select a project</p>
                   <p className="text-sm mt-1">Choose a project from the sidebar to get started</p>
                 </div>
+                )
               ) : lookupLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
@@ -636,6 +805,7 @@ export default function App() {
                   sortDir={sortDir}
                   onSort={handleSort}
                   isColumnVisible={isColumnVisible}
+                  isMobile={isMobile}
                 />
               ) : viewMode === 'kanban' ? (
                 <KanbanBoard
@@ -690,6 +860,27 @@ export default function App() {
       )}
 
       <RemindersPanel />
+
+      {isMobile && (
+        <MobileDrawer
+          isOpen={showMobileDrawer}
+          onClose={() => setShowMobileDrawer(false)}
+          selectedProjectId={selectedProjectId}
+          onSelectProject={(id) => {
+            setSelectedProjectId(id);
+            setChatMode(false);
+          }}
+          onGoToChat={() => {
+            setChatMode(true);
+            setTotalChatUnread(0);
+          }}
+          totalChatUnread={totalChatUnread}
+          unreadByProject={unreadByProject}
+          user={user}
+          onSignOut={signOut}
+          chatMode={chatMode}
+        />
+      )}
     </div>
   );
 }

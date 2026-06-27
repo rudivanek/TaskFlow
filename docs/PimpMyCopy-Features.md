@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T22:00:00Z
+**Last Updated:** 2026-06-27T23:00:00Z
 
 ---
 
@@ -408,6 +408,49 @@ Users can assign multiple colored tag pills to each task. Tags appear immediatel
 - `src/hooks/useColumnPreferences.ts` — added `tags` to `ALL_COLUMNS`, `DEFAULT_VISIBLE_COLUMNS`, and `DATA_COLUMN_KEYS`.
 - `src/components/TaskGrid.tsx` — added `tags: 160` default col width, calls `useTags` + `fetchTaskTagsForTasks` in `loadTasks`, tags col in `colgroup`/`thead`/`totalTableWidth`, passes `availableTags`/`onCreateTag`/`initialTags` to TaskRow.
 - `src/components/TaskRow.tsx` — added `projectId`, `availableTags`, `onCreateTag`, `initialTags` props; tags td renders `<TagSelector>` after Task Name td.
+
+### 1.19 Mobile-Responsive Layout
+
+TaskFlow is fully responsive on screens ≤ 768px. The desktop layout is 100% unchanged.
+
+**Mobile header** replaces the desktop header when `window.innerWidth ≤ 768px`:
+- Hamburger icon (Menu) opens the `MobileDrawer` from the left.
+- Workspace name + project name shown in breadcrumb style below the hamburger.
+- Compact icon-only view toggle (Grid / Kanban / Gantt).
+- Chat icon with unread badge.
+- Avatar icon opens a simplified user menu (sound toggle, dictation language, sign out).
+
+**MobileDrawer** (`src/components/MobileDrawer.tsx`):
+- Slides in from the left over a dark backdrop.
+- Dark sidebar (slate-900) matching the Chat PWA sidebar style.
+- App branding at top with close button.
+- Chat nav item with unread badge.
+- Collapsible workspace sections (all expanded by default), each showing their projects. Private workspaces show a lock icon.
+- Active project highlighted in blue. Per-project unread badges.
+- User email + Sign out at the bottom.
+- Body scroll locked while drawer is open. Tapping backdrop closes the drawer.
+
+**Sidebar hidden on mobile** — the desktop `<Sidebar>` component is wrapped in `{!isMobile && ...}` so it never renders on small screens.
+
+**Mobile empty state** — when no project is selected, shows a centered prompt with a "Browse projects" button that opens the MobileDrawer, instead of the desktop "Select a project from the sidebar" message.
+
+**Task grid on mobile** — the existing `overflow-auto` wrapper already scrolls horizontally. `minWidth: 620` is applied to the table on mobile so it triggers scroll rather than collapsing. Desktop `tableLayout: fixed` width calculation is unaffected.
+
+**CSS additions** (`src/index.css`):
+- `font-size: 16px` on inputs/selects/textareas on mobile — prevents iOS auto-zoom on focus.
+- `.h-screen { height: 100dvh }` — accounts for dynamic browser chrome (address bar show/hide).
+- `white-space: nowrap` on table cells — prevents text wrapping in grid rows.
+
+**Detection** (`src/utils/isMobile.ts`):
+- `isMobile()` — synchronous check.
+- `useIsMobile()` — React hook that re-evaluates on window resize.
+
+**Files changed:**
+- `src/utils/isMobile.ts` (new)
+- `src/components/MobileDrawer.tsx` (new)
+- `src/App.tsx` — `useIsMobile`, `showMobileDrawer` state, `selectedWorkspaceName` state, workspace name fetched with project, conditional desktop/mobile headers, Sidebar hidden on mobile, mobile empty state, MobileDrawer mounted, `isMobile` passed to TaskGrid.
+- `src/components/TaskGrid.tsx` — `isMobile` prop, `minWidth` on table.
+- `src/index.css` — mobile media query block.
 
 ### 1.17 Default Status on New Task
 

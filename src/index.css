@@ -80,3 +80,20 @@ input:focus, select:focus, textarea:focus {
 .animate-dropdown-in {
   animation: dropdown-in 0.15s ease-out;
 }
+
+@media (max-width: 768px) {
+  /* Prevent iOS auto-zoom on input focus */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Full-height accounting for dynamic browser chrome (address bar) */
+  .h-screen {
+    height: 100dvh;
+  }
+
+  /* Table cells don't wrap on small screens */
+  table td, table th {
+    white-space: nowrap;
+  }
+}
