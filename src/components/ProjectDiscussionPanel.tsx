@@ -1037,8 +1037,7 @@ export default function ProjectDiscussionPanel({
                           )}
 
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <p className="text-[10px] text-slate-400">@ mention · Ctrl+Enter</p>
+                            <div className="flex items-center gap-1">
                               <input
                                 ref={replyFileInputRef}
                                 type="file"
@@ -1050,10 +1049,10 @@ export default function ProjectDiscussionPanel({
                               <button
                                 type="button"
                                 onClick={() => replyFileInputRef.current?.click()}
-                                className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+                                title="Attach file"
+                                className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                               >
-                                <Paperclip className="w-3 h-3" />
-                                File
+                                <Paperclip className="w-3.5 h-3.5" />
                               </button>
                               <DictationButton
                                 onTranscript={handleReplyDictationTranscript}
@@ -1087,9 +1086,10 @@ export default function ProjectDiscussionPanel({
                                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                               >
                                 {replySubmitting
-                                  ? <><span className="animate-spin inline-block w-3 h-3 border border-white border-t-transparent rounded-full" /> Uploading...</>
-                                  : <><Send className="w-3 h-3" />Reply</>
+                                  ? <span className="animate-spin inline-block w-3 h-3 border border-white border-t-transparent rounded-full" />
+                                  : <Send className="w-3 h-3" />
                                 }
+                                Reply
                               </button>
                             </div>
                           </div>
@@ -1178,8 +1178,7 @@ export default function ProjectDiscussionPanel({
           )}
 
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <p className="text-[10px] text-slate-400">@ to mention · Ctrl+Enter to post</p>
+            <div className="flex items-center gap-1">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1191,10 +1190,10 @@ export default function ProjectDiscussionPanel({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+                title="Attach file"
+                className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
               >
-                <Paperclip className="w-3 h-3" />
-                File
+                <Paperclip className="w-3.5 h-3.5" />
               </button>
               <DictationButton
                 onTranscript={handleDictationTranscript}
@@ -1209,23 +1208,26 @@ export default function ProjectDiscussionPanel({
                 disabled={!!pendingVoice || isDictating}
               />
             </div>
-            <button
-              onClick={handlePost}
-              disabled={(!text.trim() && pendingFiles.length === 0 && !pendingVoice) || submitting}
-              className="flex items-center gap-1.5 p-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              {submitting
-                ? <span className="animate-spin inline-block w-4 h-4 border border-white border-t-transparent rounded-full" />
-                : <Send className="w-4 h-4" />
-              }
-            </button>
+            <div className="flex items-center gap-2">
+              {isDictating && (
+                <span className="text-[10px] text-blue-500 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                  Listening...
+                </span>
+              )}
+              <button
+                onClick={handlePost}
+                disabled={(!text.trim() && pendingFiles.length === 0 && !pendingVoice) || submitting}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting
+                  ? <span className="animate-spin inline-block w-3.5 h-3.5 border border-white border-t-transparent rounded-full" />
+                  : <Send className="w-3.5 h-3.5" />
+                }
+                Post
+              </button>
+            </div>
           </div>
-          {isDictating && (
-            <p className="text-[10px] text-blue-500 mt-1 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-              Listening... speak now
-            </p>
-          )}
         </div>
       </div>
     </>

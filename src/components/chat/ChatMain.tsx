@@ -429,7 +429,7 @@ export function ChatMain({
 
       {/* Compose */}
       <div
-        className={`px-4 md:px-6 py-3 md:py-4 border-t bg-white flex-shrink-0 safe-area-bottom transition-colors ${
+        className={`px-4 md:px-6 py-3 border-t bg-white flex-shrink-0 safe-area-bottom transition-colors ${
           isDragging ? 'bg-blue-50 border-blue-300' : 'border-gray-200'
         }`}
         onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
@@ -451,33 +451,25 @@ export function ChatMain({
             </button>
           </div>
         )}
-        <div className="flex items-end gap-2">
-          <div className="flex-1 flex flex-col">
-            <textarea
-              placeholder={`Message ${isChannel ? '#' : ''}${title}... (Ctrl+V or drag & drop files)`}
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              onPaste={(e) => {
-                const files = Array.from(e.clipboardData.items)
-                  .filter(item => item.kind === 'file')
-                  .map(item => item.getAsFile())
-                  .filter(Boolean) as File[];
-                if (files.length > 0) addFiles(files);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePost(); }
-              }}
-              rows={2}
-              className="flex-1 text-base md:text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
-            />
-            {isDictating && (
-              <p className="text-[10px] text-blue-500 mt-0.5 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                Listening... speak now
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col gap-1 flex-shrink-0">
+        <textarea
+          placeholder={`Message ${isChannel ? '#' : ''}${title}... (Ctrl+V or drag & drop files)`}
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          onPaste={(e) => {
+            const files = Array.from(e.clipboardData.items)
+              .filter(item => item.kind === 'file')
+              .map(item => item.getAsFile())
+              .filter(Boolean) as File[];
+            if (files.length > 0) addFiles(files);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePost(); }
+          }}
+          rows={2}
+          className="w-full text-base md:text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300 mb-2"
+        />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
             <input
               ref={fileInputRef}
               type="file"
@@ -488,8 +480,9 @@ export function ChatMain({
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={isUploading}
               title="Attach file or image"
+              className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-40"
             >
               <Paperclip className="w-4 h-4" />
             </button>
@@ -505,19 +498,30 @@ export function ChatMain({
               }}
               disabled={isUploading || !!pendingVoice || isDictating}
             />
+          </div>
+          <div className="flex items-center gap-3">
+            {isDictating ? (
+              <span className="text-[10px] text-blue-500 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                Listening...
+              </span>
+            ) : (
+              <span className="text-[10px] text-gray-400 hidden sm:inline">
+                Enter to send · Shift+Enter for new line
+              </span>
+            )}
             <button
               onClick={handlePost}
               disabled={isUploading || (!content.trim() && pendingFiles.length === 0 && !pendingVoice)}
-              className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {isUploading
-                ? <span className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin block" />
-                : <Send className="w-4 h-4" />
+                ? <span className="w-3.5 h-3.5 border border-white border-t-transparent rounded-full animate-spin block" />
+                : <Send className="w-3.5 h-3.5" />
               }
             </button>
           </div>
         </div>
-        <p className="text-[10px] text-gray-400 mt-1">Enter to send · Shift+Enter for new line · Drag & drop or paste files</p>
       </div>
     </div>
   );

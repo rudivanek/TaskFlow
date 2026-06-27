@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T17:00:00Z
+**Last Updated:** 2026-06-27T17:30:00Z
 
 ---
 
@@ -289,6 +289,27 @@ Both the Chat compose area (ChatMain) and the Discussion Panel compose area (Pro
 **Files:**
 - `src/hooks/useSpeechDictation.ts` — hook wrapping the Web Speech API; exposes `isListening`, `isSupported`, `interimTranscript`, `toggleListening`, `stopListening`; calls `onListeningChange`, `onTranscript`, `onError` callbacks; cleans up via `recognition.abort()` on unmount
 - `src/components/chat/DictationButton.tsx` — UI button component; renders `null` on unsupported browsers; shows blue active state, red pulse indicator, interim transcript tooltip, and error tooltip
+
+### 1.13d Compose Area Layout — Horizontal Toolbar
+
+All compose areas across Chat, Discussion panel, and reply composers use a consistent horizontal toolbar layout below the textarea.
+
+**Structure (top to bottom):**
+1. File attachment previews (if any pending files)
+2. Voice preview player + X remove (if a voice message is pending)
+3. Textarea (full width, 2–3 rows)
+4. Horizontal toolbar row:
+   - **Left:** icon-only action buttons — 📎 Attach, 🎤 Dictation, 🎙 Voice Record — each `w-8 h-8` with hover background
+   - **Right:** Listening indicator (when dictating) or keyboard hint (hidden on mobile) + Send/Post/Reply button
+
+**Components updated:**
+- `ChatMain.tsx` — top-level compose
+- `ChatMessageThread.tsx` — inline reply compose
+- `ProjectDiscussionPanel.tsx` — top-level compose and inline reply compose
+
+**Send button:** uses `<Send />` Lucide icon with a short label ("Post" in Discussion, icon-only in Chat). Disabled when nothing to send.
+**Listening indicator:** "Listening..." with pulsing dot replaces keyboard hint in the same right-side position when dictation is active — no layout shift.
+**Mobile:** keyboard hint hidden on small screens (`hidden sm:inline`) to save horizontal space.
 
 ### 1.11 Design System
 - Color palette: Slate/Blue tones (no purple)

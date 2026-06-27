@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Trash2, Paperclip, Send, ChevronUp, MessageSquare } from 'lucide-react';
+import { Trash2, Paperclip, Send, ChevronUp, MessageSquare, X } from 'lucide-react';
 import { UnifiedMessage } from '../../types';
 import { formatRelativeTime } from '../../utils/formatRelativeTime';
 import { ReminderButton } from '../ReminderButton';
@@ -7,6 +7,7 @@ import { FileAttachmentList } from './FileAttachmentList';
 import { FileAttachmentPreview, PendingFile } from './FileAttachmentPreview';
 import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { VoiceRecordButton } from './VoiceRecordButton';
+import { DictationButton } from './DictationButton';
 import { ALLOWED_FILE_TYPES, MAX_FILE_SIZE, isImageFile } from '../../utils/uploadChatFile';
 
 interface Thread extends UnifiedMessage {
@@ -194,9 +195,9 @@ export function ChatMessageThread({
                 <VoiceMessagePlayer url={pendingVoice.previewUrl} duration={pendingVoice.duration} />
                 <button
                   onClick={() => { URL.revokeObjectURL(pendingVoice.previewUrl); setPendingVoice(null); }}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  className="text-gray-400 hover:text-red-500 transition-colors ml-auto"
                 >
-                  <span className="text-xs">✕</span>
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
@@ -219,8 +220,7 @@ export function ChatMessageThread({
               autoFocus
             />
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400">Enter to send · Shift+Enter new line</span>
+              <div className="flex items-center gap-1">
                 <input
                   ref={replyFileRef}
                   type="file"
@@ -232,10 +232,20 @@ export function ChatMessageThread({
                 <button
                   type="button"
                   onClick={() => replyFileRef.current?.click()}
-                  className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+                  title="Attach file"
+                  className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                 >
-                  <Paperclip className="w-3 h-3" />File
+                  <Paperclip className="w-3.5 h-3.5" />
                 </button>
+                <DictationButton
+                  onTranscript={(text) => {
+                    setReplyContent(prev => {
+                      const separator = prev.trim() ? ' ' : '';
+                      return prev + separator + text;
+                    });
+                  }}
+                  disabled={!!pendingVoice}
+                />
                 <VoiceRecordButton
                   onRecordingComplete={(blob, dur) => {
                     const previewUrl = URL.createObjectURL(blob);
