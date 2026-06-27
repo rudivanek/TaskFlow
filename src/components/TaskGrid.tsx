@@ -62,6 +62,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
   const { user } = useAuth();
   const { tags: availableTags, createTag } = useTags(projectId);
   const [allTaskTags, setAllTaskTags] = useState<Record<string, Tag[]>>({});
+  const [newTaskId, setNewTaskId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [loading, setLoading] = useState(true);
@@ -169,6 +170,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
       const notStartedStatus = statuses.find(s => s.status.toLowerCase() === 'not started');
       const newTask = await taskServices.createTask(projectId, user.id, '', tasks.length, notStartedStatus?.id);
       setTasks([...tasks, newTask]);
+      setNewTaskId(newTask.id);
     } catch (err: any) {
       setError(err.message || 'Failed to create task');
       setTimeout(() => setError(''), 3000);
@@ -456,6 +458,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
           >
             <Plus className="w-4 h-4" />
             Add Task
+            <kbd className="ml-1 px-1 py-0.5 text-[10px] font-mono bg-primary-700 rounded opacity-75">Alt+N</kbd>
           </button>
         </div>
       </div>
@@ -545,6 +548,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
                 onDrop={(e) => handleDrop(e, task.id)}
                 onDragEnd={handleDragEnd}
                 isColumnVisible={isColumnVisible}
+                autoFocusName={task.id === newTaskId}
               />
             ))}
           </tbody>

@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T21:30:00Z
+**Last Updated:** 2026-06-27T22:00:00Z
 
 ---
 
@@ -414,6 +414,17 @@ Users can assign multiple colored tag pills to each task. Tags appear immediatel
 New tasks are automatically assigned the "Not Started" status when created via the Add Task button or Alt+N shortcut.
 
 **Implementation:** `handleCreateTask` in `TaskGrid.tsx` looks up the status with name "Not Started" (case-insensitive) from the already-loaded `statuses` prop and passes its ID to `createTask`. The `createTask` function in `taskServices.ts` accepts an optional `statusId` parameter and includes it in the insert payload when provided. If no matching status exists, the task is created with no status (previous behaviour).
+
+### 1.18 Auto-Focus Task Name + Alt+N Keyboard Shortcut
+
+After a new task is created (via the Add Task button or Alt+N), the cursor is immediately placed in the Task Name input of the new row so the user can start typing without clicking.
+
+**Keyboard shortcut:** `Alt+N` creates a new task from anywhere in the task grid. The shortcut label is shown inside the Add Task button as a small `kbd` badge.
+
+**Focus mechanism:**
+- `TaskGrid` tracks the newly created task ID in `newTaskId` state.
+- The matching `TaskRow` receives `autoFocusName={true}`.
+- `TaskRow` has a `useEffect` that calls `nameRef.current?.focus()` when `autoFocusName` is true, firing after the row mounts.
 
 ### 1.11 Design System
 - Color palette: Slate/Blue tones (no purple)

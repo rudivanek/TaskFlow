@@ -35,6 +35,7 @@ interface TaskRowProps {
   dragEnabled?: boolean;
   expandTrigger?: { action: 'expand' | 'collapse'; seq: number };
   isColumnVisible?: (key: ColumnKey) => boolean;
+  autoFocusName?: boolean;
 }
 
 function DateCell({
@@ -88,6 +89,7 @@ export default function TaskRow({
   dragEnabled = false,
   expandTrigger,
   isColumnVisible = () => true,
+  autoFocusName = false,
 }: TaskRowProps) {
   // Fixed cols (expand, id, sort, task_name, actions) = 5; count visible data cols
   const totalColSpan = 5 + DATA_COLUMN_KEYS.filter(k => isColumnVisible(k)).length;
@@ -103,6 +105,10 @@ export default function TaskRow({
   const [showComment, setShowComment] = useState(false);
   const [commentValue, setCommentValue] = useState(task.task_comment || '');
   const nameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocusName) nameRef.current?.focus();
+  }, [autoFocusName]);
 
   const getStatusRowBg = () => {
     if (!task.status_id) return undefined;
