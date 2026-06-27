@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Task, Phase, Status, Responsible } from '../types';
 import { ChevronRight, ChevronDown, MessageSquare, Trash2, GripVertical } from 'lucide-react';
 import SubtaskList from './SubtaskList';
+import { ColumnKey, DATA_COLUMN_KEYS } from '../hooks/useColumnPreferences';
 
 interface TaskRowProps {
   task: Task;
@@ -27,6 +28,7 @@ interface TaskRowProps {
   isDragging?: boolean;
   dragEnabled?: boolean;
   expandTrigger?: { action: 'expand' | 'collapse'; seq: number };
+  isColumnVisible?: (key: ColumnKey) => boolean;
 }
 
 function DateCell({
@@ -75,7 +77,10 @@ export default function TaskRow({
   isDragging = false,
   dragEnabled = false,
   expandTrigger,
+  isColumnVisible = () => true,
 }: TaskRowProps) {
+  // Fixed cols (expand, id, sort, task_name, actions) = 5; count visible data cols
+  const totalColSpan = 5 + DATA_COLUMN_KEYS.filter(k => isColumnVisible(k)).length;
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
@@ -192,6 +197,7 @@ export default function TaskRow({
         </td>
 
         {/* Phase */}
+        {isColumnVisible('phase') && (
         <td className="w-[120px] px-1">
           <select
             value={task.phase_id || ''}
@@ -204,8 +210,10 @@ export default function TaskRow({
             {phases.map(p => <option key={p.id} value={p.id}>{p.phase}</option>)}
           </select>
         </td>
+        )}
 
         {/* Status */}
+        {isColumnVisible('status') && (
         <td className="w-[120px] px-1">
           <select
             value={task.status_id || ''}
@@ -218,8 +226,10 @@ export default function TaskRow({
             {statuses.map(s => <option key={s.id} value={s.id}>{s.status}</option>)}
           </select>
         </td>
+        )}
 
         {/* Responsible */}
+        {isColumnVisible('responsible') && (
         <td className="w-[120px] px-1">
           <select
             value={task.responsible_id || ''}
@@ -232,8 +242,10 @@ export default function TaskRow({
             {responsibles.map(r => <option key={r.id} value={r.id}>{r.responsible}</option>)}
           </select>
         </td>
+        )}
 
         {/* Start Date */}
+        {isColumnVisible('start') && (
         <td className="w-[110px] px-1">
           <DateCell
             value={task.start_date}
@@ -242,8 +254,10 @@ export default function TaskRow({
             col="start_date"
           />
         </td>
+        )}
 
         {/* Days */}
+        {isColumnVisible('days') && (
         <td className="w-[50px] px-1">
           <input
             type="number"
@@ -258,8 +272,10 @@ export default function TaskRow({
             className="w-full text-[13px] text-center bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all font-mono"
           />
         </td>
+        )}
 
         {/* End Date */}
+        {isColumnVisible('end') && (
         <td className="w-[110px] px-1">
           <DateCell
             value={task.end_date}
@@ -268,8 +284,10 @@ export default function TaskRow({
             col="end_date"
           />
         </td>
+        )}
 
         {/* Depends On */}
+        {isColumnVisible('depends_on') && (
         <td
           className="w-[100px] px-1"
           onMouseEnter={() => onDepsHover(task.depends_on_task_ids || [])}
@@ -296,23 +314,26 @@ export default function TaskRow({
             </button>
           )}
         </td>
+        )}
 
         {/* Actions */}
         <td className="w-[60px] px-1">
           <div className="flex items-center gap-0.5">
-            <button
-              onClick={() => setShowComment(!showComment)}
-              className={`p-1 rounded transition-colors ${
-                task.task_comment ? 'text-primary-500 hover:bg-primary-50' : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
-              }`}
-              title="Comment"
-            >
-              {task.task_comment ? (
-                <MessageSquare className="w-3.5 h-3.5 fill-primary-500 text-primary-500" />
-              ) : (
-                <MessageSquare className="w-3.5 h-3.5" />
-              )}
-            </button>
+            {isColumnVisible('comments') && (
+              <button
+                onClick={() => setShowComment(!showComment)}
+                className={`p-1 rounded transition-colors ${
+                  task.task_comment ? 'text-primary-500 hover:bg-primary-50' : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
+                }`}
+                title="Comment"
+              >
+                {task.task_comment ? (
+                  <MessageSquare className="w-3.5 h-3.5 fill-primary-500 text-primary-500" />
+                ) : (
+                  <MessageSquare className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
             <button
               onClick={() => onDelete(task.id, task.task_id)}
               className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
@@ -327,7 +348,7 @@ export default function TaskRow({
       {/* Comment row */}
       {showComment && (
         <tr className="border-b border-slate-100">
-          <td colSpan={12} className="px-12 py-2 bg-slate-50">
+          <td colSpan={totalColSpan} className="px-12 py-2 bg-slate-50">
             <textarea
               value={commentValue}
               onChange={(e) => setCommentValue(e.target.value)}
@@ -343,7 +364,7 @@ export default function TaskRow({
       {/* Subtasks */}
       {expanded && (
         <tr className="border-b border-slate-100">
-          <td colSpan={12}>
+          <td colSpan={totalColSpan}>
             <SubtaskList
               taskMainId={task.id}
               onStatusChange={onSubtaskChange ? (suggested) => onSubtaskChange(task.id, suggested) : undefined}

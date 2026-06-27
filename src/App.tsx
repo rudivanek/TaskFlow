@@ -17,6 +17,8 @@ import { getUnreadCountsByProjects } from './utils/unreadComments';
 import { useNotificationSound } from './utils/useNotificationSound';
 import { usePushNotifications } from './utils/usePushNotifications';
 import { useDictationLanguage, DICTATION_LANGUAGES } from './hooks/useDictationLanguage';
+import { useColumnPreferences } from './hooks/useColumnPreferences';
+import { ColumnVisibilityDropdown } from './components/ColumnVisibilityDropdown';
 import { supabase } from './lib/supabase';
 import {
   CheckSquare,
@@ -43,10 +45,12 @@ export default function App() {
   const { isSubscribed: pushSubscribed, subscribe: subscribePush, unsubscribe: unsubscribePush, isStandalone } = usePushNotifications();
   const { language: dictationLanguage, updateLanguage: updateDictationLanguage } = useDictationLanguage(user?.id);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('project') || localStorage.getItem('last-project-id');
   });
+  const { visibleColumns, toggleColumn, resetToDefault, isVisible: isColumnVisible } = useColumnPreferences(user?.id, selectedProjectId ?? undefined);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const params = new URLSearchParams(window.location.search);
     return (params.get('view') as ViewMode) || 'grid';
@@ -398,6 +402,15 @@ export default function App() {
               )}
             </div>
 
+            {/* Column visibility */}
+            <ColumnVisibilityDropdown
+              visibleColumns={visibleColumns}
+              onToggle={toggleColumn}
+              onReset={resetToDefault}
+              isOpen={showColumnMenu}
+              onToggleOpen={() => setShowColumnMenu(v => !v)}
+            />
+
             {/* Comments button */}
             <button
               onClick={() => setShowComments(true)}
@@ -622,6 +635,7 @@ export default function App() {
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
+                  isColumnVisible={isColumnVisible}
                 />
               ) : viewMode === 'kanban' ? (
                 <KanbanBoard

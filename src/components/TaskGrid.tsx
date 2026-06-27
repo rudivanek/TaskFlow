@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
 import SubtaskStatusModal from './SubtaskStatusModal';
+import { ColumnKey } from '../hooks/useColumnPreferences';
 import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X, CalendarRange, RefreshCw, ChevronsDownUp, Rows3 } from 'lucide-react';
 import { parseISO, differenceInCalendarDays, format } from 'date-fns';
 
@@ -18,6 +19,7 @@ interface TaskGridProps {
   sortField: SortField;
   sortDir: SortDir;
   onSort: (field: SortField) => void;
+  isColumnVisible?: (key: ColumnKey) => boolean;
 }
 
 interface PendingDelete {
@@ -54,7 +56,7 @@ function loadSavedWidths(): Record<string, number> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function TaskGrid({ projectId, phases, statuses, responsibles, sortField, sortDir, onSort }: TaskGridProps) {
+export default function TaskGrid({ projectId, phases, statuses, responsibles, sortField, sortDir, onSort, isColumnVisible = () => true }: TaskGridProps) {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
@@ -108,8 +110,14 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
 
   const totalTableWidth =
     FIXED_COL_WIDTHS.expand + FIXED_COL_WIDTHS.id + FIXED_COL_WIDTHS.sort +
-    colWidths.task_name + colWidths.phase + colWidths.status + colWidths.responsible +
-    colWidths.start + colWidths.days + colWidths.end + colWidths.deps +
+    colWidths.task_name +
+    (isColumnVisible('phase') ? colWidths.phase : 0) +
+    (isColumnVisible('status') ? colWidths.status : 0) +
+    (isColumnVisible('responsible') ? colWidths.responsible : 0) +
+    (isColumnVisible('start') ? colWidths.start : 0) +
+    (isColumnVisible('days') ? colWidths.days : 0) +
+    (isColumnVisible('end') ? colWidths.end : 0) +
+    (isColumnVisible('depends_on') ? colWidths.deps : 0) +
     FIXED_COL_WIDTHS.actions;
 
   // ── data ────────────────────────────────────────────────────────────────────
@@ -461,13 +469,13 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
             <col style={{ width: FIXED_COL_WIDTHS.id }} />
             <col style={{ width: FIXED_COL_WIDTHS.sort }} />
             <col style={{ width: colWidths.task_name }} />
-            <col style={{ width: colWidths.phase }} />
-            <col style={{ width: colWidths.status }} />
-            <col style={{ width: colWidths.responsible }} />
-            <col style={{ width: colWidths.start }} />
-            <col style={{ width: colWidths.days }} />
-            <col style={{ width: colWidths.end }} />
-            <col style={{ width: colWidths.deps }} />
+            {isColumnVisible('phase') && <col style={{ width: colWidths.phase }} />}
+            {isColumnVisible('status') && <col style={{ width: colWidths.status }} />}
+            {isColumnVisible('responsible') && <col style={{ width: colWidths.responsible }} />}
+            {isColumnVisible('start') && <col style={{ width: colWidths.start }} />}
+            {isColumnVisible('days') && <col style={{ width: colWidths.days }} />}
+            {isColumnVisible('end') && <col style={{ width: colWidths.end }} />}
+            {isColumnVisible('depends_on') && <col style={{ width: colWidths.deps }} />}
             <col style={{ width: FIXED_COL_WIDTHS.actions }} />
           </colgroup>
 
@@ -485,13 +493,13 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
                 </button>
               </th>
               <RTh colKey="task_name">Task Name</RTh>
-              <RTh colKey="phase">Phase</RTh>
-              <RTh colKey="status">Status</RTh>
-              <RTh colKey="responsible">Responsible</RTh>
-              <RTh colKey="start">Start</RTh>
-              <RTh colKey="days">Days</RTh>
-              <RTh colKey="end">End</RTh>
-              <RTh colKey="deps">Depends On</RTh>
+              {isColumnVisible('phase') && <RTh colKey="phase">Phase</RTh>}
+              {isColumnVisible('status') && <RTh colKey="status">Status</RTh>}
+              {isColumnVisible('responsible') && <RTh colKey="responsible">Responsible</RTh>}
+              {isColumnVisible('start') && <RTh colKey="start">Start</RTh>}
+              {isColumnVisible('days') && <RTh colKey="days">Days</RTh>}
+              {isColumnVisible('end') && <RTh colKey="end">End</RTh>}
+              {isColumnVisible('depends_on') && <RTh colKey="deps">Depends On</RTh>}
               <th className="px-1 py-2" style={{ width: FIXED_COL_WIDTHS.actions }} />
             </tr>
           </thead>
@@ -522,6 +530,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
                 onDragOver={(e) => handleDragOver(e, task.id)}
                 onDrop={(e) => handleDrop(e, task.id)}
                 onDragEnd={handleDragEnd}
+                isColumnVisible={isColumnVisible}
               />
             ))}
           </tbody>

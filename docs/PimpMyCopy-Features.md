@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T19:00:00Z
+**Last Updated:** 2026-06-27T20:00:00Z
 
 ---
 
@@ -347,6 +347,33 @@ Android Chrome blocks `Notification.requestPermission()` inside a standalone PWA
 - `src/utils/usePushNotifications.ts` — detects standalone mode at module level; `subscribe()` opens the HTML page instead of calling `requestPermission()` inline; exports `isStandalone`
 - `src/components/chat/ChatPage.tsx` — banner text updated: standalone shows "Tap Enable — a browser tab will open to set up notifications"
 - `src/App.tsx` — destructures `isStandalone` from hook; push toggle `onClick` opens the HTML page when in standalone mode instead of calling `subscribePush()`
+
+### 1.15 Column Visibility (Task Grid)
+
+Users can show or hide individual columns in the task grid via a "Columns" button in the project header. Preferences are saved per user per project in Supabase and persist across sessions and devices.
+
+**Columns button:** Appears in the header next to Export when a project is open. Shows a blue badge with the count of currently visible columns when any are hidden (e.g. "Columns 5"), making it obvious the layout has been customised.
+
+**Toggleable columns:** Phase, Status, Responsible, Start Date, Days, End Date, Depends On, Comments (comment icon in the actions cell). The expand, ID, sort, task name, and delete columns are always visible.
+
+**UX rules:**
+- Dropdown has a checklist with blue filled checkboxes for visible columns and empty borders for hidden ones.
+- Minimum 1 column must be visible — toggling the last visible column does nothing.
+- "Reset to default" link appears at the bottom only when the layout differs from defaults.
+- Dropdown closes when clicking outside or pressing Reset.
+
+**Data model:**
+- `user_project_column_preferences` table: `user_id`, `project_id`, `visible_columns` (text[]), `updated_at`.
+- Unique constraint on `(user_id, project_id)` enables upsert. RLS: 4 separate policies (SELECT/INSERT/UPDATE/DELETE) scoped to `authenticated` with `auth.uid() = user_id`.
+- `user_id` defaults to `auth.uid()` so inserts without explicit user_id satisfy the INSERT policy.
+
+**Files changed:**
+- `supabase/migrations/..._add_user_project_column_preferences.sql`
+- `src/hooks/useColumnPreferences.ts` — fetches prefs on mount (per user+project), `toggleColumn()`, `resetToDefault()`, `isVisible(key)`. Uses `maybeSingle()`.
+- `src/components/ColumnVisibilityDropdown.tsx` — checklist dropdown component.
+- `src/App.tsx` — hooks, state, dropdown in header, passes `isColumnVisible` to TaskGrid.
+- `src/components/TaskGrid.tsx` — `isColumnVisible` prop, conditional `<colgroup>` cols, conditional `<thead>` RTh headers, `totalTableWidth` respects hidden columns.
+- `src/components/TaskRow.tsx` — each toggleable `<td>` wrapped in `isColumnVisible()` guard; `colSpan` on comment/subtask rows computed dynamically as `5 + count(visible data columns)`.
 
 ### 1.11 Design System
 - Color palette: Slate/Blue tones (no purple)
