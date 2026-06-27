@@ -54,6 +54,7 @@ interface Props {
   onClose: () => void;
   onCommentCountChange?: (count: number) => void;
   onMarkRead?: (count: number) => void;
+  dictationLanguage?: string;
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -109,6 +110,7 @@ export default function ProjectDiscussionPanel({
   onClose,
   onCommentCountChange,
   onMarkRead,
+  dictationLanguage = 'en-US',
 }: Props) {
   const { user } = useAuth();
   const { playChime } = useNotificationSound();
@@ -1058,6 +1060,7 @@ export default function ProjectDiscussionPanel({
                                 onTranscript={handleReplyDictationTranscript}
                                 onListeningChange={setIsReplyDictating}
                                 disabled={!!pendingReplyVoice}
+                                language={dictationLanguage}
                               />
                               <VoiceRecordButton
                                 onRecordingComplete={(blob, dur) => {
@@ -1199,6 +1202,7 @@ export default function ProjectDiscussionPanel({
                 onTranscript={handleDictationTranscript}
                 onListeningChange={setIsDictating}
                 disabled={!!pendingVoice || submitting}
+                language={dictationLanguage}
               />
               <VoiceRecordButton
                 onRecordingComplete={(blob, dur) => {

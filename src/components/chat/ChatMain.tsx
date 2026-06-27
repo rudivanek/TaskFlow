@@ -25,6 +25,7 @@ interface Props {
   currentUser: User | null;
   onMarkRead: (channelId: string | null, convId: string | null) => void;
   hideMobileHeader?: boolean;
+  dictationLanguage?: string;
 }
 
 function fromChatMessage(m: ChatMessage): UnifiedMessage {
@@ -58,7 +59,7 @@ function fromProjectComment(c: ProjectComment): UnifiedMessage {
 }
 
 export function ChatMain({
-  channelId, conversationId, channels, conversations, allUsers, currentUser, onMarkRead, hideMobileHeader = false,
+  channelId, conversationId, channels, conversations, allUsers, currentUser, onMarkRead, hideMobileHeader = false, dictationLanguage = 'en-US',
 }: Props) {
   const { playChime } = useNotificationSound();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
@@ -490,6 +491,7 @@ export function ChatMain({
               onTranscript={handleDictationTranscript}
               onListeningChange={setIsDictating}
               disabled={isUploading || !!pendingVoice}
+              language={dictationLanguage}
             />
             <VoiceRecordButton
               onRecordingComplete={(blob, dur) => {

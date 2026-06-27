@@ -6,14 +6,16 @@ interface Props {
   onTranscript: (text: string) => void;
   onListeningChange?: (isListening: boolean) => void;
   disabled?: boolean;
+  language?: string;
 }
 
-export function DictationButton({ onTranscript, onListeningChange, disabled }: Props) {
+export function DictationButton({ onTranscript, onListeningChange, disabled, language = 'en-US' }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const { isListening, isSupported, interimTranscript, toggleListening } = useSpeechDictation({
     onTranscript,
     onListeningChange,
+    language,
     onError: (err) => {
       setError(err);
       setTimeout(() => setError(null), 3000);

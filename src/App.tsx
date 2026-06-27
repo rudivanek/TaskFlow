@@ -16,6 +16,7 @@ import { exportTasksCsv, exportTasksWithSubtasksCsv, exportGanttToExcel } from '
 import { getUnreadCountsByProjects } from './utils/unreadComments';
 import { useNotificationSound } from './utils/useNotificationSound';
 import { usePushNotifications } from './utils/usePushNotifications';
+import { useDictationLanguage, DICTATION_LANGUAGES } from './hooks/useDictationLanguage';
 import { supabase } from './lib/supabase';
 import {
   CheckSquare,
@@ -40,6 +41,7 @@ export default function App() {
   const { user, loading, signOut } = useAuth();
   const { updateSoundEnabled, playChime } = useNotificationSound();
   const { isSubscribed: pushSubscribed, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications();
+  const { language: dictationLanguage, updateLanguage: updateDictationLanguage } = useDictationLanguage(user?.id);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -538,6 +540,25 @@ export default function App() {
                       </div>
                     )}
                   </div>
+                  {/* Dictation Language */}
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Dictation</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-slate-700">Language</p>
+                        <p className="text-[10px] text-slate-400">Used for speech-to-text</p>
+                      </div>
+                      <select
+                        value={dictationLanguage}
+                        onChange={e => updateDictationLanguage(e.target.value)}
+                        className="text-xs border border-slate-200 rounded-md px-1.5 py-1 text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 ml-2"
+                      >
+                        {DICTATION_LANGUAGES.map(lang => (
+                          <option key={lang.code} value={lang.code}>{lang.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                   <button
                     onClick={() => { signOut(); setShowUserMenu(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
@@ -562,6 +583,7 @@ export default function App() {
               setPwaSelectedChannelId(null);
               setPwaSelectedConversationId(null);
             }}
+            dictationLanguage={dictationLanguage}
           />
         ) : (
           <>
@@ -635,6 +657,7 @@ export default function App() {
               [selectedProjectId]: Math.max(0, (prev[selectedProjectId] ?? 0) - count),
             }));
           }}
+          dictationLanguage={dictationLanguage}
         />
       )}
 

@@ -4,9 +4,10 @@ interface UseSpeechDictationOptions {
   onTranscript: (text: string) => void;
   onError?: (error: string) => void;
   onListeningChange?: (isListening: boolean) => void;
+  language?: string;
 }
 
-export function useSpeechDictation({ onTranscript, onError, onListeningChange }: UseSpeechDictationOptions) {
+export function useSpeechDictation({ onTranscript, onError, onListeningChange, language = 'en-US' }: UseSpeechDictationOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -29,7 +30,7 @@ export function useSpeechDictation({ onTranscript, onError, onListeningChange }:
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
 
-    recognition.lang = navigator.language || 'en-US';
+    recognition.lang = language;
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
@@ -84,7 +85,7 @@ export function useSpeechDictation({ onTranscript, onError, onListeningChange }:
       console.error('Speech recognition start error:', err);
       setIsListening(false);
     }
-  }, [onTranscript, onError, onListeningChange]);
+  }, [onTranscript, onError, onListeningChange, language]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {

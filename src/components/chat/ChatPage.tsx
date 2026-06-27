@@ -16,9 +16,10 @@ interface Props {
   initialChannelId?: string | null;
   initialConversationId?: string | null;
   onNavigated?: () => void;
+  dictationLanguage?: string;
 }
 
-export function ChatPage({ onTotalUnreadChange, initialChannelId, initialConversationId, onNavigated }: Props) {
+export function ChatPage({ onTotalUnreadChange, initialChannelId, initialConversationId, onNavigated, dictationLanguage = 'en-US' }: Props) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [conversations, setConversations] = useState<ChatDirectConversation[]>([]);
@@ -269,6 +270,7 @@ export function ChatPage({ onTotalUnreadChange, initialChannelId, initialConvers
             currentUser={currentUser}
             onMarkRead={handleMarkRead}
             hideMobileHeader
+            dictationLanguage={dictationLanguage}
           />
         </div>
       </div>

@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-06-27T17:30:00Z
+**Last Updated:** 2026-06-27T18:00:00Z
 
 ---
 
@@ -310,6 +310,25 @@ All compose areas across Chat, Discussion panel, and reply composers use a consi
 **Send button:** uses `<Send />` Lucide icon with a short label ("Post" in Discussion, icon-only in Chat). Disabled when nothing to send.
 **Listening indicator:** "Listening..." with pulsing dot replaces keyboard hint in the same right-side position when dictation is active — no layout shift.
 **Mobile:** keyboard hint hidden on small screens (`hidden sm:inline`) to save horizontal space.
+
+### 1.13e Dictation Language Setting
+
+Users can select a preferred language for speech dictation from the user menu (top-right). The setting is persisted to their profile in Supabase and applied globally to all `DictationButton` instances across Chat and Discussion panel.
+
+**Available languages:**
+- English (US) — `en-US` — default
+- English (UK) — `en-GB`
+- Spanish (Spain) — `es-ES`
+- Spanish (Mexico) — `es-MX`
+
+**Where it appears:** User menu dropdown under a "Dictation" section, displayed as a compact `<select>` with flag emojis. Change is saved immediately on selection — no save button needed.
+
+**Data flow:**
+- `profiles.dictation_language` column (text, NOT NULL, default `'en-US'`) — added via migration
+- `src/hooks/useDictationLanguage.ts` — fetches on mount, exposes `updateLanguage(code)` which optimistically updates state and persists to Supabase
+- `App.tsx` calls `useDictationLanguage(user?.id)` and passes `dictationLanguage` as a prop down to `ChatPage` → `ChatMain` and directly to `ProjectDiscussionPanel`
+- `DictationButton` receives `language` prop and passes it to `useSpeechDictation`
+- `useSpeechDictation` sets `recognition.lang = language` (replaces the old `navigator.language` auto-detect)
 
 ### 1.11 Design System
 - Color palette: Slate/Blue tones (no purple)
