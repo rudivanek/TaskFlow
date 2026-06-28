@@ -348,7 +348,7 @@ export default function App() {
             </div>
             <span className="inline-flex items-end gap-2 text-base font-semibold text-slate-800">
               <span>Task Flow</span>
-              <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">V 2.8</span>
+              <span className="pb-[1px] text-[12px] font-normal tracking-wide text-slate-400">V 3.0</span>
               <span className="pb-[1px] text-[10px] font-normal tracking-wide text-slate-400">Sharpen.Studio</span>
             </span>
           </div>
