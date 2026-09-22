@@ -51,6 +51,16 @@ input:focus, select:focus, textarea:focus {
   @apply bg-slate-400;
 }
 
+.status-doing-row {
+  background-color: #DDD6FE;
+  border-left: 3px solid #7C3AED;
+}
+@media (prefers-color-scheme: dark) {
+  .status-doing-row {
+    background-color: rgba(139, 92, 246, 0.35);
+  }
+}
+
 @keyframes slide-in {
   from {
     opacity: 0;

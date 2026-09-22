@@ -119,11 +119,19 @@ export default function TaskRow({
     switch (status.status.toLowerCase()) {
       case 'done': return 'rgba(220, 252, 231, 0.6)';
       case 'doing':
-      case 'in progress': return 'rgba(219, 234, 254, 0.6)';
+      case 'in progress': return undefined;
       case 'in review': return 'rgba(254, 243, 199, 0.6)';
       case 'blocked': return 'rgba(254, 226, 226, 0.6)';
       default: return undefined;
     }
+  };
+
+  const isDoingStatus = () => {
+    if (!task.status_id) return false;
+    const status = statuses.find(s => s.id === task.status_id);
+    if (!status) return false;
+    const lower = status.status.toLowerCase();
+    return lower === 'doing' || lower === 'in progress';
   };
 
   useEffect(() => {
@@ -161,6 +169,7 @@ export default function TaskRow({
         className={`group border-b border-slate-100 transition-colors duration-150
           ${isDragging ? 'opacity-40' : ''}
           ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : isHighlighted ? 'dark:bg-blue-500/45' : 'hover:brightness-95'}
+          ${!isDragOver && !isHighlighted && isDoingStatus() ? 'status-doing-row' : ''}
         `}
       >
         {/* Expand */}
