@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Task, Phase, Status, Responsible } from '../types';
+import { Task, Phase, Status, Responsible, AppUser } from '../types';
 import { ChevronRight, ChevronDown, MessageSquare, Trash2, GripVertical } from 'lucide-react';
 import SubtaskList from './SubtaskList';
 import { ColumnKey, DATA_COLUMN_KEYS } from '../hooks/useColumnPreferences';
@@ -11,6 +11,7 @@ interface TaskRowProps {
   phases: Phase[];
   statuses: Status[];
   responsibles: Responsible[];
+  users: AppUser[];
   allTasks: Task[];
   rowIndex: number;
   projectId: string;
@@ -66,6 +67,7 @@ export default function TaskRow({
   phases,
   statuses,
   responsibles,
+  users,
   allTasks,
   rowIndex,
   projectId,
@@ -269,6 +271,22 @@ export default function TaskRow({
           >
             <option value="">-</option>
             {responsibles.map(r => <option key={r.id} value={r.id}>{r.responsible}</option>)}
+          </select>
+        </td>
+        )}
+
+        {/* Assigned User */}
+        {isColumnVisible('assigned_user') && (
+        <td className="w-[160px] px-1">
+          <select
+            value={task.assigned_user_id || ''}
+            onChange={(e) => onUpdate(task.id, { assigned_user_id: e.target.value || null })}
+            data-row={rowIndex}
+            data-col="assigned_user"
+            className="w-full text-[13px] bg-transparent border border-transparent hover:border-slate-200 focus:border-primary-300 rounded px-1 py-1 transition-all"
+          >
+            <option value="">None</option>
+            {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
           </select>
         </td>
         )}

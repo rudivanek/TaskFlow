@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Task, Subtask, Phase, Status, Responsible } from '../types';
+import { Task, Subtask, Phase, Status, Responsible, AppUser } from '../types';
 import { calculateEndDate, calculateDays, todayString } from '../utils/dateUtils';
 
 export async function fetchTasks(projectId: string): Promise<Task[]> {
@@ -172,4 +172,13 @@ export async function fetchResponsibles(): Promise<Responsible[]> {
   const { data, error } = await supabase.from('responsibles').select('*').order('sort_order');
   if (error) throw error;
   return data || [];
+}
+
+export async function fetchUsers(): Promise<AppUser[]> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, email, full_name')
+    .order('full_name', { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  return data ?? [];
 }

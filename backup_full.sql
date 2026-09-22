@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS public.tasks_main (
   phase_id UUID REFERENCES public.phases(id) ON DELETE SET NULL,
   status_id UUID REFERENCES public.statuses(id) ON DELETE SET NULL,
   responsible_id UUID REFERENCES public.responsibles(id) ON DELETE SET NULL,
+  assigned_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
   start_date DATE NOT NULL DEFAULT CURRENT_DATE,
   days INTEGER NOT NULL DEFAULT 1,
   end_date DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -89,6 +90,8 @@ CREATE TABLE IF NOT EXISTS public.tasks_main (
   project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_tasks_main_assigned_user_id ON public.tasks_main(assigned_user_id);
 
 -- tasks_sub
 CREATE TABLE IF NOT EXISTS public.tasks_sub (

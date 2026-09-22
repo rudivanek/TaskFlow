@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Task, Phase, Status, Responsible } from '../types';
+import { Task, Phase, Status, Responsible, AppUser } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import KanbanTaskDetailModal from './KanbanTaskDetailModal';
@@ -11,9 +11,10 @@ interface KanbanBoardProps {
   phases: Phase[];
   statuses: Status[];
   responsibles: Responsible[];
+  users: AppUser[];
 }
 
-export default function KanbanBoard({ projectId, phases, statuses, responsibles }: KanbanBoardProps) {
+export default function KanbanBoard({ projectId, phases, statuses, responsibles, users }: KanbanBoardProps) {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -287,6 +288,13 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
                       <p className="text-sm text-slate-800 font-medium line-clamp-2 mb-2">
                         {task.task_name || 'Untitled task'}
                       </p>
+                      {task.assigned_user_id && (
+                        <p className="text-xs text-slate-500 mb-2 truncate">
+                          {users.find(u => u.id === task.assigned_user_id)?.full_name
+                            || users.find(u => u.id === task.assigned_user_id)?.email
+                            || 'Unknown user'}
+                        </p>
+                      )}
                       <div className="flex items-center gap-2 flex-wrap">
                         {task.phase_id && (
                           <span className="text-xs bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded">
@@ -367,6 +375,13 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
                     <p className="text-sm text-slate-800 font-medium line-clamp-2">
                       {task.task_name || 'Untitled task'}
                     </p>
+                    {task.assigned_user_id && (
+                      <p className="text-xs text-slate-500 mb-2 truncate">
+                        {users.find(u => u.id === task.assigned_user_id)?.full_name
+                          || users.find(u => u.id === task.assigned_user_id)?.email
+                          || 'Unknown user'}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -382,6 +397,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
           phases={phases}
           statuses={statuses}
           responsibles={responsibles}
+          users={users}
           onClose={() => setSelectedTask(null)}
           onUpdate={handleUpdate}
           onUpdateDate={handleUpdateDate}

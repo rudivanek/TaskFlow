@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-09-22T12:00:00Z
+**Last Updated:** 2026-09-22T13:00:00Z
 
 ---
 
@@ -79,7 +79,7 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - Create workspace/project via inline input fields
 
 ### 1.4 Task Grid View
-- Spreadsheet-like table with 12 columns: Expand, ID, Sort ID, Task Name, Phase, Status, Responsible, Start Date, Days, End Date, Depends On, Actions
+- Spreadsheet-like table with 13 columns: Expand, ID, Sort ID, Task Name, Phase, Status, Responsible, Assigned User, Start Date, Days, End Date, Depends On, Actions
 - Sortable columns: click **ID** or **Sort ID** headers to sort ascending/descending; active sort direction shown with chevron icon
 - Inline editing for all fields
 - Date auto-calculation: end_date = start_date + (days - 1)
@@ -109,7 +109,7 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 ### 1.6 Kanban Board View
 - One column per status (from statuses table, ordered by sort_order)
 - Column headers with status name and task count badge
-- Task cards showing: ID badge, task name (2-line clamp), phase badge, responsible, date range, comment indicator
+- Task cards showing: ID badge, task name (2-line clamp), assigned user (if set, shown below task name), phase badge, responsible, date range, comment indicator
 - Color coding: red (overdue), amber (due today), blue (due within 3 days)
 - Drag-and-drop between columns to change status
 - Click card to open full detail modal
@@ -121,7 +121,8 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - **Inline delete with confirmation on cards**: each task card (in both status columns and the "No Status" column) has a trash icon button in the top-right corner next to the comment indicator; clicking it shows an inline "Delete?" prompt with confirm (check) and cancel (X) buttons -- no browser dialog; all buttons stop propagation so they don't open the detail modal; confirmation resets when a drag starts
 
 ### 1.7 Kanban Task Detail Modal
-- Full task editing form (all fields)
+- Full task editing form (all fields including Assigned User)
+- Assigned User field: a dropdown between Task Name and Phase/Status, populated from the `public.users` table (full_name or email), nullable, stored in `tasks_main.assigned_user_id`
 - Subtask management within modal
 - Save/Cancel/Delete buttons
 - Delete button uses two-click inline confirmation: first click turns the button into a red "Confirm delete?" button plus a Cancel button; second click calls onDelete and closes the modal -- no browser dialog
@@ -189,6 +190,8 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 
 ### 1.12 Database Schema
 Tables: users, workspaces, projects, tasks_main, tasks_sub, phases, statuses, responsibles, project_comments
+tasks_main columns: id, task_id, task_sort, task_name, depends_on_task_id, depends_on_task_ids, dependencies_task_ids, phase_id, status_id, responsible_id, assigned_user_id, start_date, days, end_date, task_comment, project_id, user_id
+assigned_user_id is a nullable UUID FK to public.users(id) with ON DELETE SET NULL; coexists with responsible_id (FK to responsibles) — both fields are independent
 RPC Functions: get_next_task_id_for_project, set_multiple_dependencies, cascade_dependency_dates, duplicate_project
 All tables have Row Level Security enabled. All authenticated users share full access to all data (shared workspace model).
 
@@ -392,7 +395,7 @@ Users can show or hide individual columns in the task grid via a "Columns" butto
 
 **Columns button:** Appears in the header next to Export when a project is open. Shows a blue badge with the count of currently visible columns when any are hidden (e.g. "Columns 5"), making it obvious the layout has been customised.
 
-**Toggleable columns:** Phase, Status, Responsible, Start Date, Days, End Date, Depends On, Comments (comment icon in the actions cell). The expand, ID, sort, task name, and delete columns are always visible.
+**Toggleable columns:** Phase, Status, Responsible, Assigned User, Start Date, Days, End Date, Depends On, Comments (comment icon in the actions cell). The expand, ID, sort, task name, and delete columns are always visible.
 
 **UX rules:**
 - Dropdown has a checklist with blue filled checkboxes for visible columns and empty borders for hidden ones.

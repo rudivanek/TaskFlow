@@ -6,6 +6,7 @@ export const ALL_COLUMNS = [
   { key: 'phase', label: 'Phase' },
   { key: 'status', label: 'Status' },
   { key: 'responsible', label: 'Responsible' },
+  { key: 'assigned_user', label: 'Assigned User' },
   { key: 'start', label: 'Start Date' },
   { key: 'days', label: 'Days' },
   { key: 'end', label: 'End Date' },
@@ -16,12 +17,12 @@ export const ALL_COLUMNS = [
 export type ColumnKey = typeof ALL_COLUMNS[number]['key'];
 
 export const DEFAULT_VISIBLE_COLUMNS: ColumnKey[] = [
-  'tags', 'phase', 'status', 'responsible', 'start', 'days', 'end', 'depends_on', 'comments',
+  'tags', 'phase', 'status', 'responsible', 'assigned_user', 'start', 'days', 'end', 'depends_on', 'comments',
 ];
 
 // Keys that correspond to actual table columns (not just button visibility)
 export const DATA_COLUMN_KEYS: ColumnKey[] = [
-  'tags', 'phase', 'status', 'responsible', 'start', 'days', 'end', 'depends_on',
+  'tags', 'phase', 'status', 'responsible', 'assigned_user', 'start', 'days', 'end', 'depends_on',
 ];
 
 export function useColumnPreferences(

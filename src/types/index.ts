@@ -22,6 +22,7 @@ export interface Task {
   phase_id: string | null;
   status_id: string | null;
   responsible_id: string | null;
+  assigned_user_id: string | null;
   start_date: string;
   days: number;
   end_date: string;
@@ -57,6 +58,12 @@ export interface Responsible {
   id: string;
   responsible: string;
   sort_order: number;
+}
+
+export interface AppUser {
+  id: string;
+  email: string;
+  full_name: string | null;
 }
 
 export interface Workspace {

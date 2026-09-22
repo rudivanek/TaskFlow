@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Task, Phase, Status, Responsible } from '../types';
+import { Task, Phase, Status, Responsible, AppUser } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
@@ -17,6 +17,7 @@ interface TaskGridProps {
   phases: Phase[];
   statuses: Status[];
   responsibles: Responsible[];
+  users: AppUser[];
   sortField: SortField;
   sortDir: SortDir;
   onSort: (field: SortField) => void;
@@ -41,6 +42,7 @@ const DEFAULT_COL_WIDTHS: Record<string, number> = {
   phase: 120,
   status: 120,
   responsible: 140,
+  assigned_user: 160,
   start: 110,
   days: 60,
   end: 110,
@@ -59,7 +61,7 @@ function loadSavedWidths(): Record<string, number> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function TaskGrid({ projectId, phases, statuses, responsibles, sortField, sortDir, onSort, isColumnVisible = () => true, isMobile = false }: TaskGridProps) {
+export default function TaskGrid({ projectId, phases, statuses, responsibles, users, sortField, sortDir, onSort, isColumnVisible = () => true, isMobile = false }: TaskGridProps) {
   const { user } = useAuth();
   const { tags: availableTags, createTag } = useTags(projectId);
   const [allTaskTags, setAllTaskTags] = useState<Record<string, Tag[]>>({});
@@ -121,6 +123,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
     (isColumnVisible('phase') ? colWidths.phase : 0) +
     (isColumnVisible('status') ? colWidths.status : 0) +
     (isColumnVisible('responsible') ? colWidths.responsible : 0) +
+    (isColumnVisible('assigned_user') ? colWidths.assigned_user : 0) +
     (isColumnVisible('start') ? colWidths.start : 0) +
     (isColumnVisible('days') ? colWidths.days : 0) +
     (isColumnVisible('end') ? colWidths.end : 0) +
@@ -485,6 +488,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
             {isColumnVisible('phase') && <col style={{ width: colWidths.phase }} />}
             {isColumnVisible('status') && <col style={{ width: colWidths.status }} />}
             {isColumnVisible('responsible') && <col style={{ width: colWidths.responsible }} />}
+            {isColumnVisible('assigned_user') && <col style={{ width: colWidths.assigned_user }} />}
             {isColumnVisible('start') && <col style={{ width: colWidths.start }} />}
             {isColumnVisible('days') && <col style={{ width: colWidths.days }} />}
             {isColumnVisible('end') && <col style={{ width: colWidths.end }} />}
@@ -510,6 +514,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
               {isColumnVisible('phase') && <RTh colKey="phase">Phase</RTh>}
               {isColumnVisible('status') && <RTh colKey="status">Status</RTh>}
               {isColumnVisible('responsible') && <RTh colKey="responsible">Responsible</RTh>}
+              {isColumnVisible('assigned_user') && <RTh colKey="assigned_user">Assigned User</RTh>}
               {isColumnVisible('start') && <RTh colKey="start">Start</RTh>}
               {isColumnVisible('days') && <RTh colKey="days">Days</RTh>}
               {isColumnVisible('end') && <RTh colKey="end">End</RTh>}
@@ -526,6 +531,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, so
                 phases={phases}
                 statuses={statuses}
                 responsibles={responsibles}
+                users={users}
                 allTasks={tasks}
                 rowIndex={idx}
                 projectId={projectId}

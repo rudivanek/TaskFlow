@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Task, Phase, Status, Responsible } from '../types';
+import { Task, Phase, Status, Responsible, AppUser } from '../types';
 import * as taskServices from '../services/taskServices';
 import SubtaskList from './SubtaskList';
 import SubtaskStatusModal from './SubtaskStatusModal';
@@ -11,6 +11,7 @@ interface KanbanTaskDetailModalProps {
   phases: Phase[];
   statuses: Status[];
   responsibles: Responsible[];
+  users: AppUser[];
   onClose: () => void;
   onUpdate: (taskId: string, updates: Partial<Task>) => void;
   onUpdateDate: (taskId: string, field: 'start_date' | 'end_date', value: string) => void;
@@ -23,6 +24,7 @@ export default function KanbanTaskDetailModal({
   phases,
   statuses,
   responsibles,
+  users,
   onClose,
   onUpdate,
   onUpdateDate,
@@ -88,6 +90,18 @@ export default function KanbanTaskDetailModal({
               onChange={(e) => setTaskName(e.target.value)}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Assigned User</label>
+            <select
+              value={task.assigned_user_id || ''}
+              onChange={(e) => onUpdate(task.id, { assigned_user_id: e.target.value || null })}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+            >
+              <option value="">None</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

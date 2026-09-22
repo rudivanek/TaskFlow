@@ -4,7 +4,7 @@ import Auth from './components/Auth';
 import Sidebar from './components/Sidebar';
 import TaskGrid from './components/TaskGrid';
 import KanbanBoard from './components/KanbanBoard';
-import { Phase, Status, Responsible, Task, Subtask } from './types';
+import { Phase, Status, Responsible, Task, Subtask, AppUser } from './types';
 import * as taskServices from './services/taskServices';
 import GanttChart from './components/GanttChart';
 import ProjectDiscussionPanel from './components/ProjectDiscussionPanel';
@@ -71,6 +71,7 @@ export default function App() {
   const [phases, setPhases] = useState<Phase[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [responsibles, setResponsibles] = useState<Responsible[]>([]);
+  const [users, setUsers] = useState<AppUser[]>([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDiscussion, setShowDiscussion] = useState(false);
@@ -256,14 +257,16 @@ export default function App() {
 
   const loadLookups = async () => {
     try {
-      const [p, s, r] = await Promise.all([
+      const [p, s, r, u] = await Promise.all([
         taskServices.fetchPhases(),
         taskServices.fetchStatuses(),
         taskServices.fetchResponsibles(),
+        taskServices.fetchUsers(),
       ]);
       setPhases(p);
       setStatuses(s);
       setResponsibles(r);
+      setUsers(u);
     } catch (err) {
       console.error('Failed to load lookups:', err);
     } finally {
@@ -824,6 +827,7 @@ export default function App() {
                   phases={phases}
                   statuses={statuses}
                   responsibles={responsibles}
+                  users={users}
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
@@ -837,6 +841,7 @@ export default function App() {
                   phases={phases}
                   statuses={statuses}
                   responsibles={responsibles}
+                  users={users}
                 />
               ) : (
                 <GanttChart
