@@ -32,6 +32,7 @@ export default function KanbanTaskDetailModal({
   const [taskName, setTaskName] = useState(task.task_name);
   const [comment, setComment] = useState(task.task_comment || '');
   const [pendingStatusSuggestion, setPendingStatusSuggestion] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleSubtaskStatusChange = (suggestedStatusName: string) => {
     const currentStatusName = statuses.find(s => s.id === task.status_id)?.status;
@@ -180,11 +181,26 @@ export default function KanbanTaskDetailModal({
         {/* Footer */}
         <div className="flex items-center justify-between p-5 border-t border-slate-100">
           <button
-            onClick={() => { onDelete(task.id); onClose(); }}
-            className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            onClick={() => {
+              if (confirmDelete) {
+                onDelete(task.id);
+                onClose();
+              } else {
+                setConfirmDelete(true);
+              }
+            }}
+            className={`px-3 py-2 text-sm rounded-lg transition-colors ${confirmDelete ? 'bg-red-600 text-white hover:bg-red-700' : 'text-red-600 hover:bg-red-50'}`}
           >
-            Delete Task
+            {confirmDelete ? 'Confirm delete?' : 'Delete Task'}
           </button>
+          {confirmDelete && (
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          )}
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}

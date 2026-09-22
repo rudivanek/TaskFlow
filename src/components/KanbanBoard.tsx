@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import KanbanTaskDetailModal from './KanbanTaskDetailModal';
 import { isOverdue, isDueToday, isDueSoon, formatDisplayDate } from '../utils/dateUtils';
-import { Search, Loader2, MessageSquare, Calendar, ChevronsUpDown, ChevronUp, ChevronDown, Plus } from 'lucide-react';
+import { Search, Loader2, MessageSquare, Calendar, ChevronsUpDown, ChevronUp, ChevronDown, Plus, Trash2, Check, X } from 'lucide-react';
 
 interface KanbanBoardProps {
   projectId: string;
@@ -24,6 +24,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -124,6 +125,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
   }, [tasks, projectId, statuses, user, creating]);
 
   const handleDragStart = (taskId: string) => {
+    setConfirmDeleteId(null);
     setDraggedTaskId(taskId);
   };
 
@@ -252,9 +254,36 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
                         <span className="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
                           #{task.task_id}
                         </span>
-                        {task.task_comment && (
-                          <MessageSquare className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                        )}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {task.task_comment && <MessageSquare className="w-3 h-3 text-slate-400" />}
+                          {confirmDeleteId === task.id ? (
+                            <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[10px] text-slate-500">Delete?</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDelete(task.id); setConfirmDeleteId(null); }}
+                                title="Confirm delete"
+                                className="p-0.5 rounded text-red-600 hover:bg-red-50"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                                title="Cancel"
+                                className="p-0.5 rounded text-slate-400 hover:bg-slate-100"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </span>
+                          ) : (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(task.id); }}
+                              title="Delete task"
+                              className="p-0.5 rounded text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-sm text-slate-800 font-medium line-clamp-2 mb-2">
                         {task.task_name || 'Untitled task'}
@@ -306,6 +335,35 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
                       <span className="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
                         #{task.task_id}
                       </span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {confirmDeleteId === task.id ? (
+                          <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <span className="text-[10px] text-slate-500">Delete?</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDelete(task.id); setConfirmDeleteId(null); }}
+                              title="Confirm delete"
+                              className="p-0.5 rounded text-red-600 hover:bg-red-50"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                              title="Cancel"
+                              className="p-0.5 rounded text-slate-400 hover:bg-slate-100"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(task.id); }}
+                            title="Delete task"
+                            className="p-0.5 rounded text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-sm text-slate-800 font-medium line-clamp-2">
                       {task.task_name || 'Untitled task'}

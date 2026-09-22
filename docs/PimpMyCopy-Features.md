@@ -84,11 +84,13 @@ A streamlined project management application built with React + Vite + Tailwind 
 - Sort toggle: "ID" (by task_id) or "Sort" (by task_sort), each with ascending/descending toggle; matches Task Grid sort behavior
 - **New task button**: a primary "New task" button appears as the last element in the toolbar (after the sort button group); creates a new task in the "Not Started" column using `taskServices.createTask` (same logic as Task Grid), opens the detail modal immediately so the user can name it, and is disabled while a creation is in progress
 - **Alt+N keyboard shortcut**: pressing Alt+N creates a new task with the same behavior as the button; shortcut is scoped to the Kanban board component and mirrors the Task Grid shortcut
+- **Inline delete with confirmation on cards**: each task card (in both status columns and the "No Status" column) has a trash icon button in the top-right corner next to the comment indicator; clicking it shows an inline "Delete?" prompt with confirm (check) and cancel (X) buttons -- no browser dialog; all buttons stop propagation so they don't open the detail modal; confirmation resets when a drag starts
 
 ### 1.7 Kanban Task Detail Modal
 - Full task editing form (all fields)
 - Subtask management within modal
 - Save/Cancel/Delete buttons
+- Delete button uses two-click inline confirmation: first click turns the button into a red "Confirm delete?" button plus a Cancel button; second click calls onDelete and closes the modal -- no browser dialog
 - Escape key to close
 
 ### 1.8 Gantt Chart View (Interactive)
