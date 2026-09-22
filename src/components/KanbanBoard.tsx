@@ -105,9 +105,8 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
     try {
       setCreating(true);
       const notStartedStatus = statuses.find(s => s.status.toLowerCase() === 'not started');
-      const newTask = await taskServices.createTask(projectId, user.id, '', tasks.length, notStartedStatus?.id);
+      const newTask = await taskServices.createTask(projectId, user.id, 'New task', tasks.length, notStartedStatus?.id);
       setTasks(prev => [...prev, newTask]);
-      setSelectedTask(newTask);
     } catch (err: any) {
       setError(err.message || 'Failed to create task');
       setTimeout(() => setError(''), 3000);
@@ -118,11 +117,12 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedTask) return;
       if (e.altKey && e.key === 'n') { e.preventDefault(); handleCreateTask(); }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [tasks, projectId, statuses, user, creating]);
+  }, [tasks, projectId, statuses, user, creating, selectedTask]);
 
   const handleDragStart = (taskId: string) => {
     setConfirmDeleteId(null);
