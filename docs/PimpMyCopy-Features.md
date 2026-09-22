@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-09-22T00:00:00Z
+**Last Updated:** 2026-09-22T12:00:00Z
 
 ---
 
@@ -29,6 +29,39 @@ A streamlined project management application built with React + Vite + Tailwind 
 - **Active project name** displayed in the header, immediately after the Sharpen.Studio branding, separated by a vertical divider. Updates whenever the selected project changes. Truncated at 220px if the name is long.
 - Center: view toggle (Grid / Kanban / Gantt) — visible only when a project is selected
 - Right: Export dropdown and user menu
+
+### 1.2c Kanban-Only Route (Distraction-Free Mode)
+
+A special URL pattern provides a focused Kanban board view with all non-essential UI hidden. Intended for kiosk displays, embedded boards, or focused work sessions.
+
+**URL patterns:**
+- `/k` — Kanban board of the last-opened project (from localStorage `last-project-id`); if none, shows the "Select a project" empty state
+- `/k/<projectId>` — Kanban board of that specific project (deep-linkable / bookmarkable)
+
+**Detection:** the app checks `window.location.pathname` for the `/k` pattern at component initialization; the result (`isKanbanOnly`, `kioskProjectId`) is stored as plain consts (not state) since they never change without a page reload.
+
+**Behavior in this mode:**
+- The initial project is set from the URL path segment, falling back to `last-project-id` from localStorage
+- View mode is forced to `kanban`; the `?view=` query param is ignored
+- Chat is forced off
+- URL sync writes the path form (`/k/<projectId>` or `/k`) instead of query params, so clicking another project in the sidebar updates the URL and stays in Kanban-only mode
+- `last-project-id` in localStorage is kept in sync when the selected project changes
+
+**Desktop header (Kanban-only):**
+- Shows ONLY the Task Flow logo + branding and the active project name
+- The logo group becomes a clickable escape hatch with `cursor-pointer` and `title="Open full view"` — clicking it navigates to `/?project=<id>&view=kanban` (or `/` if no project selected)
+- Hidden: view toggle (Grid/Kanban/Gantt), Export dropdown, Column visibility, Comments button, Discussion button, Chat toggle, Chat button, user/account menu
+
+**Mobile header (Kanban-only):**
+- Keeps the hamburger menu (needed for the mobile drawer to browse projects) and the project name
+- Hidden: view toggle, Chat button, user menu
+
+**What stays unchanged:**
+- The Kanban toolbar inside the board (search, ID/Sort toggle, "+ New task" button, Alt+N shortcut) remains fully visible and functional
+- The board is fully editable: add tasks, delete tasks (with inline confirmation), drag-and-drop between columns, and the task detail modal all work exactly as in the full app
+- Sidebar, workspaces, project selection, collapse toggle: unchanged
+- Authentication is unchanged: an unauthenticated visitor to `/k` still gets the Auth screen
+- Modals/panels that can only be opened from hidden buttons (Discussion, Comments, Export menu, Column menu, unread chat modal) simply never open — nothing renders them unconditionally and nothing throws
 
 ### 1.3 Sidebar Navigation
 - Resizable sidebar (200px - 50% viewport, persists width in localStorage)

@@ -51,12 +51,19 @@ export default function App() {
   const [showMobileDrawer, setShowMobileDrawer] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showColumnMenu, setShowColumnMenu] = useState(false);
+
+  const kioskMatch = window.location.pathname.match(/^\/k(?:\/([^/?#]+))?\/?$/);
+  const isKanbanOnly = !!kioskMatch;
+  const kioskProjectId = kioskMatch?.[1] || null;
+
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
+    if (isKanbanOnly) return kioskProjectId || localStorage.getItem('last-project-id');
     const params = new URLSearchParams(window.location.search);
     return params.get('project') || localStorage.getItem('last-project-id');
   });
   const { visibleColumns, toggleColumn, resetToDefault, isVisible: isColumnVisible } = useColumnPreferences(user?.id, selectedProjectId ?? undefined);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (isKanbanOnly) return 'kanban';
     const params = new URLSearchParams(window.location.search);
     return (params.get('view') as ViewMode) || 'grid';
   });
@@ -79,6 +86,7 @@ export default function App() {
 
   // Chat
   const [chatMode, setChatMode] = useState(() => {
+    if (isKanbanOnly) return false;
     const params = new URLSearchParams(window.location.search);
     return params.get('page') === 'chat' || window.location.pathname === '/chat';
   });
@@ -214,6 +222,11 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    if (isKanbanOnly) {
+      if (selectedProjectId) localStorage.setItem('last-project-id', selectedProjectId);
+      window.history.replaceState({}, '', selectedProjectId ? `/k/${selectedProjectId}` : '/k');
+      return;
+    }
     const params = new URLSearchParams();
     if (chatMode) {
       params.set('page', 'chat');
@@ -342,7 +355,11 @@ export default function App() {
       {!isMobile && (
       <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+          <div
+            className={`flex items-center gap-2 ${isKanbanOnly ? 'cursor-pointer' : ''}`}
+            onClick={isKanbanOnly ? () => { window.location.href = selectedProjectId ? `/?project=${selectedProjectId}&view=kanban` : '/'; } : undefined}
+            title={isKanbanOnly ? 'Open full view' : undefined}
+          >
             <div className="w-7 h-7 bg-primary-600 flex items-center justify-center">
               <CheckSquare className="w-4 h-4 text-white" />
             </div>
@@ -360,7 +377,7 @@ export default function App() {
         </div>
 
         {/* Center / project controls */}
-        {!chatMode && selectedProjectId && (
+        {!isKanbanOnly && !chatMode && selectedProjectId && (
           <div className="flex items-center gap-3">
             {/* View toggle */}
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
@@ -473,6 +490,7 @@ export default function App() {
         )}
 
         {/* Right side: Chat button + user menu */}
+        {!isKanbanOnly && (
         <div className="flex items-center gap-2">
           <button
             onClick={handleChatButtonClick}
@@ -596,6 +614,7 @@ export default function App() {
             )}
           </div>
         </div>
+        )}
       </header>
       )}
 
@@ -622,7 +641,7 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          {!chatMode && selectedProjectId && (
+          {!isKanbanOnly && !chatMode && selectedProjectId && (
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode('grid')}
@@ -645,6 +664,7 @@ export default function App() {
             </div>
           )}
 
+          {!isKanbanOnly && (
           <button
             onClick={handleChatButtonClick}
             className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100"
@@ -656,7 +676,9 @@ export default function App() {
               </span>
             )}
           </button>
+          )}
 
+          {!isKanbanOnly && (
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
@@ -716,6 +738,7 @@ export default function App() {
               </>
             )}
           </div>
+          )}
         </div>
 
         {user && (
