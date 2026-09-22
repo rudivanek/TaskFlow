@@ -47,9 +47,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
     try {
       const updated = await taskServices.updateTask(taskId, updates);
       setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
-      if (selectedTask && selectedTask.id === taskId) {
-        setSelectedTask(updated);
-      }
+      setSelectedTask(prev => (prev && prev.id === taskId ? updated : prev));
     } catch (err: any) {
       setError(err.message);
       setTimeout(() => setError(''), 3000);
@@ -64,7 +62,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
     try {
       const updated = await taskServices.updateTaskDate(taskId, field, value, task);
       setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
-      if (selectedTask?.id === taskId) setSelectedTask(updated);
+      setSelectedTask(prev => (prev && prev.id === taskId ? updated : prev));
       if (updated.dependencies_task_ids && updated.dependencies_task_ids.length > 0) {
         const cascaded = await taskServices.cascadeDependencyDates(taskId);
         if (cascaded.length > 0) {
@@ -83,7 +81,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
     try {
       const updated = await taskServices.updateTaskDays(taskId, days, task.start_date);
       setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
-      if (selectedTask?.id === taskId) setSelectedTask(updated);
+      setSelectedTask(prev => (prev && prev.id === taskId ? updated : prev));
     } catch (err: any) {
       setError(err.message);
       setTimeout(() => setError(''), 3000);
@@ -105,8 +103,9 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
     try {
       setCreating(true);
       const notStartedStatus = statuses.find(s => s.status.toLowerCase() === 'not started');
-      const newTask = await taskServices.createTask(projectId, user.id, 'New task', tasks.length, notStartedStatus?.id);
+      const newTask = await taskServices.createTask(projectId, user.id, '', tasks.length, notStartedStatus?.id);
       setTasks(prev => [...prev, newTask]);
+      setSelectedTask(newTask);
     } catch (err: any) {
       setError(err.message || 'Failed to create task');
       setTimeout(() => setError(''), 3000);

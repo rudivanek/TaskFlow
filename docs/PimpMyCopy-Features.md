@@ -115,8 +115,9 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - Click card to open full detail modal
 - Search filter toolbar
 - Sort toggle: "ID" (by task_id) or "Sort" (by task_sort), each with ascending/descending toggle; matches Task Grid sort behavior
-- **New task button**: a primary "New task" button appears as the last element in the toolbar (after the sort button group); creates a new task in the "Not Started" column with the default name "New task" using `taskServices.createTask` (same logic as Task Grid), adds the card immediately at the bottom of the column, and is disabled while a creation is in progress; the detail modal is not opened automatically — the user can click the card to edit it
+- **New task button**: a primary "New task" button appears as the last element in the toolbar (after the sort button group); creates a new task in the "Not Started" column using `taskServices.createTask` (same logic as Task Grid), opens the detail modal immediately so the user can name it, and is disabled while a creation is in progress
 - **Alt+N keyboard shortcut**: pressing Alt+N creates a new task with the same behavior as the button; shortcut is scoped to the Kanban board component, mirrors the Task Grid shortcut, and is suppressed while the task detail modal is open
+- **Detail modal re-open fix**: after Save in the detail modal, the async update handlers use functional `setSelectedTask` updates that only refresh the modal if it is still open on that same task — they never re-open a closed modal
 - **Inline delete with confirmation on cards**: each task card (in both status columns and the "No Status" column) has a trash icon button in the top-right corner next to the comment indicator; clicking it shows an inline "Delete?" prompt with confirm (check) and cancel (X) buttons -- no browser dialog; all buttons stop propagation so they don't open the detail modal; confirmation resets when a drag starts
 
 ### 1.7 Kanban Task Detail Modal
