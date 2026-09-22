@@ -52,12 +52,12 @@ input:focus, select:focus, textarea:focus {
 }
 
 .status-doing-row {
-  background-color: #DDD6FE;
+  background-color: #EDE9FE;
   border-left: 3px solid #7C3AED;
 }
 @media (prefers-color-scheme: dark) {
   .status-doing-row {
-    background-color: rgba(139, 92, 246, 0.35);
+    background-color: rgba(139, 92, 246, 0.22);
   }
 }
 
