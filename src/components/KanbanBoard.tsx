@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import KanbanTaskDetailModal from './KanbanTaskDetailModal';
 import { isOverdue, isDueToday, isDueSoon, formatDisplayDate } from '../utils/dateUtils';
-import { Search, Loader2, MessageSquare, Calendar, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, Loader2, MessageSquare, Calendar, ChevronsUpDown, ChevronUp, ChevronDown, Plus } from 'lucide-react';
 
 interface KanbanBoardProps {
   projectId: string;
@@ -23,6 +23,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -97,6 +98,30 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
       setTimeout(() => setError(''), 3000);
     }
   };
+
+  const handleCreateTask = async () => {
+    if (!user || creating) return;
+    try {
+      setCreating(true);
+      const notStartedStatus = statuses.find(s => s.status.toLowerCase() === 'not started');
+      const newTask = await taskServices.createTask(projectId, user.id, '', tasks.length, notStartedStatus?.id);
+      setTasks(prev => [...prev, newTask]);
+      setSelectedTask(newTask);
+    } catch (err: any) {
+      setError(err.message || 'Failed to create task');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === 'n') { e.preventDefault(); handleCreateTask(); }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [tasks, projectId, statuses, user, creating]);
 
   const handleDragStart = (taskId: string) => {
     setDraggedTaskId(taskId);
@@ -174,6 +199,13 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles 
             Sort <SortIcon field="task_sort" />
           </button>
         </div>
+        <button
+          onClick={handleCreateTask}
+          disabled={creating}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" /> New task
+        </button>
       </div>
 
       {error && (
