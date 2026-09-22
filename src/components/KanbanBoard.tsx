@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import KanbanTaskDetailModal from './KanbanTaskDetailModal';
 import { isOverdue, isDueToday, isDueSoon, formatDisplayDate } from '../utils/dateUtils';
+import { useIsMobile } from '../utils/isMobile';
 import { Search, Loader2, MessageSquare, Calendar, ChevronsUpDown, ChevronUp, ChevronDown, Plus, Trash2, Check, X } from 'lucide-react';
 
 interface KanbanBoardProps {
@@ -16,6 +17,7 @@ interface KanbanBoardProps {
 
 export default function KanbanBoard({ projectId, phases, statuses, responsibles, users }: KanbanBoardProps) {
   const { user } = useAuth();
+  const mobile = useIsMobile();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -204,7 +206,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
         <button
           onClick={handleCreateTask}
           disabled={creating}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors ${mobile ? 'min-h-[40px]' : ''}`}
         >
           <Plus className="w-3.5 h-3.5" /> New task
         </button>
@@ -217,7 +219,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
       )}
 
       {/* Board */}
-      <div className="flex-1 overflow-x-auto p-4">
+      <div className={`flex-1 overflow-x-auto p-4 ${mobile ? 'snap-x snap-mandatory' : ''}`}>
         <div className="flex gap-4 h-full min-h-0">
           {(['Not Started', 'Doing', 'Done'] as const)
             .map(name => statuses.find(s => s.status === name))
@@ -228,7 +230,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
             return (
               <div
                 key={status.id}
-                className="flex flex-col w-72 min-w-[288px] bg-slate-50 rounded-xl"
+                className={`flex flex-col bg-slate-50 rounded-xl ${mobile ? 'w-[85vw] min-w-[85vw] snap-center' : 'w-72 min-w-[288px]'}`}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => handleDrop(status.id)}
               >
@@ -262,14 +264,14 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleDelete(task.id); setConfirmDeleteId(null); }}
                                 title="Confirm delete"
-                                className="p-0.5 rounded text-red-600 hover:bg-red-50"
+                                className={`p-0.5 rounded text-red-600 hover:bg-red-50 ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
                                 title="Cancel"
-                                className="p-0.5 rounded text-slate-400 hover:bg-slate-100"
+                                className={`p-0.5 rounded text-slate-400 hover:bg-slate-100 ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -278,7 +280,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
                             <button
                               onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(task.id); }}
                               title="Delete task"
-                              className="p-0.5 rounded text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              className={`p-0.5 rounded text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -322,7 +324,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
 
           {/* Unassigned column */}
           {filteredTasks.filter(t => !t.status_id).length > 0 && (
-            <div className="flex flex-col w-72 min-w-[288px] bg-slate-50 rounded-xl">
+            <div className={`flex flex-col bg-slate-50 rounded-xl ${mobile ? 'w-[85vw] min-w-[85vw] snap-center' : 'w-72 min-w-[288px]'}`}>
               <div className="flex items-center justify-between px-3 py-3">
                 <h3 className="text-sm font-semibold text-slate-400">No Status</h3>
                 <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
@@ -349,14 +351,14 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDelete(task.id); setConfirmDeleteId(null); }}
                               title="Confirm delete"
-                              className="p-0.5 rounded text-red-600 hover:bg-red-50"
+                              className={`p-0.5 rounded text-red-600 hover:bg-red-50 ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
                             >
                               <Check className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
                               title="Cancel"
-                              className="p-0.5 rounded text-slate-400 hover:bg-slate-100"
+                              className={`p-0.5 rounded text-slate-400 hover:bg-slate-100 ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -365,7 +367,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
                           <button
                             onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(task.id); }}
                             title="Delete task"
-                            className="p-0.5 rounded text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            className={`p-0.5 rounded text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

@@ -21,6 +21,19 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
+    <script>
+      (function () {
+        if (!/^\/k(\/|$)/.test(location.pathname)) return;
+        var m = document.querySelector('link[rel="manifest"]');
+        if (m) m.setAttribute('href', '/manifest-kanban.webmanifest');
+        var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (t) t.setAttribute('content', 'TF Board');
+        var th = document.querySelector('meta[name="theme-color"]');
+        if (th) th.setAttribute('content', '#2563eb');
+        document.title = 'TaskFlow Board';
+      })();
+    </script>
+
     <title>TaskFlow</title>
     <meta property="og:image" content="https://bolt.new/static/og_default.png">
     <meta name="twitter:card" content="summary_large_image">

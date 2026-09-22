@@ -4,6 +4,7 @@ import * as taskServices from '../services/taskServices';
 import SubtaskList from './SubtaskList';
 import SubtaskStatusModal from './SubtaskStatusModal';
 import { isOverdue, isDueToday, isDueSoon } from '../utils/dateUtils';
+import { useIsMobile } from '../utils/isMobile';
 import { X, MessageSquare, Calendar, Loader2 } from 'lucide-react';
 
 interface KanbanTaskDetailModalProps {
@@ -35,6 +36,7 @@ export default function KanbanTaskDetailModal({
   const [comment, setComment] = useState(task.task_comment || '');
   const [pendingStatusSuggestion, setPendingStatusSuggestion] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const mobile = useIsMobile();
 
   const handleSubtaskStatusChange = (suggestedStatusName: string) => {
     const currentStatusName = statuses.find(s => s.id === task.status_id)?.status;
@@ -67,7 +69,7 @@ export default function KanbanTaskDetailModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto"
+        className={`bg-white shadow-xl w-full ${mobile ? 'inset-0 rounded-none h-full max-h-none overflow-y-auto' : 'rounded-2xl max-w-lg mx-4 max-h-[85vh] overflow-y-auto'}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

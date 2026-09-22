@@ -54,6 +54,7 @@ export default function App() {
 
   const kioskMatch = window.location.pathname.match(/^\/k(?:\/([^/?#]+))?\/?$/);
   const isKanbanOnly = !!kioskMatch;
+  const isKanbanPwa = new URLSearchParams(window.location.search).get('app') === 'kanban';
   const kioskProjectId = kioskMatch?.[1] || null;
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
@@ -225,7 +226,8 @@ export default function App() {
   useEffect(() => {
     if (isKanbanOnly) {
       if (selectedProjectId) localStorage.setItem('last-project-id', selectedProjectId);
-      window.history.replaceState({}, '', selectedProjectId ? `/k/${selectedProjectId}` : '/k');
+      const suffix = isKanbanPwa ? '?app=kanban' : '';
+      window.history.replaceState({}, '', (selectedProjectId ? `/k/${selectedProjectId}` : '/k') + suffix);
       return;
     }
     const params = new URLSearchParams();

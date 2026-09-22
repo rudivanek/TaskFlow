@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-09-22T13:00:00Z
+**Last Updated:** 2026-09-22T14:00:00Z
 
 ---
 
@@ -37,8 +37,16 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 **URL patterns:**
 - `/k` — Kanban board of the last-opened project (from localStorage `last-project-id`); if none, shows the "Select a project" empty state
 - `/k/<projectId>` — Kanban board of that specific project (deep-linkable / bookmarkable)
+- The `?app=kanban` query flag is preserved during URL sync so navigating between projects inside the installed PWA never leaves the manifest scope
 
-**Detection:** the app checks `window.location.pathname` for the `/k` pattern at component initialization; the result (`isKanbanOnly`, `kioskProjectId`) is stored as plain consts (not state) since they never change without a page reload.
+**Detection:** the app checks `window.location.pathname` for the `/k` pattern at component initialization; the result (`isKanbanOnly`, `kioskProjectId`, `isKanbanPwa`) is stored as plain consts (not state) since they never change without a page reload. `isKanbanPwa` is true when `?app=kanban` is present in the query string.
+
+**Installable as a second PWA:**
+- A separate manifest (`public/manifest-kanban.webmanifest`) is served for `/k` routes via an inline script in `index.html` that swaps the `<link rel="manifest">` href, the `apple-mobile-web-app-title` meta, the `theme-color` meta, and the document title before the browser evaluates installability
+- Manifest identity: name "TaskFlow Board", short_name "TF Board", start_url `/k?app=kanban`, scope `/k`, theme_color `#2563eb`
+- The existing chat PWA manifest (`public/manifest.webmanifest`) is untouched so already-installed chat copies are not disturbed
+- The service worker (`public/sw.js`) has a network-only fetch handler (no caching) to satisfy Chrome's installability requirement without adding offline support
+- Both apps share the same service worker at `/sw.js`; the existing push and notificationclick handlers are unchanged
 
 **Behavior in this mode:**
 - The initial project is set from the URL path segment, falling back to `last-project-id` from localStorage
@@ -119,6 +127,7 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - **Alt+N keyboard shortcut**: pressing Alt+N creates a new task with the same behavior as the button; shortcut is scoped to the Kanban board component, mirrors the Task Grid shortcut, and is suppressed while the task detail modal is open
 - **Detail modal re-open fix**: after Save in the detail modal, the async update handlers use functional `setSelectedTask` updates that only refresh the modal if it is still open on that same task — they never re-open a closed modal
 - **Inline delete with confirmation on cards**: each task card (in both status columns and the "No Status" column) has a trash icon button in the top-right corner next to the comment indicator; clicking it shows an inline "Delete?" prompt with confirm (check) and cancel (X) buttons -- no browser dialog; all buttons stop propagation so they don't open the detail modal; confirmation resets when a drag starts
+- **Mobile board usability**: on screens ≤ 768px, columns are `w-[85vw] min-w-[85vw] snap-center` inside a `snap-x snap-mandatory` scroll container so one column fills the phone screen and swipes snap cleanly between statuses; delete/confirm/cancel buttons get a minimum 36×36px hit area; the "+ New task" button gets `min-h-[40px]`; HTML5 drag-and-drop does not fire on touch so status is changed via the detail modal's Status dropdown instead. Desktop rendering is byte-for-byte unchanged.
 
 ### 1.7 Kanban Task Detail Modal
 - Full task editing form (all fields including Assigned User)
@@ -127,6 +136,7 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - Save/Cancel/Delete buttons
 - Delete button uses two-click inline confirmation: first click turns the button into a red "Confirm delete?" button plus a Cancel button; second click calls onDelete and closes the modal -- no browser dialog
 - Escape key to close
+- **Mobile full-screen sheet**: on screens ≤ 768px, the modal renders as a full-screen sheet (inset-0, rounded-none, own vertical scroll) instead of the centered card, so all form fields and the Save/Cancel/Delete buttons are reachable on a small screen. Desktop layout is unchanged.
 
 ### 1.8 Gantt Chart View (Interactive)
 - Minimal, clean timeline visualization of all tasks in a project
