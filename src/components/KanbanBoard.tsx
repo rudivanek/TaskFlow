@@ -8,6 +8,7 @@ import { useIsMobile } from '../utils/isMobile';
 import { Search, Loader2, MessageSquare, Calendar, ChevronsUpDown, ChevronUp, ChevronDown, Plus, Trash2, Check, X } from 'lucide-react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { getStatusRowStyles } from '../utils/statusStyles';
 
 interface KanbanBoardProps {
   projectId: string;
@@ -30,14 +31,17 @@ interface DraggableCardProps {
   users: AppUser[];
   phases: Phase[];
   responsibles: Responsible[];
+  statuses: Status[];
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
   onDelete: (id: string) => void;
   onOpen: (task: Task) => void;
 }
 
-function DraggableCard({ task, mobile, users, phases, responsibles, confirmDeleteId, setConfirmDeleteId, onDelete, onOpen }: DraggableCardProps) {
+function DraggableCard({ task, mobile, users, phases, responsibles, statuses, confirmDeleteId, setConfirmDeleteId, onDelete, onOpen }: DraggableCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
+  const statusName = task.status_id ? statuses.find(s => s.id === task.status_id)?.status : undefined;
+  const statusStyle = getStatusRowStyles(statusName);
   const style: React.CSSProperties = {
     transform: transform ? CSS.Translate.toString(transform) : undefined,
     opacity: isDragging ? 0.4 : 1,
@@ -46,6 +50,8 @@ function DraggableCard({ task, mobile, users, phases, responsibles, confirmDelet
     WebkitUserSelect: 'none',
     WebkitTouchCallout: 'none',
     WebkitTapHighlightColor: 'transparent',
+    ...statusStyle.style,
+    ...statusStyle.accentBorder,
   };
   if (mobile) {
     return (
@@ -55,7 +61,7 @@ function DraggableCard({ task, mobile, users, phases, responsibles, confirmDelet
         {...listeners}
         {...attributes}
         onClick={() => onOpen(task)}
-        className={`bg-white rounded-md border border-slate-200 border-l-4 ${getCardColor(task)} p-1.5 cursor-pointer select-none touch-none`}
+        className={`bg-white rounded-md border border-slate-200 border-l-4 ${getCardColor(task)} p-1.5 cursor-pointer select-none touch-none transition-colors duration-150 ${statusStyle.className}`}
       >
         <div className="flex items-center gap-1 mb-0.5">
           <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1 py-0.5 rounded">#{task.task_id}</span>
@@ -72,7 +78,7 @@ function DraggableCard({ task, mobile, users, phases, responsibles, confirmDelet
       {...listeners}
       {...attributes}
       onClick={() => onOpen(task)}
-      className={`bg-white rounded-lg border border-slate-200 border-l-4 ${getCardColor(task)} p-3 cursor-pointer hover:shadow-md transition-shadow select-none touch-none`}
+      className={`bg-white rounded-lg border border-slate-200 border-l-4 ${getCardColor(task)} p-3 cursor-pointer hover:shadow-md transition-shadow select-none touch-none transition-colors duration-150 ${statusStyle.className}`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <span className="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">#{task.task_id}</span>
@@ -363,6 +369,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
                         users={users}
                         phases={phases}
                         responsibles={responsibles}
+                        statuses={statuses}
                         confirmDeleteId={confirmDeleteId}
                         setConfirmDeleteId={setConfirmDeleteId}
                         onDelete={handleDelete}
@@ -386,6 +393,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
                     users={users}
                     phases={phases}
                     responsibles={responsibles}
+                    statuses={statuses}
                     confirmDeleteId={confirmDeleteId}
                     setConfirmDeleteId={setConfirmDeleteId}
                     onDelete={handleDelete}
@@ -403,6 +411,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
                     users={users}
                     phases={phases}
                     responsibles={responsibles}
+                    statuses={statuses}
                     confirmDeleteId={confirmDeleteId}
                     setConfirmDeleteId={setConfirmDeleteId}
                     onDelete={handleDelete}

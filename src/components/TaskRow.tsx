@@ -5,6 +5,7 @@ import SubtaskList from './SubtaskList';
 import { ColumnKey, DATA_COLUMN_KEYS } from '../hooks/useColumnPreferences';
 import { Tag } from '../hooks/useTags';
 import { TagSelector } from './TagSelector';
+import { getStatusRowStyles } from '../utils/statusStyles';
 
 interface TaskRowProps {
   task: Task;
@@ -112,27 +113,8 @@ export default function TaskRow({
     if (autoFocusName) nameRef.current?.focus();
   }, [autoFocusName]);
 
-  const getStatusRowBg = () => {
-    if (!task.status_id) return undefined;
-    const status = statuses.find(s => s.id === task.status_id);
-    if (!status) return undefined;
-    switch (status.status.toLowerCase()) {
-      case 'done': return 'rgba(220, 252, 231, 0.6)';
-      case 'doing':
-      case 'in progress': return undefined;
-      case 'in review': return 'rgba(254, 243, 199, 0.6)';
-      case 'blocked': return 'rgba(254, 226, 226, 0.6)';
-      default: return undefined;
-    }
-  };
-
-  const isDoingStatus = () => {
-    if (!task.status_id) return false;
-    const status = statuses.find(s => s.id === task.status_id);
-    if (!status) return false;
-    const lower = status.status.toLowerCase();
-    return lower === 'doing' || lower === 'in progress';
-  };
+  const statusName = task.status_id ? statuses.find(s => s.id === task.status_id)?.status : undefined;
+  const statusStyle = getStatusRowStyles(statusName);
 
   useEffect(() => {
     setCommentValue(task.task_comment || '');
@@ -165,11 +147,11 @@ export default function TaskRow({
         onDragOver={onDragOver}
         onDrop={onDrop}
         onDragEnd={onDragEnd}
-        style={!isDragOver && !isHighlighted ? { backgroundColor: getStatusRowBg() } : isHighlighted ? { backgroundColor: '#93C5FD', borderLeft: '3px solid #2563EB' } : undefined}
+        style={!isDragOver && !isHighlighted ? statusStyle.style : isHighlighted ? { backgroundColor: '#93C5FD', borderLeft: '3px solid #2563EB' } : undefined}
         className={`group border-b border-slate-100 transition-colors duration-150
           ${isDragging ? 'opacity-40' : ''}
           ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : isHighlighted ? 'dark:bg-blue-500/45' : 'hover:brightness-95'}
-          ${!isDragOver && !isHighlighted && isDoingStatus() ? 'status-doing-row' : ''}
+          ${!isDragOver && !isHighlighted && statusStyle.className ? statusStyle.className : ''}
         `}
       >
         {/* Expand */}
