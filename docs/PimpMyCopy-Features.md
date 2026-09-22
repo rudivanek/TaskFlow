@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-09-22T14:00:00Z
+**Last Updated:** 2026-09-22T15:00:00Z
 
 ---
 
@@ -119,7 +119,7 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - Column headers with status name and task count badge
 - Task cards showing: ID badge, task name (2-line clamp), assigned user (if set, shown below task name), phase badge, responsible, date range, comment indicator
 - Color coding: red (overdue), amber (due today), blue (due within 3 days)
-- Drag-and-drop between columns to change status
+- **Drag-and-drop with @dnd-kit/core**: cards are dragged using PointerSensor with a 200ms delay + 8px tolerance activation constraint, so a quick tap opens the detail modal and a vertical swipe scrolls the column instead of starting a drag. Each column is a droppable target (useDroppable) that highlights with a blue ring while dragging over it. A DragOverlay renders a compact preview of the dragged card that follows the finger. On drag end, if the target column differs from the task's current status, the existing handleUpdate is called with the new status_id (or null for the "unassigned" column). The old HTML5 drag implementation (draggable / onDragStart / onDragOver / onDrop / draggedTaskId state) has been removed entirely. This works on both desktop (mouse) and mobile (touch).
 - Click card to open full detail modal
 - Search filter toolbar
 - Sort toggle: "ID" (by task_id) or "Sort" (by task_sort), each with ascending/descending toggle; matches Task Grid sort behavior
@@ -127,7 +127,7 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - **Alt+N keyboard shortcut**: pressing Alt+N creates a new task with the same behavior as the button; shortcut is scoped to the Kanban board component, mirrors the Task Grid shortcut, and is suppressed while the task detail modal is open
 - **Detail modal re-open fix**: after Save in the detail modal, the async update handlers use functional `setSelectedTask` updates that only refresh the modal if it is still open on that same task — they never re-open a closed modal
 - **Inline delete with confirmation on cards**: each task card (in both status columns and the "No Status" column) has a trash icon button in the top-right corner next to the comment indicator; clicking it shows an inline "Delete?" prompt with confirm (check) and cancel (X) buttons -- no browser dialog; all buttons stop propagation so they don't open the detail modal; confirmation resets when a drag starts
-- **Mobile board usability**: on screens ≤ 768px, columns are `w-[85vw] min-w-[85vw] snap-center` inside a `snap-x snap-mandatory` scroll container so one column fills the phone screen and swipes snap cleanly between statuses; delete/confirm/cancel buttons get a minimum 36×36px hit area; the "+ New task" button gets `min-h-[40px]`; HTML5 drag-and-drop does not fire on touch so status is changed via the detail modal's Status dropdown instead. Desktop rendering is byte-for-byte unchanged.
+- **Mobile board layout**: on screens ≤ 768px, all three status columns fit on one screen with `flex-1 min-w-0` (no horizontal scrolling, no snap-scroll); the "No Status" column renders below the three status columns as a full-width row if it has tasks. Mobile cards are compact: only the #id badge, a 6px colored dot if assigned, and the task name (text-[11px], line-clamp-2, p-1.5, rounded-md) — no dates, phase badge, responsible badge, or delete button (delete stays in the detail modal). The left border color (red/amber/blue) remains as the only status signal. Column headers are smaller (text-xs, px-1.5). Cards have `touch-none select-none` to prevent scroll/gesture conflicts. Desktop rendering is byte-for-byte unchanged — cards show the full layout with delete button, and columns are w-72.
 
 ### 1.7 Kanban Task Detail Modal
 - Full task editing form (all fields including Assigned User)

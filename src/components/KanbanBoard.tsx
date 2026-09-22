@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Task, Phase, Status, Responsible, AppUser } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
@@ -6,6 +6,8 @@ import KanbanTaskDetailModal from './KanbanTaskDetailModal';
 import { isOverdue, isDueToday, isDueSoon, formatDisplayDate } from '../utils/dateUtils';
 import { useIsMobile } from '../utils/isMobile';
 import { Search, Loader2, MessageSquare, Calendar, ChevronsUpDown, ChevronUp, ChevronDown, Plus, Trash2, Check, X } from 'lucide-react';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, closestCenter } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 interface KanbanBoardProps {
   projectId: string;
@@ -13,6 +15,117 @@ interface KanbanBoardProps {
   statuses: Status[];
   responsibles: Responsible[];
   users: AppUser[];
+}
+
+function getCardColor(task: Task) {
+  if (isOverdue(task.end_date)) return 'border-l-red-400';
+  if (isDueToday(task.end_date)) return 'border-l-amber-400';
+  if (isDueSoon(task.end_date)) return 'border-l-blue-400';
+  return 'border-l-slate-200';
+}
+
+interface DraggableCardProps {
+  task: Task;
+  mobile: boolean;
+  users: AppUser[];
+  phases: Phase[];
+  responsibles: Responsible[];
+  confirmDeleteId: string | null;
+  setConfirmDeleteId: (id: string | null) => void;
+  onDelete: (id: string) => void;
+  onOpen: (task: Task) => void;
+}
+
+function DraggableCard({ task, mobile, users, phases, responsibles, confirmDeleteId, setConfirmDeleteId, onDelete, onOpen }: DraggableCardProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
+  const style: React.CSSProperties = {
+    transform: transform ? CSS.Translate.toString(transform) : undefined,
+    opacity: isDragging ? 0.4 : 1,
+    touchAction: 'none',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTouchCallout: 'none',
+    WebkitTapHighlightColor: 'transparent',
+  };
+  if (mobile) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...listeners}
+        {...attributes}
+        onClick={() => onOpen(task)}
+        className={`bg-white rounded-md border border-slate-200 border-l-4 ${getCardColor(task)} p-1.5 cursor-pointer select-none touch-none`}
+      >
+        <div className="flex items-center gap-1 mb-0.5">
+          <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1 py-0.5 rounded">#{task.task_id}</span>
+          {task.assigned_user_id && <span className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0" />}
+        </div>
+        <p className="text-[11px] leading-snug text-slate-800 font-medium line-clamp-2">{task.task_name || 'Untitled task'}</p>
+      </div>
+    );
+  }
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      onClick={() => onOpen(task)}
+      className={`bg-white rounded-lg border border-slate-200 border-l-4 ${getCardColor(task)} p-3 cursor-pointer hover:shadow-md transition-shadow select-none touch-none`}
+    >
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <span className="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">#{task.task_id}</span>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {task.task_comment && <MessageSquare className="w-3 h-3 text-slate-400" />}
+          {confirmDeleteId === task.id ? (
+            <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <span className="text-[10px] text-slate-500">Delete?</span>
+              <button onClick={(e) => { e.stopPropagation(); onDelete(task.id); setConfirmDeleteId(null); }} title="Confirm delete" className="p-0.5 rounded text-red-600 hover:bg-red-50"><Check className="w-3.5 h-3.5" /></button>
+              <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }} title="Cancel" className="p-0.5 rounded text-slate-400 hover:bg-slate-100"><X className="w-3.5 h-3.5" /></button>
+            </span>
+          ) : (
+            <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(task.id); }} title="Delete task" className="p-0.5 rounded text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+          )}
+        </div>
+      </div>
+      <p className="text-sm text-slate-800 font-medium line-clamp-2 mb-2">{task.task_name || 'Untitled task'}</p>
+      {task.assigned_user_id && (
+        <p className="text-xs text-slate-500 mb-2 truncate">{users.find(u => u.id === task.assigned_user_id)?.full_name || users.find(u => u.id === task.assigned_user_id)?.email || 'Unknown user'}</p>
+      )}
+      <div className="flex items-center gap-2 flex-wrap">
+        {task.phase_id && <span className="text-xs bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded">{phases.find(p => p.id === task.phase_id)?.phase}</span>}
+        {task.responsible_id && <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{responsibles.find(r => r.id === task.responsible_id)?.responsible}</span>}
+      </div>
+      {task.start_date && (
+        <div className="flex items-center gap-1 mt-2 text-xs text-slate-400"><Calendar className="w-3 h-3" /><span>{formatDisplayDate(task.start_date)} - {formatDisplayDate(task.end_date)}</span></div>
+      )}
+    </div>
+  );
+}
+
+interface DroppableColumnProps {
+  id: string;
+  title: string;
+  count: number;
+  mobile: boolean;
+  isUnassigned?: boolean;
+  children: React.ReactNode;
+}
+
+function DroppableColumn({ id, title, count, mobile, isUnassigned, children }: DroppableColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  const widthClass = mobile ? 'flex-1 min-w-0' : 'w-72 min-w-[288px]';
+  const highlight = isOver ? 'ring-2 ring-primary-400 bg-primary-50/50' : '';
+  return (
+    <div ref={setNodeRef} className={`flex flex-col bg-slate-50 rounded-xl ${widthClass} ${highlight} transition-colors`}>
+      <div className={`flex items-center justify-between ${mobile ? 'px-1.5 py-2' : 'px-3 py-3'}`}>
+        <h3 className={`font-semibold truncate ${mobile ? 'text-xs' : 'text-sm'} ${isUnassigned ? 'text-slate-400' : 'text-slate-700'}`}>{title}</h3>
+        <span className={`bg-slate-200 text-slate-600 rounded-full ${mobile ? 'text-[10px] px-1.5' : 'text-xs px-2 py-0.5'}`}>{count}</span>
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">{children}</div>
+    </div>
+  );
 }
 
 export default function KanbanBoard({ projectId, phases, statuses, responsibles, users }: KanbanBoardProps) {
@@ -24,7 +137,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
   const [sortField, setSortField] = useState<'task_id' | 'task_sort'>('task_sort');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -126,22 +239,30 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [tasks, projectId, statuses, user, creating, selectedTask]);
 
-  const handleDragStart = (taskId: string) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  );
+
+  const handleDragStart = (event: any) => {
     setConfirmDeleteId(null);
-    setDraggedTaskId(taskId);
+    setActiveDragId(event.active.id as string);
   };
 
-  const handleDrop = async (statusId: string) => {
-    if (!draggedTaskId) return;
-    await handleUpdate(draggedTaskId, { status_id: statusId });
-    setDraggedTaskId(null);
-  };
-
-  const getCardColor = (task: Task) => {
-    if (isOverdue(task.end_date)) return 'border-l-red-400';
-    if (isDueToday(task.end_date)) return 'border-l-amber-400';
-    if (isDueSoon(task.end_date)) return 'border-l-blue-400';
-    return 'border-l-slate-200';
+  const handleDragEnd = async (event: any) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over) return;
+    const taskId = active.id as string;
+    const targetId = over.id as string;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    if (targetId === 'unassigned') {
+      if (!task.status_id) return;
+      await handleUpdate(taskId, { status_id: null });
+    } else {
+      if (task.status_id === targetId) return;
+      await handleUpdate(taskId, { status_id: targetId });
+    }
   };
 
   const filteredTasks = tasks
@@ -219,178 +340,95 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
       )}
 
       {/* Board */}
-      <div className={`flex-1 overflow-x-auto p-4 ${mobile ? 'snap-x snap-mandatory' : ''}`}>
-        <div className="flex gap-4 h-full min-h-0">
-          {(['Not Started', 'Doing', 'Done'] as const)
-            .map(name => statuses.find(s => s.status === name))
-            .filter((s): s is Status => !!s)
-            .map(status => {
-            const statusTasks = filteredTasks.filter(t => t.status_id === status.id);
-
-            return (
-              <div
-                key={status.id}
-                className={`flex flex-col bg-slate-50 rounded-xl ${mobile ? 'w-[85vw] min-w-[85vw] snap-center' : 'w-72 min-w-[288px]'}`}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => handleDrop(status.id)}
-              >
-                {/* Column header */}
-                <div className="flex items-center justify-between px-3 py-3">
-                  <h3 className="text-sm font-semibold text-slate-700">{status.status}</h3>
-                  <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
-                    {statusTasks.length}
-                  </span>
-                </div>
-
-                {/* Cards */}
-                <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
-                  {statusTasks.map(task => (
-                    <div
-                      key={task.id}
-                      draggable
-                      onDragStart={() => handleDragStart(task.id)}
-                      onClick={() => setSelectedTask(task)}
-                      className={`bg-white rounded-lg border border-slate-200 border-l-4 ${getCardColor(task)} p-3 cursor-pointer hover:shadow-md transition-shadow`}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <span className="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
-                          #{task.task_id}
-                        </span>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {task.task_comment && <MessageSquare className="w-3 h-3 text-slate-400" />}
-                          {confirmDeleteId === task.id ? (
-                            <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                              <span className="text-[10px] text-slate-500">Delete?</span>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleDelete(task.id); setConfirmDeleteId(null); }}
-                                title="Confirm delete"
-                                className={`p-0.5 rounded text-red-600 hover:bg-red-50 ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
-                                title="Cancel"
-                                className={`p-0.5 rounded text-slate-400 hover:bg-slate-100 ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </span>
-                          ) : (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(task.id); }}
-                              title="Delete task"
-                              className={`p-0.5 rounded text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-sm text-slate-800 font-medium line-clamp-2 mb-2">
-                        {task.task_name || 'Untitled task'}
-                      </p>
-                      {task.assigned_user_id && (
-                        <p className="text-xs text-slate-500 mb-2 truncate">
-                          {users.find(u => u.id === task.assigned_user_id)?.full_name
-                            || users.find(u => u.id === task.assigned_user_id)?.email
-                            || 'Unknown user'}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {task.phase_id && (
-                          <span className="text-xs bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded">
-                            {phases.find(p => p.id === task.phase_id)?.phase}
-                          </span>
-                        )}
-                        {task.responsible_id && (
-                          <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
-                            {responsibles.find(r => r.id === task.responsible_id)?.responsible}
-                          </span>
-                        )}
-                      </div>
-                      {task.start_date && (
-                        <div className="flex items-center gap-1 mt-2 text-xs text-slate-400">
-                          <Calendar className="w-3 h-3" />
-                          <span>{formatDisplayDate(task.start_date)} - {formatDisplayDate(task.end_date)}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className={`flex-1 ${mobile ? 'flex flex-col gap-1.5 p-2' : 'overflow-x-auto p-4'}`}>
+          <div className={`h-full min-h-0 ${mobile ? 'flex gap-1.5' : 'flex gap-4'}`}>
+            {(['Not Started', 'Doing', 'Done'] as const)
+              .map(name => statuses.find(s => s.status === name))
+              .filter((s): s is Status => !!s)
+              .map(status => {
+                const statusTasks = filteredTasks.filter(t => t.status_id === status.id);
+                return (
+                  <DroppableColumn key={status.id} id={status.id} title={status.status} count={statusTasks.length} mobile={mobile}>
+                    {statusTasks.map(task => (
+                      <DraggableCard
+                        key={task.id}
+                        task={task}
+                        mobile={mobile}
+                        users={users}
+                        phases={phases}
+                        responsibles={responsibles}
+                        confirmDeleteId={confirmDeleteId}
+                        setConfirmDeleteId={setConfirmDeleteId}
+                        onDelete={handleDelete}
+                        onOpen={setSelectedTask}
+                      />
+                    ))}
+                  </DroppableColumn>
+                );
+              })}
+          </div>
 
           {/* Unassigned column */}
           {filteredTasks.filter(t => !t.status_id).length > 0 && (
-            <div className={`flex flex-col bg-slate-50 rounded-xl ${mobile ? 'w-[85vw] min-w-[85vw] snap-center' : 'w-72 min-w-[288px]'}`}>
-              <div className="flex items-center justify-between px-3 py-3">
-                <h3 className="text-sm font-semibold text-slate-400">No Status</h3>
-                <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
-                  {filteredTasks.filter(t => !t.status_id).length}
-                </span>
-              </div>
-              <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
+            mobile ? (
+              <DroppableColumn id="unassigned" title="No Status" count={filteredTasks.filter(t => !t.status_id).length} mobile={mobile} isUnassigned>
                 {filteredTasks.filter(t => !t.status_id).map(task => (
-                  <div
+                  <DraggableCard
                     key={task.id}
-                    draggable
-                    onDragStart={() => handleDragStart(task.id)}
-                    onClick={() => setSelectedTask(task)}
-                    className={`bg-white rounded-lg border border-slate-200 border-l-4 ${getCardColor(task)} p-3 cursor-pointer hover:shadow-md transition-shadow`}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <span className="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
-                        #{task.task_id}
-                      </span>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {confirmDeleteId === task.id ? (
-                          <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            <span className="text-[10px] text-slate-500">Delete?</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDelete(task.id); setConfirmDeleteId(null); }}
-                              title="Confirm delete"
-                              className={`p-0.5 rounded text-red-600 hover:bg-red-50 ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
-                              title="Cancel"
-                              className={`p-0.5 rounded text-slate-400 hover:bg-slate-100 ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(task.id); }}
-                            title="Delete task"
-                            className={`p-0.5 rounded text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors ${mobile ? 'min-w-[36px] min-h-[36px] flex items-center justify-center' : ''}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-sm text-slate-800 font-medium line-clamp-2">
-                      {task.task_name || 'Untitled task'}
-                    </p>
-                    {task.assigned_user_id && (
-                      <p className="text-xs text-slate-500 mb-2 truncate">
-                        {users.find(u => u.id === task.assigned_user_id)?.full_name
-                          || users.find(u => u.id === task.assigned_user_id)?.email
-                          || 'Unknown user'}
-                      </p>
-                    )}
-                  </div>
+                    task={task}
+                    mobile={mobile}
+                    users={users}
+                    phases={phases}
+                    responsibles={responsibles}
+                    confirmDeleteId={confirmDeleteId}
+                    setConfirmDeleteId={setConfirmDeleteId}
+                    onDelete={handleDelete}
+                    onOpen={setSelectedTask}
+                  />
                 ))}
-              </div>
-            </div>
+              </DroppableColumn>
+            ) : (
+              <DroppableColumn id="unassigned" title="No Status" count={filteredTasks.filter(t => !t.status_id).length} mobile={mobile} isUnassigned>
+                {filteredTasks.filter(t => !t.status_id).map(task => (
+                  <DraggableCard
+                    key={task.id}
+                    task={task}
+                    mobile={mobile}
+                    users={users}
+                    phases={phases}
+                    responsibles={responsibles}
+                    confirmDeleteId={confirmDeleteId}
+                    setConfirmDeleteId={setConfirmDeleteId}
+                    onDelete={handleDelete}
+                    onOpen={setSelectedTask}
+                  />
+                ))}
+              </DroppableColumn>
+            )
           )}
         </div>
-      </div>
+
+        <DragOverlay>
+          {activeDragId ? (() => {
+            const task = tasks.find(t => t.id === activeDragId);
+            if (!task) return null;
+            return (
+              <div className={`bg-white rounded-md border border-slate-200 border-l-4 ${getCardColor(task)} p-1.5 shadow-xl scale-105 max-w-[200px]`}>
+                <div className="flex items-center gap-1 mb-0.5">
+                  <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1 py-0.5 rounded">#{task.task_id}</span>
+                </div>
+                <p className="text-[11px] leading-snug text-slate-800 font-medium line-clamp-2">{task.task_name || 'Untitled task'}</p>
+              </div>
+            );
+          })() : null}
+        </DragOverlay>
+      </DndContext>
 
       {/* Detail modal */}
       {selectedTask && (
