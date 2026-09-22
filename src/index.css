@@ -13,6 +13,8 @@
   --color-primary-900: #0a3d70;
   --color-primary-950: #07264a;
 
+  --color-violet-70: #EDE9FE;
+
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
@@ -52,7 +54,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .status-doing-row {
-  background-color: #EDE9FE;
+  background-color: var(--color-violet-70);
   border-left: 3px solid #7C3AED;
 }
 @media (prefers-color-scheme: dark) {
