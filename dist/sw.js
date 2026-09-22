@@ -38,3 +38,8 @@ self.addEventListener("notificationclick", (event) => {
       })
   );
 });
+
+self.addEventListener("fetch", (event) => {
+  // Network-only: this app requires a connection. No caching.
+  return;
+});
