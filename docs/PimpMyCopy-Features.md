@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-09-22T15:00:00Z
+**Last Updated:** 2026-09-22T15:30:00Z
 
 ---
 
@@ -99,6 +99,7 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - Task comment toggle per row
 - Status row tinting: each row receives a subtle background tint matching its task status (green=Done, blue=In Progress, amber=In Review, red=Blocked; no tint for unset/other statuses)
 - **Row keyboard navigation**: while focused on any editable cell (task name, phase, status, responsible, start date, days, end date, or dependencies), pressing ArrowDown moves focus to the same column in the next row; ArrowUp moves to the same column in the previous row. Works across all input types (text, select, date, number). Focus is constrained to the visible rows — navigation stops at the first and last row.
+- **Dependency hover highlight**: hovering over a "Depends On" cell highlights the depended-on rows with a strong blue-300 (#93C5FD) background plus a 3px solid blue-600 (#2563EB) left accent border, making the target row unmistakable. Text color stays dark for readability. A smooth `transition-colors duration-150` applies. In dark mode, the highlight uses `rgba(59, 130, 246, 0.45)` to stay visible without washing out text. No other row hover, selection, or striping styles are affected.
 
 ### 1.5 Subtasks
 - Expandable list below parent task

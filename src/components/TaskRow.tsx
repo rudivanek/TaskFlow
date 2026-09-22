@@ -157,10 +157,10 @@ export default function TaskRow({
         onDragOver={onDragOver}
         onDrop={onDrop}
         onDragEnd={onDragEnd}
-        style={!isDragOver && !isHighlighted ? { backgroundColor: getStatusRowBg() } : undefined}
-        className={`group border-b border-slate-100 transition-colors
+        style={!isDragOver && !isHighlighted ? { backgroundColor: getStatusRowBg() } : isHighlighted ? { backgroundColor: '#93C5FD', borderLeft: '3px solid #2563EB' } : undefined}
+        className={`group border-b border-slate-100 transition-colors duration-150
           ${isDragging ? 'opacity-40' : ''}
-          ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : isHighlighted ? 'bg-slate-100' : 'hover:brightness-95'}
+          ${isDragOver ? 'border-t-2 border-t-primary-400 bg-primary-50/40' : isHighlighted ? 'dark:bg-blue-500/45' : 'hover:brightness-95'}
         `}
       >
         {/* Expand */}
