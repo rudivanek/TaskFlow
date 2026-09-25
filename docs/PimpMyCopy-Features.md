@@ -107,14 +107,21 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - Checkbox to toggle done/not-started; checked = Done, unchecked = Not Started
 - Strikethrough styling on task name when done
 - Add/delete subtasks inline
-- **Suggested parent status flow**: after toggling a subtask, the app evaluates the collective state:
-  - All Done → suggests "Done" for the parent task
-  - All Not Started → suggests "Not Started" for the parent task
-  - Mixed → suggests "Doing" for the parent task
-  - If the parent task's current status already matches the suggestion, nothing happens
-  - Otherwise a confirmation modal appears: "Would you like to change the task status to X?"
-  - User can confirm ("Change Status") or dismiss ("Don't Change"); parent status is never changed automatically
-- Works in both Task Grid view and Kanban (via the task detail modal)
+- **Two-way status sync between main tasks and subtasks**: All status changes are routed through a single central handler (`useStatusSync` hook → `changeTaskStatus(taskId, newStatusId, { source })`). Every status write path (grid dropdown, Kanban drag-and-drop, task detail modal, mobile views) calls this handler. Sync-initiated changes use `source: 'sync'` and never open a modal, preventing loops.
+  - **Downward sync (main task → subtasks)**: When the user changes a main task's status, the main task is saved immediately. If the task has subtasks and at least one differs from the new status, a confirmation modal appears: "Update subtasks too? Set {N} of {M} subtasks to '{New Status}'?" with a scrollable list of subtasks that will change (name + current status → new status). Buttons: [No, only main task] / [Yes, update subtasks]. Closing the modal (X, Esc, click outside) = No. If all subtasks already match or there are no subtasks, no modal appears. Subtask changes are saved in a single Supabase batch call (`batchUpdateSubtaskStatus` using `.in('id', ids)`).
+  - **Upward sync (subtask → main task)**: When a subtask's status changes, the app evaluates the collective state of all subtasks and suggests a parent status:
+    - All Done → suggests "Done" (case a)
+    - All Not Started → suggests "Not Started" (case d)
+    - A subtask set to Doing while main is Not Started → suggests "Doing" (case b)
+    - A subtask moved away from Done while main is Done → suggests "Doing" (case c, reopened)
+    - All subtasks share the same other status (e.g. all Doing) and main differs → suggests that status (case e)
+    - Any other change where no rule applies → no modal (case f)
+  - If the parent task's current status already matches the suggestion, nothing happens. Otherwise a confirmation modal appears. User can confirm ("Change Status") or dismiss ("Don't Change"); parent status is never changed automatically.
+  - Sync-initiated parent changes (`source: 'sync'`) do NOT trigger the downward modal, and cascaded subtask changes do NOT trigger the upward modal.
+  - Deleting the last open subtask so all remaining are Done also triggers the upward check.
+  - While a status modal is open, other status changes on the same task tree are blocked.
+  - On mobile, the downward modal renders as a full-width bottom sheet with 44px minimum tap targets. Desktop styling matches the existing upward-sync modal.
+  - Works in both Task Grid view and Kanban (via drag-and-drop and the task detail modal)
 
 ### 1.6 Kanban Board View
 - One column per status (from statuses table, ordered by sort_order)

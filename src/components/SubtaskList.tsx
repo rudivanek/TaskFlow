@@ -42,7 +42,9 @@ export default function SubtaskList({ taskMainId, onStatusChange }: SubtaskListP
   const handleDelete = async (id: string) => {
     try {
       await taskServices.deleteSubtask(id);
-      setSubtasks(subtasks.filter(s => s.id !== id));
+      const updated = subtasks.filter(s => s.id !== id);
+      setSubtasks(updated);
+      evaluateAndSuggest(updated);
     } catch (err) {
       console.error(err);
     }

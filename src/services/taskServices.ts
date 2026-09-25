@@ -149,6 +149,27 @@ export async function deleteSubtask(subtaskId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function batchUpdateSubtaskStatus(
+  subtaskIds: string[],
+  statusName: string
+): Promise<void> {
+  if (subtaskIds.length === 0) return;
+  const lower = statusName.toLowerCase();
+  let updates: Partial<Subtask>;
+  if (lower === 'done') {
+    updates = { not_started: false, doing: false, done: true };
+  } else if (lower === 'doing' || lower === 'in progress') {
+    updates = { not_started: false, doing: true, done: false };
+  } else {
+    updates = { not_started: true, doing: false, done: false };
+  }
+  const { error } = await supabase
+    .from('tasks_sub')
+    .update(updates)
+    .in('id', subtaskIds);
+  if (error) throw error;
+}
+
 export async function updateSubtasksOrder(subtasks: { id: string; subtask_sort: number }[]): Promise<void> {
   for (const s of subtasks) {
     await supabase.from('tasks_sub').update({ subtask_sort: s.subtask_sort }).eq('id', s.id);

@@ -18,6 +18,7 @@ interface KanbanTaskDetailModalProps {
   onUpdateDate: (taskId: string, field: 'start_date' | 'end_date', value: string) => void;
   onUpdateDays: (taskId: string, days: number) => void;
   onDelete: (taskId: string) => void;
+  onStatusChange?: (taskId: string, statusId: string | null, source: 'user' | 'sync') => void;
 }
 
 export default function KanbanTaskDetailModal({
@@ -31,6 +32,7 @@ export default function KanbanTaskDetailModal({
   onUpdateDate,
   onUpdateDays,
   onDelete,
+  onStatusChange,
 }: KanbanTaskDetailModalProps) {
   const [taskName, setTaskName] = useState(task.task_name);
   const [comment, setComment] = useState(task.task_comment || '');
@@ -40,16 +42,20 @@ export default function KanbanTaskDetailModal({
 
   const handleSubtaskStatusChange = (suggestedStatusName: string) => {
     const currentStatusName = statuses.find(s => s.id === task.status_id)?.status;
-    if (currentStatusName === suggestedStatusName) return;
+    if (currentStatusName && currentStatusName.toLowerCase() === suggestedStatusName.toLowerCase()) return;
     setPendingStatusSuggestion(suggestedStatusName);
   };
 
   const confirmStatusSuggestion = () => {
     if (!pendingStatusSuggestion) return;
-    const targetStatus = statuses.find(s => s.status === pendingStatusSuggestion);
+    const targetStatus = statuses.find(s => s.status.toLowerCase() === pendingStatusSuggestion.toLowerCase());
     setPendingStatusSuggestion(null);
     if (!targetStatus) return;
-    onUpdate(task.id, { status_id: targetStatus.id });
+    if (onStatusChange) {
+      onStatusChange(task.id, targetStatus.id, 'sync');
+    } else {
+      onUpdate(task.id, { status_id: targetStatus.id });
+    }
   };
 
   useEffect(() => {
@@ -122,7 +128,14 @@ export default function KanbanTaskDetailModal({
               <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
               <select
                 value={task.status_id || ''}
-                onChange={(e) => onUpdate(task.id, { status_id: e.target.value || null })}
+                onChange={(e) => {
+                  const newStatusId = e.target.value || null;
+                  if (onStatusChange) {
+                    onStatusChange(task.id, newStatusId, 'user');
+                  } else {
+                    onUpdate(task.id, { status_id: newStatusId });
+                  }
+                }}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
               >
                 <option value="">None</option>

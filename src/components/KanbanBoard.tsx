@@ -3,6 +3,8 @@ import { Task, Phase, Status, Responsible, AppUser } from '../types';
 import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import KanbanTaskDetailModal from './KanbanTaskDetailModal';
+import DownwardSyncModal from './DownwardSyncModal';
+import { useStatusSync } from '../hooks/useStatusSync';
 import { isOverdue, isDueToday, isDueSoon, formatDisplayDate } from '../utils/dateUtils';
 import { useIsMobile } from '../utils/isMobile';
 import { Search, Loader2, MessageSquare, Calendar, ChevronsUpDown, ChevronUp, ChevronDown, Plus, Trash2, Check, X } from 'lucide-react';
@@ -148,6 +150,8 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
   const [creating, setCreating] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  const statusSync = useStatusSync({ tasks, statuses, setTasks, setError, setSelectedTask });
+
   const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
@@ -165,6 +169,11 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
   }, [loadTasks]);
 
   const handleUpdate = async (taskId: string, updates: Partial<Task>) => {
+    // Route status_id changes through the central status handler
+    if ('status_id' in updates && Object.keys(updates).length === 1) {
+      await statusSync.changeTaskStatus(taskId, updates.status_id ?? null, { source: 'user' });
+      return;
+    }
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
     try {
       const updated = await taskServices.updateTask(taskId, updates);
@@ -264,10 +273,10 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
     if (!task) return;
     if (targetId === 'unassigned') {
       if (!task.status_id) return;
-      await handleUpdate(taskId, { status_id: null });
+      await statusSync.changeTaskStatus(taskId, null, { source: 'user' });
     } else {
       if (task.status_id === targetId) return;
-      await handleUpdate(taskId, { status_id: targetId });
+      await statusSync.changeTaskStatus(taskId, targetId, { source: 'user' });
     }
   };
 
@@ -452,6 +461,17 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
           onUpdateDate={handleUpdateDate}
           onUpdateDays={handleUpdateDays}
           onDelete={handleDelete}
+          onStatusChange={(taskId, statusId, source) => statusSync.changeTaskStatus(taskId, statusId, { source })}
+        />
+      )}
+
+      {statusSync.pendingDownwardSync && (
+        <DownwardSyncModal
+          newStatusName={statusSync.pendingDownwardSync.newStatusName}
+          subtasksToChange={statusSync.pendingDownwardSync.subtasksToChange}
+          totalSubtasks={statusSync.pendingDownwardSync.totalSubtasks}
+          onConfirm={statusSync.confirmDownwardSync}
+          onDismiss={statusSync.dismissDownwardSync}
         />
       )}
     </div>

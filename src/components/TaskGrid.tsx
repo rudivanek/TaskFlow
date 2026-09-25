@@ -4,6 +4,8 @@ import { useAuth } from './AuthContext';
 import * as taskServices from '../services/taskServices';
 import TaskRow from './TaskRow';
 import SubtaskStatusModal from './SubtaskStatusModal';
+import DownwardSyncModal from './DownwardSyncModal';
+import { useStatusSync } from '../hooks/useStatusSync';
 import { ColumnKey } from '../hooks/useColumnPreferences';
 import { useTags, fetchTaskTagsForTasks, Tag } from '../hooks/useTags';
 import { Plus, Search, Filter, Loader2, ChevronsUpDown, ChevronUp, ChevronDown, AlertTriangle, X, CalendarRange, RefreshCw, ChevronsDownUp, Rows3 } from 'lucide-react';
@@ -78,6 +80,8 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, us
   const [dateStats, setDateStats] = useState<{ minStart: string; maxEnd: string; totalDays: number } | null>(null);
   const [expandTrigger, setExpandTrigger] = useState<{ action: 'expand' | 'collapse'; seq: number }>({ action: 'collapse', seq: 0 });
   const [pendingStatusSuggestion, setPendingStatusSuggestion] = useState<{ taskId: string; suggestedStatusName: string } | null>(null);
+
+  const statusSync = useStatusSync({ tasks, statuses, setTasks, setError });
 
   // ── column widths ───────────────────────────────────────────────────────────
   const [colWidths, setColWidths] = useState<Record<string, number>>(loadSavedWidths);
@@ -182,6 +186,11 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, us
   };
 
   const handleUpdate = async (taskId: string, updates: Partial<Task>) => {
+    // Route status_id changes through the central status handler
+    if ('status_id' in updates && Object.keys(updates).length === 1) {
+      await statusSync.changeTaskStatus(taskId, updates.status_id ?? null, { source: 'user' });
+      return;
+    }
     setTasks(tasks.map(t => t.id === taskId ? { ...t, ...updates } : t));
     try {
       const updated = await taskServices.updateTask(taskId, updates);
@@ -288,7 +297,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, us
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     const currentStatusName = statuses.find(s => s.id === task.status_id)?.status;
-    if (currentStatusName === suggestedStatusName) return;
+    if (currentStatusName && currentStatusName.toLowerCase() === suggestedStatusName.toLowerCase()) return;
     setPendingStatusSuggestion({ taskId, suggestedStatusName });
   };
 
@@ -296,9 +305,9 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, us
     if (!pendingStatusSuggestion) return;
     const { taskId, suggestedStatusName } = pendingStatusSuggestion;
     setPendingStatusSuggestion(null);
-    const targetStatus = statuses.find(s => s.status === suggestedStatusName);
+    const targetStatus = statuses.find(s => s.status.toLowerCase() === suggestedStatusName.toLowerCase());
     if (!targetStatus) return;
-    await handleUpdate(taskId, { status_id: targetStatus.id });
+    await statusSync.changeTaskStatus(taskId, targetStatus.id, { source: 'sync' });
   };
 
   const dragEnabled = sortField === 'task_sort' && sortDir === 'asc';
@@ -621,6 +630,16 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, us
           suggestedStatusName={pendingStatusSuggestion.suggestedStatusName}
           onConfirm={confirmStatusSuggestion}
           onDismiss={() => setPendingStatusSuggestion(null)}
+        />
+      )}
+
+      {statusSync.pendingDownwardSync && (
+        <DownwardSyncModal
+          newStatusName={statusSync.pendingDownwardSync.newStatusName}
+          subtasksToChange={statusSync.pendingDownwardSync.subtasksToChange}
+          totalSubtasks={statusSync.pendingDownwardSync.totalSubtasks}
+          onConfirm={statusSync.confirmDownwardSync}
+          onDismiss={statusSync.dismissDownwardSync}
         />
       )}
     </div>
