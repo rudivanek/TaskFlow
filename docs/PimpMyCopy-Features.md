@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-09-22T16:00:00Z
+**Last Updated:** 2026-09-25T00:00:00Z
 
 ---
 
@@ -77,7 +77,7 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - Workspaces section with expand/collapse chevrons
 - Projects listed alphabetically within each workspace
 - **Drag & Drop project between workspaces**: drag a project row and drop it onto any workspace header to move it; the dragged item becomes semi-transparent, the target workspace header highlights in blue, and the target workspace auto-expands after the move
-- Favorites section at top showing starred projects
+- Favorites section at top showing starred projects (rendered via the shared `SidebarFavorites` component, also used by the mobile drawer)
 - Trash/Recycle bin section for soft-deleted projects AND soft-deleted workspaces, with restore/permanent delete for each
 - Context menus on right-click:
   - Workspaces: Rename, **Make Private / Make Public**, Delete (soft-deletes workspace + all its projects to Trash)
@@ -479,6 +479,7 @@ TaskFlow is fully responsive on screens ≤ 768px. The desktop layout is 100% un
 - App branding at top with close button.
 - Chat nav item with unread badge.
 - Collapsible workspace sections (all expanded by default), each showing their projects. Private workspaces show a lock icon.
+- **Favorites section** at the top of the drawer (above Workspaces), showing starred projects with a yellow star icon. Rendered via the shared `SidebarFavorites` component (same component used by the desktop sidebar), so the status-to-favorite mapping, star styling, and item order are identical in both views. Tapping a favorite navigates to that project and closes the drawer. Uses 44px minimum tap targets on mobile. Hidden entirely when there are no favorites (same as desktop). The mobile drawer's project query now includes the `favorite` column so the shared component has the data it needs.
 - Active project highlighted in blue. Per-project unread badges.
 - User email + Sign out at the bottom.
 - Body scroll locked while drawer is open. Tapping backdrop closes the drawer.

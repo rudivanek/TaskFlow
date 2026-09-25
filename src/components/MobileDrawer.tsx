@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Lock, MessageSquare, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { SidebarFavorites } from './SidebarFavorites';
 
 interface Props {
   isOpen: boolean;
@@ -16,7 +17,7 @@ interface Props {
 }
 
 interface WsRow { id: string; workspace: string; private: boolean; deleted: boolean }
-interface ProjRow { id: string; project: string; workspace_id: string }
+interface ProjRow { id: string; project: string; workspace_id: string; favorite: boolean }
 
 export function MobileDrawer({
   isOpen, onClose, selectedProjectId, onSelectProject,
@@ -30,7 +31,7 @@ export function MobileDrawer({
     if (!isOpen) return;
     Promise.all([
       supabase.from('workspaces').select('id, workspace, private, deleted').eq('deleted', false).order('workspace'),
-      supabase.from('projects').select('id, project, workspace_id').eq('deleted', false).order('project'),
+      supabase.from('projects').select('id, project, workspace_id, favorite').eq('deleted', false).order('project'),
     ]).then(([wsRes, projRes]) => {
       const ws = (wsRes.data ?? []) as WsRow[];
       setWorkspaces(ws);
@@ -101,6 +102,14 @@ export function MobileDrawer({
 
         {/* Workspace + project list */}
         <div className="flex-1 overflow-y-auto py-2">
+          <SidebarFavorites
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={(id) => { onSelectProject(id); onClose(); }}
+            unreadByProject={unreadByProject}
+            variant="mobile"
+          />
+
           <p className="px-4 text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1">
             Workspaces
           </p>
