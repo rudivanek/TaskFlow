@@ -3,6 +3,12 @@ import { Task, Subtask, Status } from '../types';
 import * as taskServices from '../services/taskServices';
 import { DownwardSubtaskInfo } from '../components/DownwardSyncModal';
 
+export interface SubtaskRefreshEvent {
+  taskMainId: string;
+  subtasks: Subtask[];
+  nonce: number;
+}
+
 interface StatusSyncOptions {
   tasks: Task[];
   statuses: Status[];
@@ -29,6 +35,7 @@ export function useStatusSync({
 }: StatusSyncOptions) {
   const [pendingDownwardSync, setPendingDownwardSync] = useState<PendingDownwardSync | null>(null);
   const [syncingTaskIds, setSyncingTaskIds] = useState<Set<string>>(new Set());
+  const [subtaskRefresh, setSubtaskRefresh] = useState<SubtaskRefreshEvent | null>(null);
   const subtaskCacheRef = useRef<Map<string, Subtask[]>>(new Map());
 
   const getStatusName = useCallback((statusId: string | null | undefined): string | null => {
@@ -136,19 +143,12 @@ export function useStatusSync({
 
     const ids = subtasksToChange.map(s => s.id);
     try {
-      await taskServices.batchUpdateSubtaskStatus(ids, newStatusName);
-      // Update cache
-      const cached = subtaskCacheRef.current.get(taskId) ?? [];
-      const updated = cached.map(s => {
-        if (ids.includes(s.id)) {
-          const lower = newStatusName.toLowerCase();
-          if (lower === 'done') return { ...s, not_started: false, doing: false, done: true };
-          if (lower === 'doing' || lower === 'in progress') return { ...s, not_started: false, doing: true, done: false };
-          return { ...s, not_started: true, doing: false, done: false };
-        }
-        return s;
-      });
-      subtaskCacheRef.current.set(taskId, updated);
+      const updatedSubs = await taskServices.batchUpdateSubtaskStatus(ids, newStatusName);
+      // Re-fetch all subtasks for the task to get the complete fresh list
+      const allSubs = await taskServices.fetchSubtasks(taskId);
+      subtaskCacheRef.current.set(taskId, allSubs);
+      // Broadcast refresh event so SubtaskList components re-render
+      setSubtaskRefresh({ taskMainId: taskId, subtasks: allSubs, nonce: Date.now() });
     } catch (err: any) {
       setError(err.message || 'Failed to update subtasks');
       setTimeout(() => setError(''), 3000);
@@ -205,5 +205,6 @@ export function useStatusSync({
     evaluateUpwardSync,
     applyUpwardSync,
     getSubtaskStatusName,
+    subtaskRefresh,
   };
 }

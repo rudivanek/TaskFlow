@@ -152,8 +152,8 @@ export async function deleteSubtask(subtaskId: string): Promise<void> {
 export async function batchUpdateSubtaskStatus(
   subtaskIds: string[],
   statusName: string
-): Promise<void> {
-  if (subtaskIds.length === 0) return;
+): Promise<Subtask[]> {
+  if (subtaskIds.length === 0) return [];
   const lower = statusName.toLowerCase();
   let updates: Partial<Subtask>;
   if (lower === 'done') {
@@ -163,11 +163,16 @@ export async function batchUpdateSubtaskStatus(
   } else {
     updates = { not_started: true, doing: false, done: false };
   }
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('tasks_sub')
     .update(updates)
-    .in('id', subtaskIds);
+    .in('id', subtaskIds)
+    .select();
   if (error) throw error;
+  if (!data || data.length !== subtaskIds.length) {
+    throw new Error(`Batch update mismatch: expected ${subtaskIds.length} rows, got ${data?.length ?? 0}`);
+  }
+  return data;
 }
 
 export async function updateSubtasksOrder(subtasks: { id: string; subtask_sort: number }[]): Promise<void> {

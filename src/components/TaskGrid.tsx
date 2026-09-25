@@ -554,6 +554,7 @@ export default function TaskGrid({ projectId, phases, statuses, responsibles, us
                 onDelete={handleDelete}
                 onDepsHover={setHighlightedTaskIds}
                 onSubtaskChange={handleSubtaskChange}
+                subtaskRefreshNonce={statusSync.subtaskRefresh?.taskMainId === task.id ? statusSync.subtaskRefresh.nonce : undefined}
                 isHighlighted={highlightedTaskIds.includes(task.task_id)}
                 dragEnabled={dragEnabled}
                 isDragging={draggedId === task.id}

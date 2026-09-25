@@ -6,9 +6,10 @@ import { Plus, Trash2, GripVertical } from 'lucide-react';
 interface SubtaskListProps {
   taskMainId: string;
   onStatusChange?: (suggestedStatusName: string) => void;
+  refreshNonce?: number;
 }
 
-export default function SubtaskList({ taskMainId, onStatusChange }: SubtaskListProps) {
+export default function SubtaskList({ taskMainId, onStatusChange, refreshNonce }: SubtaskListProps) {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -16,6 +17,12 @@ export default function SubtaskList({ taskMainId, onStatusChange }: SubtaskListP
   useEffect(() => {
     loadSubtasks();
   }, [taskMainId]);
+
+  // Re-fetch when refreshNonce changes (e.g. after a downward cascade)
+  useEffect(() => {
+    if (refreshNonce === undefined) return;
+    loadSubtasks();
+  }, [refreshNonce]);
 
   const loadSubtasks = async () => {
     try {

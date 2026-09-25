@@ -26,6 +26,7 @@ interface TaskRowProps {
   onDelete: (taskId: string, taskIdNum: number) => void;
   onDepsHover: (ids: number[]) => void;
   onSubtaskChange?: (taskId: string, suggestedStatusName: string) => void;
+  subtaskRefreshNonce?: number;
   isHighlighted?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLTableCellElement>;
   onDragStart?: (e: React.DragEvent) => void;
@@ -82,6 +83,7 @@ export default function TaskRow({
   onDelete,
   onDepsHover,
   onSubtaskChange,
+  subtaskRefreshNonce,
   isHighlighted = false,
   onDragStart,
   onDragOver,
@@ -406,6 +408,7 @@ export default function TaskRow({
             <SubtaskList
               taskMainId={task.id}
               onStatusChange={onSubtaskChange ? (suggested) => onSubtaskChange(task.id, suggested) : undefined}
+              refreshNonce={subtaskRefreshNonce}
             />
           </td>
         </tr>

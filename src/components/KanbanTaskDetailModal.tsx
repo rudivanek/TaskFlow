@@ -19,6 +19,7 @@ interface KanbanTaskDetailModalProps {
   onUpdateDays: (taskId: string, days: number) => void;
   onDelete: (taskId: string) => void;
   onStatusChange?: (taskId: string, statusId: string | null, source: 'user' | 'sync') => void;
+  subtaskRefreshNonce?: number;
 }
 
 export default function KanbanTaskDetailModal({
@@ -33,6 +34,7 @@ export default function KanbanTaskDetailModal({
   onUpdateDays,
   onDelete,
   onStatusChange,
+  subtaskRefreshNonce,
 }: KanbanTaskDetailModalProps) {
   const [taskName, setTaskName] = useState(task.task_name);
   const [comment, setComment] = useState(task.task_comment || '');
@@ -202,7 +204,7 @@ export default function KanbanTaskDetailModal({
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Subtasks</label>
             <div className="border border-slate-200 rounded-lg overflow-hidden">
-              <SubtaskList taskMainId={task.id} onStatusChange={handleSubtaskStatusChange} />
+              <SubtaskList taskMainId={task.id} onStatusChange={handleSubtaskStatusChange} refreshNonce={subtaskRefreshNonce} />
             </div>
           </div>
         </div>

@@ -462,6 +462,7 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
           onUpdateDays={handleUpdateDays}
           onDelete={handleDelete}
           onStatusChange={(taskId, statusId, source) => statusSync.changeTaskStatus(taskId, statusId, { source })}
+          subtaskRefreshNonce={statusSync.subtaskRefresh?.taskMainId === selectedTask.id ? statusSync.subtaskRefresh.nonce : undefined}
         />
       )}
 
