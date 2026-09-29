@@ -255,7 +255,11 @@ export default function KanbanBoard({ projectId, phases, statuses, responsibles,
   }, [tasks, projectId, statuses, user, creating, selectedTask]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+    useSensor(PointerSensor, {
+      activationConstraint: mobile
+        ? { delay: 200, tolerance: 8 }
+        : { distance: 5 },
+    })
   );
 
   const handleDragStart = (event: any) => {
