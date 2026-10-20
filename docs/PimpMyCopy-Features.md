@@ -1,7 +1,7 @@
 # PimpMyCopy Features Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-09-25T00:00:00Z
+**Last Updated:** 2026-10-20T00:00:00Z
 
 ---
 
@@ -107,6 +107,7 @@ A special URL pattern provides a focused Kanban board view with all non-essentia
 - Checkbox to toggle done/not-started; checked = Done, unchecked = Not Started
 - Strikethrough styling on task name when done
 - Add/delete subtasks inline
+- **Inline rename by double-click**: double-clicking a subtask name turns it into an inline text input pre-filled with the current name, auto-focused with the text selected. Only one subtask can be edited at a time (tracked via `editingId` / `editingName` state). Save on Enter or blur: trims the value, cancels if empty or unchanged, otherwise calls `updateSubtask(id, { subtask_name })` with optimistic local state update and revert on error. Escape cancels without saving (a ref flag prevents the subsequent blur from saving). The input matches the row size (text-sm, flex-1, border-slate-300, rounded, bg-white, px-1.5 py-0.5). Line-through styling is suppressed while editing. The checkbox, drag handle, and trash button remain unchanged. Editing a name does not trigger the upward status suggestion logic (`evaluateAndSuggest`).
 - **Two-way status sync between main tasks and subtasks**: All status changes are routed through a single central handler (`useStatusSync` hook → `changeTaskStatus(taskId, newStatusId, { source })`). Every status write path (grid dropdown, Kanban drag-and-drop, task detail modal, mobile views) calls this handler. Sync-initiated changes use `source: 'sync'` and never open a modal, preventing loops.
   - **Downward sync (main task → subtasks)**: When the user changes a main task's status, the main task is saved immediately. If the task has subtasks and at least one differs from the new status, a confirmation modal appears: "Update subtasks too? Set {N} of {M} subtasks to '{New Status}'?" with a scrollable list of subtasks that will change (name + current status → new status). Buttons: [No, only main task] / [Yes, update subtasks]. Closing the modal (X, Esc, click outside) = No. If all subtasks already match or there are no subtasks, no modal appears. Subtask changes are saved in a single Supabase batch call (`batchUpdateSubtaskStatus` using `.in('id', ids)` with `.select()` to verify the returned row count matches the number of IDs sent; if not, an error toast is shown). After a successful cascade, the hook broadcasts a `subtaskRefresh` event (with a nonce) that forces every `SubtaskList` instance for that task to re-fetch from the database, so the UI updates immediately in both the Grid expanded rows and the Kanban detail modal without a page reload.
   - **Upward sync (subtask → main task)**: When a subtask's status changes, the app evaluates the collective state of all subtasks and suggests a parent status:

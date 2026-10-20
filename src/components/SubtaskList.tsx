@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Subtask } from '../types';
 import * as taskServices from '../services/taskServices';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
@@ -13,6 +13,9 @@ export default function SubtaskList({ taskMainId, onStatusChange, refreshNonce }
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const escapedRef = useRef(false);
 
   useEffect(() => {
     loadSubtasks();
@@ -93,9 +96,51 @@ export default function SubtaskList({ taskMainId, onStatusChange, refreshNonce }
             onChange={() => toggleDone(subtask)}
             className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 cursor-pointer accent-blue-600"
           />
-          <span className={`flex-1 text-sm ${subtask.done ? 'line-through text-slate-400' : 'text-slate-700'}`}>
-            {subtask.subtask_name}
-          </span>
+          {editingId === subtask.id ? (
+            <input
+              autoFocus
+              value={editingName}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => setEditingName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLInputElement).blur();
+                } else if (e.key === 'Escape') {
+                  escapedRef.current = true;
+                  setEditingId(null);
+                  setEditingName('');
+                }
+              }}
+              onBlur={() => {
+                if (escapedRef.current) {
+                  escapedRef.current = false;
+                  return;
+                }
+                const trimmed = editingName.trim();
+                const original = subtask.subtask_name;
+                setEditingId(null);
+                setEditingName('');
+                if (!trimmed || trimmed === original) return;
+                setSubtasks(prev => prev.map(s => s.id === subtask.id ? { ...s, subtask_name: trimmed } : s));
+                taskServices.updateSubtask(subtask.id, { subtask_name: trimmed }).catch((err) => {
+                  console.error(err);
+                  setSubtasks(prev => prev.map(s => s.id === subtask.id ? { ...s, subtask_name: original } : s));
+                });
+              }}
+              className="flex-1 text-sm px-1.5 py-0.5 border border-slate-300 rounded bg-white"
+            />
+          ) : (
+            <span
+              onDoubleClick={() => {
+                setEditingId(subtask.id);
+                setEditingName(subtask.subtask_name);
+              }}
+              className={`flex-1 text-sm cursor-text ${subtask.done ? 'line-through text-slate-400' : 'text-slate-700'}`}
+              title="Double-click to edit"
+            >
+              {subtask.subtask_name}
+            </span>
+          )}
           <button
             onClick={() => handleDelete(subtask.id)}
             className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 rounded transition-all"
